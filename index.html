@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MUZI木子</title>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+body {
+    min-height: 100vh;
+    background: #0b0d13;
+    color: #f5f5f7;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 40px;
+}
+.header {
+    text-align: center;
+}
+.header h1 {
+    font-size: 42px;
+    font-weight: 600;
+    letter-spacing: 5px;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, #22c55e, #06b6d4, #8b5cf6, #22c55e);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: colorFlow 4s linear infinite;
+}
+.header p {
+    font-size: 16px;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, #86efac, #67e8f9, #c4b5fd, #86efac);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    opacity: 0.8;
+    animation: colorFlow 5s linear infinite;
+}
+@keyframes colorFlow {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 200% 50%;
+    }
+}
+.section {
+    width: 100%;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.section-title {
+    font-size: 13px;
+    color: #6b7280;
+    text-align: center;
+    margin-bottom: 4px;
+}
+.btn {
+    display: block;
+    width: 100%;
+    padding: 14px 0;
+    text-align: center;
+    text-decoration: none;
+    font-size: 15px;
+    border: 1px solid #2a2e3a;
+    border-radius: 8px;
+    color: #e5e7eb;
+    transition: all 0.2s ease;
+    background: rgba(255,255,255,0.02);
+}
+.btn:hover {
+    border-color: #22c55e;
+    color: #22c55e;
+    transform: translateY(-1px);
+    background: rgba(34,197,94,0.05);
+}
+.divider {
+    width: 300px;
+    max-width: 100%;
+    height: 1px;
+    background: #1f2330;
+}
+</style>
+</head>
+<body>
+    <div class="header">
+        <h1>MUZI木子</h1>
+        <p>内核拯救世界</p>
+    </div>
+    <div class="section">
+        <div class="section-title">下载 密码0000</div>
+        <a href="https://muzinb889.lanzoum.com/b019vy7myf" class="btn">蓝奏网盘下载</a>
+        <a href="https://1827501335.share.123pan.cn/123pan/jNTKjv-vRqR3" class="btn">123云盘下载</a>
+        <a href="#" class="btn">高速直链下载（懒得做）</a>
+    </div>
+    <div class="divider"></div>
+    <div class="section">
+        <div class="section-title">官方社群</div>
+        <a href="https://t.me/muzinb888" target="_blank" class="btn">Telegram 官方频道</a>
+        <a href="https://qm.qq.com/q/AT32tHqEww" target="_blank" class="btn">QQ 交流群</a>
+    </div>
+</body>
+</html>
