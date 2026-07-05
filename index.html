@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Utopia-乌托邦</title>
+    <style>
+        /* ===== 全局重置 ===== */
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", Arial, sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            min-height: 100vh;
+            position: relative;
+        }
+        /* ===== 磨砂头部 ===== */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            /* 磨砂玻璃核心 */
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(28px) saturate(200%);
+            -webkit-backdrop-filter: blur(28px) saturate(200%);
+            /* 精致边框 + 微光 */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.55);
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.06),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7);
+            padding: 18px 8vw;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+        /* 滚动时加深磨砂，提升层次感 */
+        header.scrolled {
+            background: rgba(255, 255, 255, 0.55);
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.10),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+        header strong {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: #1d1d1f;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+        }
+        header nav a {
+            text-decoration: none;
+            color: #0071e3;
+            font-size: 16px;
+            font-weight: 500;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background: rgba(0, 113, 227, 0.08);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            transition: background 0.25s, transform 0.2s;
+            display: inline-block;
+        }
+        header nav a:hover {
+            background: rgba(0, 113, 227, 0.18);
+            transform: scale(1.02);
+        }
+        /* ===== Hero ===== */
+        .hero {
+            padding: 12vh 8vw 8vh;
+            position: relative;
+        }
+        .hero h1 {
+            color: #0071e3;
+            animation: fadeUp .8s ease both;
+            font-size: clamp(44px, 7vw, 80px);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin: 0 0 12px 0;
+            line-height: 1.1;
+        }
+        .hero .sub {
+            font-size: 24px;
+            font-weight: 500;
+            color: #4a4a4f;
+            max-width: 700px;
+            margin: 0;
+            line-height: 1.5;
+            letter-spacing: 0.01em;
+            animation: fadeUp 1.1s ease both;
+        }
+        /* ===== 卡片网格 ===== */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            padding: 0 8vw 10vh;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: transform .35s, box-shadow .35s, background .35s;
+            animation: fadeUp .8s ease both;
+        }
+        /* TG Account 专属磨砂卡片样式 */
+        .card.tg-glass {
+            background: rgba(255, 255, 255, 0.32);
+            backdrop-filter: blur(22px) saturate(200%);
+            -webkit-backdrop-filter: blur(22px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.65);
+        }
+        .card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 50px rgba(0, 113, 227, .15);
+            background: rgba(255, 255, 255, 0.85);
+        }
+        /* TG卡片hover磨砂适配 */
+        .card.tg-glass:hover {
+            background: rgba(255, 255, 255, 0.48);
+        }
+        .label {
+            color: #6e6e73;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+        .value {
+            font-size: 28px;
+            font-weight: 600;
+            margin-top: 6px;
+            letter-spacing: -0.01em;
+            cursor: pointer;
+            transition: color 0.2s;
+            word-break: break-all;
+        }
+        .value:hover {
+            color: #0071e3;
+        }
+        button {
+            margin-top: 18px;
+            border: 0;
+            background: #0071e3;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 999px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background .25s, transform .25s;
+        }
+        button:hover {
+            background: #005bb5;
+            transform: scale(1.05);
+        }
+        /* ===== Footer ===== */
+        footer {
+            text-align: center;
+            padding: 50px;
+            color: #86868b;
+            font-size: 14px;
+            letter-spacing: 0.02em;
+        }
+        /* ===== 动画 ===== */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(25px);
+            }
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+        /* ===== 背景光晕 ===== */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: -20%;
+            background:
+                radial-gradient(circle at 20% 20%, rgba(0, 113, 227, .08), transparent 35%),
+                radial-gradient(circle at 80% 70%, rgba(0, 113, 227, .06), transparent 35%);
+            animation: floatbg 12s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+        @keyframes floatbg {
+            50% {
+                transform: translateY(-20px) translateX(10px);
+            }
+        }
+        /* ===== 响应式 ===== */
+        @media (max-width: 600px) {
+            .hero {
+                padding: 8vh 6vw 6vh;
+            }
+            .hero h1 {
+                font-size: 36px;
+            }
+            .hero .sub {
+                font-size: 20px;
+            }
+            .grid {
+                padding: 0 6vw 6vh;
+            }
+            header {
+                padding: 14px 6vw;
+            }
+            .value {
+                font-size: 24px;
+            }
+            header strong {
+                font-size: 16px;
+            }
+            header nav a {
+                font-size: 14px;
+                padding: 4px 12px;
+            }
+        }
+    </style>
+<style>
+@keyframes fadeUp{from{opacity:0;transform:translateY(25px)}to{opacity:1;transform:none}}
+.hero .sub{animation:fadeUp 1.1s ease both}
+.card{animation:fadeUp .8s ease both;transition:transform .35s,box-shadow .35s}
+.card:hover{transform:translateY(-10px) scale(1.02);box-shadow:0 20px 50px rgba(0,113,227,.15)}
+button{transition:.3s}
+button:hover{transform:scale(1.05)}
+body::before{content:'';position:fixed;inset:-20%;background:radial-gradient(circle at 20% 20%,rgba(0,113,227,.08),transparent 35%),radial-gradient(circle at 80% 70%,rgba(0,113,227,.06),transparent 35%);animation:floatbg 12s ease-in-out infinite;pointer-events:none}
+@keyframes floatbg{50%{transform:translateY(-20px) translateX(10px)}}
+</style>
+</head>
+<body>
+    <header>
+        <strong>TG Account</strong>
+        <nav><a href="#contact">联系客服</a></nav>
+    </header>
+    <section class="hero">
+        <h1>乌托邦</h1>
+        <p class="sub">
+            <strong style="display:block;font-size:18px;color:#1d1d1f;font-weight:600;margin-bottom:10px;">高品质 Telegram 账号</strong>
+            <span style="display:block;font-size:20px;">一手货源 · 稳定可靠 · 极速交付 · 专业售后</span>
+        </p>
+    </section>
+    <section class="grid" id="contact">
+        <div class="card tg-glass">
+            <div class="label">Telegram</div>
+            <div class="value" id="tgValue" onclick="copyText('@wtb888tg')">@wtb888tg</div>
+            <button onclick="window.open('https://t.me/wtb888tg')">打开 Telegram</button>
+        </div>
+        <div class="card">
+            <div class="label">QQ</div>
+            <div class="value" id="qqValue" onclick="copyText('3552453862')">1497322645</div>
+            <button onclick="window.open('https://qm.qq.com/q/GZFZyyNEs0')">点击联系客服</button>
+        </div>
+    </section>
+    <footer>© 2026 TG Account · Utopia is not a destination, but a direction.</footer>
+    <script>
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('已复制：' + text);
+            }).catch(() => {
+                // 降级方案
+                const input = document.createElement('input');
+                input.value = text;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                alert('已复制：' + text);
+            });
+        }
+    </script>
+</body>
+</html>
