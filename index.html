@@ -180,11 +180,18 @@ body {
 <!-- 购买弹窗 -->
 <div class="modal-overlay" id="buyModal">
   <div class="modal">
-    <h3>确认购买</h3>
+    <h3>选择支付方式</h3>
     <p class="product-name" id="modalProductName">-</p>
     <div class="amount"><span>¥</span><span id="modalPrice">0.00</span></div>
-    <button class="pay-btn" id="payBtn" onclick="goPay()">立即支付</button>
-    <button class="close-btn" onclick="closeModal()">取消</button>
+    <div style="display:flex; gap:10px; margin-top:16px;">
+      <button class="pay-btn" style="flex:1; background:linear-gradient(135deg, #1677ff, #0958d9);" onclick="goPay('alipay')">
+        💰 支付宝
+      </button>
+      <button class="pay-btn" style="flex:1; background:linear-gradient(135deg, #07c160, #06ad56);" onclick="goPay('wxpay')">
+        💬 微信支付
+      </button>
+    </div>
+    <button class="close-btn" onclick="closeModal()" style="margin-top:16px;">取消</button>
   </div>
 </div>
 
@@ -237,35 +244,39 @@ function closeModal() {
   document.getElementById('buyModal').classList.remove('active');
 }
 
-async function goPay() {
+async function goPay(payType) {
   if (!currentProduct) return;
   
-  const btn = document.getElementById('payBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="loading"></span> 创建订单中...';
+  // 关闭弹窗
+  closeModal();
+  
+  // 显示加载提示
+  const loadingDiv = document.createElement('div');
+  loadingDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;color:white;flex-direction:column;';
+  loadingDiv.innerHTML = '<div class="loading" style="width:40px;height:40px;border-width:4px;margin-bottom:16px;"></div><p>正在创建订单...</p>';
+  document.body.appendChild(loadingDiv);
   
   try {
-    const res = await fetch('https://fy-store.pages.dev/api/create', {
+    const API_BASE = 'https://fy-store.pages.dev';
+    const res = await fetch(API_BASE + '/api/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        productId: currentProduct.id
+        productId: currentProduct.id,
+        payType: payType
       })
     });
     const data = await res.json();
     
     if (data.success && data.payUrl) {
-      // 跳转到支付页面
       window.location.href = data.payUrl;
     } else {
       alert('创建订单失败: ' + (data.error || '未知错误'));
-      btn.disabled = false;
-      btn.innerHTML = '立即支付';
+      document.body.removeChild(loadingDiv);
     }
   } catch (e) {
     alert('网络错误: ' + e.message);
-    btn.disabled = false;
-    btn.innerHTML = '立即支付';
+    document.body.removeChild(loadingDiv);
   }
 }
 
