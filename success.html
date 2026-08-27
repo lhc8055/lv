@@ -2,207 +2,127 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#667eea">
 <title>支付成功 - 飞云商城</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-.card {
-  background: white;
-  border-radius: 20px;
-  padding: 40px 30px;
-  max-width: 450px;
-  width: 100%;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-}
-.icon {
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(135deg, #2ed573, #1e90ff);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 20px;
-  font-size: 40px;
-  color: white;
-  animation: pop 0.5s ease;
-}
-@keyframes pop {
-  0% { transform: scale(0); }
-  70% { transform: scale(1.2); }
-  100% { transform: scale(1); }
-}
-h2 { color: #333; font-size: 24px; margin-bottom: 8px; }
-.subtitle { color: #888; font-size: 14px; margin-bottom: 24px; }
-.order-info {
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 20px;
-  text-align: left;
-}
-.order-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 6px 0;
-  font-size: 14px;
-}
-.order-row .label { color: #888; }
-.order-row .value { color: #333; font-weight: 500; }
-.goods-box {
-  background: #fff9e6;
-  border: 1px dashed #ffc107;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
-  text-align: left;
-}
-.goods-title {
-  font-size: 14px;
-  color: #ff9500;
-  margin-bottom: 10px;
-  font-weight: 600;
-}
-.goods-content {
-  font-size: 14px;
-  color: #333;
-  line-height: 1.8;
-  word-break: break-all;
-}
-.copy-btn {
-  background: #ffc107;
-  color: #333;
-  border: none;
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  margin-top: 8px;
-  float: right;
-}
-.back-btn {
-  width: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  padding: 14px;
-  border-radius: 10px;
-  font-size: 16px;
-  cursor: pointer;
-  margin-top: 10px;
-}
-.back-btn:hover { opacity: 0.9; }
-.loading {
-  display: inline-block;
-  width: 40px;
-  height: 40px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #667eea;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 20px 0;
-}
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:#fff;border-radius:20px;padding:30px 24px;width:100%;max-width:400px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.icon{width:70px;height:70px;background:linear-gradient(135deg,#11998e,#38ef7d);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:36px;color:#fff;animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
+h2{font-size:22px;color:#333;margin-bottom:6px}
+.subtitle{color:#888;font-size:13px;margin-bottom:20px}
+.amount{font-size:36px;font-weight:700;color:#ff4757;margin:12px 0}
+.amount span{font-size:18px}
+.info-box{background:#f7f8fa;border-radius:12px;padding:14px;text-align:left;margin:16px 0}
+.info-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px}
+.info-row .label{color:#888}
+.info-row .value{color:#333;font-weight:500}
+.goods-box{background:linear-gradient(135deg,#f5f7fa 0%,#e4e8eb 100%);border-radius:12px;padding:16px;margin:16px 0;text-align:left;border:1px dashed #667eea}
+.goods-title{font-size:14px;font-weight:600;color:#333;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.goods-content{font-size:13px;color:#555;line-height:1.6;word-break:break-all;white-space:pre-wrap}
+.copy-btn{width:100%;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border:none;padding:12px;border-radius:10px;font-size:14px;cursor:pointer;margin-top:12px;font-weight:500}
+.copy-btn:active{opacity:.85}
+.back-btn{width:100%;background:#f0f0f0;color:#666;border:none;padding:12px;border-radius:10px;font-size:14px;cursor:pointer;margin-top:10px}
+.loading{display:inline-block;width:30px;height:30px;border:3px solid #f3f3f3;border-top:3px solid #667eea;border-radius:50%;animation:spin .8s linear infinite;margin:20px 0}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-<div class="card" id="content">
-  <div class="loading"></div>
-  <h2>正在确认支付结果...</h2>
-  <p class="subtitle">请稍候，正在验证订单状态</p>
+<div class="card">
+  <div id="loading">
+    <div class="loading"></div>
+    <p style="color:#888;font-size:13px;">正在查询订单状态...</p>
+  </div>
+  <div id="successContent" style="display:none;">
+    <div class="icon">✓</div>
+    <h2>支付成功</h2>
+    <p class="subtitle">感谢您的购买，商品已自动发放</p>
+    <div class="amount"><span>¥</span><span id="amount">0.00</span></div>
+    <div class="info-box">
+      <div class="info-row">
+        <span class="label">商品</span>
+        <span class="value" id="productName">-</span>
+      </div>
+      <div class="info-row">
+        <span class="label">订单号</span>
+        <span class="value" id="orderId">-</span>
+      </div>
+    </div>
+    <div class="goods-box">
+      <div class="goods-title">📦 卡密信息</div>
+      <div class="goods-content" id="goodsContent">-</div>
+      <button class="copy-btn" onclick="copyGoods()">📋 复制卡密</button>
+    </div>
+    <button class="back-btn" onclick="goHome()">返回商城首页</button>
+  </div>
+  <div id="failContent" style="display:none;">
+    <div class="icon" style="background:linear-gradient(135deg,#eb3349,#f45c43);">✕</div>
+    <h2>未查询到订单</h2>
+    <p class="subtitle">订单不存在或尚未支付</p>
+    <button class="copy-btn" onclick="goHome()">返回商城</button>
+  </div>
 </div>
 
 <script>
+const API_BASE = 'https://fy-store.pages.dev/api';
+
+function getQueryParam(name) {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(name);
+}
+
 async function checkOrder() {
-  const params = new URLSearchParams(window.location.search);
-  const orderId = params.get('out_trade_no') || params.get('order_id');
+  const outTradeNo = getQueryParam('out_trade_no');
+  const orderId = getQueryParam('order_id') || outTradeNo;
   
   if (!orderId) {
-    showError('无效的订单号');
+    showFail();
     return;
   }
   
   try {
-    const res = await fetch('https://fy-store.pages.dev/api/query?order_id=' + orderId);
+    const res = await fetch(API_BASE + '/query?order_id=' + orderId);
     const data = await res.json();
     
-    if (data.success && data.status === 'paid') {
+    if (data.status === 'paid') {
       showSuccess(data);
-    } else if (data.status === 'pending') {
-      // 还在等待支付，3秒后再查
-      setTimeout(checkOrder, 3000);
     } else {
-      showError(data.error || '订单状态异常');
+      showFail();
     }
   } catch (e) {
-    setTimeout(checkOrder, 3000);
+    showFail();
   }
 }
 
 function showSuccess(data) {
-  const goods = data.goods || '暂无商品信息';
-  const goodsHtml = typeof goods === 'string' 
-    ? goods.replace(/\n/g, '<br>')
-    : JSON.stringify(goods, null, 2);
-    
-  document.getElementById('content').innerHTML = `
-    <div class="icon">✓</div>
-    <h2>支付成功！</h2>
-    <p class="subtitle">商品已自动发放，请查收</p>
-    
-    <div class="order-info">
-      <div class="order-row">
-        <span class="label">商品名称</span>
-        <span class="value">${data.productName || '-'}</span>
-      </div>
-      <div class="order-row">
-        <span class="label">订单金额</span>
-        <span class="value">¥${data.money || '0.00'}</span>
-      </div>
-      <div class="order-row">
-        <span class="label">订单号</span>
-        <span class="value" style="font-size:12px;">${data.orderId || '-'}</span>
-      </div>
-    </div>
-    
-    <div class="goods-box">
-      <div class="goods-title">📦 商品内容</div>
-      <div class="goods-content" id="goodsContent">${goodsHtml}</div>
-      <button class="copy-btn" onclick="copyGoods()">复制</button>
-      <div style="clear:both;"></div>
-    </div>
-    
-    <button class="back-btn" onclick="window.location.href='/'">返回商城</button>
-  `;
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('successContent').style.display = 'block';
+  document.getElementById('amount').textContent = data.money || '0.00';
+  document.getElementById('productName').textContent = data.productName || '-';
+  document.getElementById('orderId').textContent = data.orderId || data.out_trade_no || '-';
+  document.getElementById('goodsContent').textContent = data.goods || '暂无';
 }
 
-function showError(msg) {
-  document.getElementById('content').innerHTML = `
-    <div class="icon" style="background: linear-gradient(135deg, #ff4757, #ff6b81);">✕</div>
-    <h2>订单验证失败</h2>
-    <p class="subtitle">${msg}</p>
-    <button class="back-btn" onclick="window.location.href='/'">返回商城</button>
-  `;
+function showFail() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('failContent').style.display = 'block';
 }
 
 function copyGoods() {
-  const content = document.getElementById('goodsContent').innerText;
-  navigator.clipboard.writeText(content).then(() => {
-    alert('已复制到剪贴板');
+  const goods = document.getElementById('goodsContent').textContent;
+  navigator.clipboard.writeText(goods).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✓ 已复制';
+    setTimeout(() => { btn.textContent = '📋 复制卡密'; }, 2000);
+  }).catch(() => {
+    alert('复制失败，请手动复制');
   });
+}
+
+function goHome() {
+  window.location.href = '/';
 }
 
 checkOrder();
