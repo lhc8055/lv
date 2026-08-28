@@ -13,6 +13,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC
 .header{text-align:center;color:#fff;padding:24px 0 12px}
 .header h1{font-size:26px;margin-bottom:4px}
 .header p{opacity:.85;font-size:12px}
+.header-actions{margin-top:8px}
+.header-actions a{color:rgba(255,255,255,.7);font-size:12px;text-decoration:none;border:1px solid rgba(255,255,255,.3);padding:4px 12px;border-radius:14px}
 .products{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:12px}
 .card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.12);transition:transform .15s;cursor:pointer}
 .card:active{transform:scale(.97)}
@@ -47,6 +49,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC
 .loading{display:inline-block;width:22px;height:22px;border:2px solid #f3f3f3;border-top:2px solid #667eea;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
 @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
 .big-loading{width:36px;height:36px;border-width:3px;margin:16px 0}
+/* 恢复订单横幅 */
+.recover-banner{background:rgba(255,255,255,.95);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;color:#333;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.recover-banner .recover-text{flex:1}
+.recover-banner .recover-text .recover-title{font-weight:600;color:#ff4757}
+.recover-banner .recover-text .recover-sub{font-size:11px;color:#888;margin-top:2px}
+.recover-btn{background:linear-gradient(135deg,#ff9a44,#fc6075);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500;white-space:nowrap}
+.recover-btn:active{opacity:.85}
+.recover-close{background:none;border:none;color:#bbb;font-size:18px;cursor:pointer;padding:0 4px}
+/* 订单查询弹窗 */
+.query-input{width:100%;border:2px solid #e0e0e0;border-radius:10px;padding:10px 12px;font-size:14px;margin:10px 0;outline:none}
+.query-input:focus{border-color:#667eea}
+.query-result{margin-top:12px;text-align:left;font-size:13px}
+.query-result .qr-status{padding:10px;border-radius:8px;margin-bottom:8px}
+.query-result .qr-status.paid{background:#e8f5e9;color:#2e7d32}
+.query-result .qr-status.pending{background:#fff3e0;color:#e65100}
+.query-result .qr-status.notfound{background:#ffebee;color:#c62828}
+.query-result .qr-goods{background:#f5f7fa;border-radius:8px;padding:12px;white-space:pre-wrap;word-break:break-all;font-size:12px;color:#555;line-height:1.6}
+.btn-primary{width:100%;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;cursor:pointer;font-weight:500;margin-top:8px}
+.btn-primary:active{opacity:.85}
+.copy-link{font-size:11px;color:#667eea;text-decoration:none}
+/* 后台支付检测浮标 */
+.pay-badge{position:fixed;bottom:16px;right:16px;background:#fff;border-radius:12px;padding:10px 14px;box-shadow:0 4px 16px rgba(0,0,0,.2);display:none;align-items:center;gap:8px;z-index:999;cursor:pointer;font-size:13px;color:#333}
+.pay-badge.active{display:flex}
+.pay-badge .pay-badge-dot{width:8px;height:8px;background:#ff9a44;border-radius:50%;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
 </style>
 </head>
 <body>
@@ -54,7 +81,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC
   <div class="header">
     <h1>🚀 飞云商城</h1>
     <p>虚拟商品 · 自动发货 · 24小时在线</p>
+    <div class="header-actions">
+      <a href="javascript:showQueryModal()">📋 查询订单</a>
+    </div>
   </div>
+  <div id="recoverBanner" style="display:none;"></div>
   <div class="products" id="productList"></div>
   <div class="footer">飞云商城 · 支付成功自动发货</div>
 </div>
@@ -86,7 +117,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC
       <p class="qr-tip">请使用微信扫描二维码完成支付</p>
       <p class="qr-timer" id="qrTimer">正在获取二维码...</p>
     </div>
-    <button class="close-btn" onclick="closeQr()">取消支付</button>
+    <p style="font-size:11px;color:#aaa;margin-top:8px;">支付成功后自动跳转，可安全关闭窗口</p>
+    <button class="close-btn" onclick="closeQrWithWarning()">关闭窗口</button>
+  </div>
+</div>
+
+<!-- 关闭确认弹窗 -->
+<div class="modal-overlay" id="closeConfirmModal">
+  <div class="modal">
+    <h3>确认关闭？</h3>
+    <p class="product-name" style="margin-top:8px;">关闭后系统将继续后台检测支付状态<br>付款成功后自动跳转发货，不会丢失订单</p>
+    <div class="pay-row">
+      <button class="pay-btn alipay" onclick="cancelCloseQr()">继续等待</button>
+      <button class="pay-btn wxpay" style="background:#999;" onclick="confirmCloseQr()">确认关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 后台支付检测浮标 -->
+<div class="pay-badge" id="payBadge" onclick="reopenQr()">
+  <span class="pay-badge-dot"></span>
+  <span id="payBadgeText">后台检测支付中...</span>
+</div>
+
+<!-- 订单查询弹窗 -->
+<div class="modal-overlay" id="queryModal">
+  <div class="modal">
+    <h3>查询订单</h3>
+    <p class="product-name">输入订单号查询支付状态和卡密</p>
+    <input class="query-input" id="queryOrderId" placeholder="请输入订单号" />
+    <button class="btn-primary" onclick="doQueryOrder()">查询</button>
+    <div class="query-result" id="queryResult" style="display:none;"></div>
+    <button class="close-btn" onclick="closeQueryModal()">关闭</button>
   </div>
 </div>
 
@@ -107,9 +169,107 @@ let currentOrderId = null;
 let pollTimer = null;
 let pollCount = 0;
 
+// ========== localStorage 订单管理 ==========
+function savePendingOrder(orderId, productName, price) {
+  var data = { orderId: orderId, productName: productName, price: price, createdAt: Date.now() };
+  try {
+    localStorage.setItem('fy_pending_order', JSON.stringify(data));
+  } catch(e) {}
+}
+
+function getPendingOrder() {
+  try {
+    var str = localStorage.getItem('fy_pending_order');
+    if (!str) return null;
+    return JSON.parse(str);
+  } catch(e) { return null; }
+}
+
+function clearPendingOrder() {
+  try { localStorage.removeItem('fy_pending_order'); } catch(e) {}
+}
+
+// 页面加载时检查未完成订单
+function checkPendingOrder() {
+  var pending = getPendingOrder();
+  if (!pending) return;
+  
+  // 超过2小时的订单不再提示
+  if (Date.now() - pending.createdAt > 2 * 60 * 60 * 1000) {
+    clearPendingOrder();
+    return;
+  }
+  
+  // 先查一下订单状态
+  fetch(API_BASE + '/query?order_id=' + pending.orderId)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status === 'paid') {
+        // 已支付，跳转成功页
+        clearPendingOrder();
+        window.location.href = '/success.html?out_trade_no=' + pending.orderId;
+      } else if (data.status === 'pending') {
+        // 未支付，显示恢复横幅
+        showRecoverBanner(pending);
+      } else {
+        clearPendingOrder();
+      }
+    })
+    .catch(function() {
+      // 查询失败也显示横幅，让用户可以手动重试
+      showRecoverBanner(pending);
+    });
+}
+
+function showRecoverBanner(pending) {
+  var banner = document.getElementById('recoverBanner');
+  banner.innerHTML = 
+    '<div class="recover-banner">' +
+      '<div class="recover-text">' +
+        '<div class="recover-title">📦 有未完成订单</div>' +
+        '<div class="recover-sub">' + pending.productName + ' · ¥' + pending.price + ' · ' + pending.orderId + '</div>' +
+      '</div>' +
+      '<button class="recover-btn" onclick="recoverOrder(\'' + pending.orderId + '\',\'' + pending.productName + '\',\'' + pending.price + '\')">查看订单</button>' +
+      '<button class="recover-close" onclick="dismissRecover()">×</button>' +
+    '</div>';
+  banner.style.display = 'block';
+}
+
+function dismissRecover() {
+  document.getElementById('recoverBanner').style.display = 'none';
+}
+
+function recoverOrder(orderId, productName, price) {
+  // 查询订单状态
+  fetch(API_BASE + '/query?order_id=' + orderId)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status === 'paid') {
+        clearPendingOrder();
+        window.location.href = '/success.html?out_trade_no=' + orderId;
+      } else if (data.status === 'pending') {
+        // 还在等待支付，显示提示
+        document.getElementById('queryResult').innerHTML = 
+          '<div class="qr-status pending">⏳ 订单待支付<br>请重新扫码或重新下单</div>' +
+          '<div style="font-size:11px;color:#888;margin-top:8px;">订单号：' + orderId + '</div>';
+        document.getElementById('queryOrderId').value = orderId;
+        document.getElementById('queryResult').style.display = 'block';
+        showQueryModal();
+        dismissRecover();
+      } else {
+        clearPendingOrder();
+        dismissRecover();
+        alert('订单已失效，请重新下单');
+      }
+    })
+    .catch(function() {
+      alert('查询失败，请稍后重试');
+    });
+}
+
 // 立即渲染商品列表（页面加载即显示）
 (function renderProducts() {
-  const list = document.getElementById('productList');
+  var list = document.getElementById('productList');
   list.innerHTML = PRODUCTS.map(function(p) {
     return '<div class="card" onclick="buyProduct(\'' + p.id + '\')">' +
       '<div class="card-icon">' + p.icon + '</div>' +
@@ -123,10 +283,13 @@ let pollCount = 0;
       '</div>' +
     '</div>';
   }).join('');
+  
+  // 检查未完成订单
+  checkPendingOrder();
 })();
 
 function buyProduct(id) {
-  const product = PRODUCTS.find(function(p) { return p.id === id; });
+  var product = PRODUCTS.find(function(p) { return p.id === id; });
   if (product) openPayModal(product);
 }
 
@@ -146,19 +309,18 @@ async function goPay(payType) {
   closeModal();
   
   try {
-    const res = await fetch(API_BASE + '/create', {
+    var res = await fetch(API_BASE + '/create', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({productId: currentProduct.id, payType: payType})
     });
-    const data = await res.json();
+    var data = await res.json();
     
     if (data.success && data.payUrl) {
-      if (payType === 'wxpay') {
-        showQrCode(data.orderId, data.payUrl);
-      } else {
-        window.location.href = data.payUrl;
-      }
+      // 保存订单到 localStorage（无论支付宝还是微信都存）
+      savePendingOrder(data.orderId, currentProduct.name, currentProduct.price);
+      // 微信和支付宝都直接跳转到支付网关页面
+      window.location.href = data.payUrl;
     } else {
       alert('创建订单失败: ' + (data.error || '未知错误'));
     }
@@ -174,28 +336,46 @@ function showQrCode(orderId, payUrl) {
   document.getElementById('qrProductName').textContent = currentProduct.name;
   document.getElementById('qrPrice').textContent = currentProduct.price;
   document.getElementById('qrImg').innerHTML = '<div class="loading big-loading"></div>';
-  document.getElementById('qrTimer').textContent = '正在获取二维码...';
+  document.getElementById('qrTimer').textContent = '正在加载二维码...';
   document.getElementById('qrModal').classList.add('active');
   
-  fetchQrCode(payUrl);
+  fetchQrCode(orderId, currentProduct.name, currentProduct.price, payUrl);
   startPolling(orderId);
 }
 
-async function fetchQrCode(payUrl) {
+async function fetchQrCode(orderId, productName, money, payUrl) {
   try {
-    const res = await fetch(API_BASE + '/qrcode?url=' + encodeURIComponent(payUrl));
-    const data = await res.json();
+    var res = await fetch(API_BASE + '/qrcode?order_id=' + encodeURIComponent(orderId) + '&name=' + encodeURIComponent(productName) + '&money=' + encodeURIComponent(money));
+    var data = await res.json();
     if (data.success && data.qrCode) {
       document.getElementById('qrImg').innerHTML = 
         '<img src="' + data.qrCode + '" alt="支付二维码" />';
+      document.getElementById('qrTimer').textContent = '请使用微信扫码支付';
     } else {
-      document.getElementById('qrImg').innerHTML = 
-        '<div style="text-align:center;padding:16px;font-size:12px;color:#666;">获取失败<br><a href="' + payUrl + '" style="color:#667eea;" target="_blank">点此打开支付页</a></div>';
+      fallbackFetchQrCode(payUrl);
     }
   } catch(e) {
-    document.getElementById('qrImg').innerHTML = 
-      '<div style="text-align:center;padding:16px;font-size:12px;color:#666;">获取失败<br><a href="' + payUrl + '" style="color:#667eea;" target="_blank">点此打开支付页</a></div>';
+    fallbackFetchQrCode(payUrl);
   }
+}
+
+function fallbackFetchQrCode(payUrl) {
+  fetch(API_BASE + '/qrcode?url=' + encodeURIComponent(payUrl))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success && data.qrCode) {
+        document.getElementById('qrImg').innerHTML = 
+          '<img src="' + data.qrCode + '" alt="支付二维码" />';
+        document.getElementById('qrTimer').textContent = '请使用微信扫码支付';
+      } else {
+        document.getElementById('qrImg').innerHTML = 
+          '<div style="text-align:center;padding:16px;font-size:12px;color:#666;">获取失败<br><a href="' + payUrl + '" style="color:#667eea;" target="_blank">点此打开支付页</a></div>';
+      }
+    })
+    .catch(function() {
+      document.getElementById('qrImg').innerHTML = 
+        '<div style="text-align:center;padding:16px;font-size:12px;color:#666;">获取失败<br><a href="' + payUrl + '" style="color:#667eea;" target="_blank">点此打开支付页</a></div>';
+    });
 }
 
 function startPolling(orderId) {
@@ -204,32 +384,149 @@ function startPolling(orderId) {
   pollTimer = setInterval(async function() {
     pollCount++;
     try {
-      const res = await fetch(API_BASE + '/query?order_id=' + orderId);
-      const data = await res.json();
+      var res = await fetch(API_BASE + '/query?order_id=' + orderId);
+      var data = await res.json();
       
       if (data.status === 'paid') {
         clearInterval(pollTimer);
-        document.getElementById('qrTimer').textContent = '✓ 支付成功，正在跳转...';
+        pollTimer = null;
+        // 隐藏浮标
+        document.getElementById('payBadge').classList.remove('active');
+        // 清除待处理订单
+        clearPendingOrder();
+        // 无论窗口是否打开，都跳转到成功页
+        var qrTimerEl = document.getElementById('qrTimer');
+        if (qrTimerEl) qrTimerEl.textContent = '✓ 支付成功，正在跳转...';
         setTimeout(function() {
           window.location.href = '/success.html?out_trade_no=' + orderId;
         }, 800);
-      } else if (pollCount > 120) {
+      } else if (pollCount > 360) {
+        // 30分钟后停止后台轮询
         clearInterval(pollTimer);
-        document.getElementById('qrTimer').textContent = '支付超时，请刷新重试';
+        pollTimer = null;
+        document.getElementById('payBadge').classList.remove('active');
+        var qrTimerEl2 = document.getElementById('qrTimer');
+        if (qrTimerEl2) qrTimerEl2.textContent = '支付超时，如已付款请点击"查询订单"';
       } else {
-        document.getElementById('qrTimer').textContent = '等待支付中... (' + (pollCount * 5) + 's)';
+        // 如果二维码窗口还开着，更新计时器
+        var qrTimerEl3 = document.getElementById('qrTimer');
+        if (qrTimerEl3) {
+          qrTimerEl3.textContent = '等待支付中... (' + (pollCount * 5) + 's)';
+        }
+        // 更新浮标文字
+        var badgeText = document.getElementById('payBadgeText');
+        if (badgeText) {
+          badgeText.textContent = '后台检测支付中... ' + (pollCount * 5) + 's';
+        }
       }
     } catch(e) {}
   }, 5000);
 }
 
-function closeQr() {
-  document.getElementById('qrModal').classList.remove('active');
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
+// 关闭窗口前确认
+function closeQrWithWarning() {
+  // 如果已经支付成功就不提示
+  if (!pollTimer) {
+    closeQrDirect();
+    return;
   }
-  currentOrderId = null;
+  document.getElementById('closeConfirmModal').classList.add('active');
+}
+
+function cancelCloseQr() {
+  document.getElementById('closeConfirmModal').classList.remove('active');
+}
+
+function confirmCloseQr() {
+  document.getElementById('closeConfirmModal').classList.remove('active');
+  closeQrDirect();
+}
+
+// 关闭窗口但保持后台轮询
+function closeQrDirect() {
+  document.getElementById('qrModal').classList.remove('active');
+  // 不停止轮询！保持后台检测
+  // 显示浮动提示
+  if (pollTimer && currentOrderId) {
+    document.getElementById('payBadge').classList.add('active');
+    document.getElementById('payBadgeText').textContent = '后台检测支付中...';
+  }
+}
+
+// 重新打开二维码窗口
+function reopenQr() {
+  if (currentOrderId) {
+    document.getElementById('qrModal').classList.add('active');
+    document.getElementById('payBadge').classList.remove('active');
+  }
+}
+
+// 旧函数保留兼容
+function closeQr() {
+  closeQrDirect();
+}
+
+// ========== 订单查询 ==========
+function showQueryModal() {
+  document.getElementById('queryModal').classList.add('active');
+  document.getElementById('queryResult').style.display = 'none';
+}
+
+function closeQueryModal() {
+  document.getElementById('queryModal').classList.remove('active');
+}
+
+async function doQueryOrder() {
+  var orderId = document.getElementById('queryOrderId').value.trim();
+  if (!orderId) {
+    alert('请输入订单号');
+    return;
+  }
+  
+  var resultDiv = document.getElementById('queryResult');
+  resultDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="loading"></div></div>';
+  resultDiv.style.display = 'block';
+  
+  try {
+    var res = await fetch(API_BASE + '/query?order_id=' + encodeURIComponent(orderId));
+    var data = await res.json();
+    
+    if (data.status === 'paid') {
+      clearPendingOrder();
+      resultDiv.innerHTML = 
+        '<div class="qr-status paid">✓ 支付成功</div>' +
+        '<div style="margin:8px 0;font-size:12px;color:#888;">商品：' + (data.productName || '-') + ' · 金额：¥' + (data.money || '-') + '</div>' +
+        '<div class="qr-goods">' + (data.goods || '暂无') + '</div>' +
+        '<button class="btn-primary" onclick="copyQueryGoods()">📋 复制卡密</button>';
+    } else if (data.status === 'pending') {
+      resultDiv.innerHTML = 
+        '<div class="qr-status pending">⏳ 订单待支付</div>' +
+        '<div style="font-size:11px;color:#888;margin-top:6px;">商品：' + (data.productName || '-') + ' · ¥' + (data.money || '-') + '</div>' +
+        '<div style="font-size:11px;color:#aaa;margin-top:4px;">如果已扫码付款，请等待几分钟后刷新页面再次查询</div>';
+    } else if (data.status === 'notfound') {
+      resultDiv.innerHTML = '<div class="qr-status notfound">✕ 订单不存在</div>';
+    } else {
+      resultDiv.innerHTML = '<div class="qr-status notfound">✕ ' + (data.error || '查询失败') + '</div>';
+    }
+  } catch(e) {
+    resultDiv.innerHTML = '<div class="qr-status notfound">✕ 网络错误，请稍后重试</div>';
+  }
+}
+
+function copyQueryGoods() {
+  var goods = document.querySelector('#queryResult .qr-goods');
+  if (goods) {
+    var text = goods.textContent;
+    navigator.clipboard.writeText(text).then(function() {
+      var btn = document.querySelector('#queryResult .btn-primary');
+      if (btn) {
+        btn.textContent = '✓ 已复制';
+        setTimeout(function() { btn.textContent = '📋 复制卡密'; }, 2000);
+      }
+    }).catch(function() {
+      alert('复制失败，请手动复制');
+    });
+  }
 }
 </script>
 </body>
