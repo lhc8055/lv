@@ -1,325 +1,1052 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#667eea">
-<title>飞云商城 - 虚拟商品自动发货</title>
-<link rel="dns-prefetch" href="https://fy-store.pages.dev">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover"/>
+<title>少女漫画風商店 | Shoujo Manga Shop</title>
+<meta name="description" content="少女漫画风格虚拟商品商店，自动发货，即买即得"/>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:16px;-webkit-tap-highlight-color:transparent}
-.container{max-width:900px;margin:0 auto}
-.header{text-align:center;color:#fff;padding:24px 0 12px}
-.header h1{font-size:26px;margin-bottom:4px}
-.header p{opacity:.85;font-size:12px}
-.header-actions{margin-top:8px}
-.header-actions a{color:rgba(255,255,255,.7);font-size:12px;text-decoration:none;border:1px solid rgba(255,255,255,.3);padding:4px 12px;border-radius:14px}
-.products{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:12px}
-.card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.12);transition:transform .15s;cursor:pointer}
-.card:active{transform:scale(.97)}
-.card-icon{height:90px;display:flex;align-items:center;justify-content:center;font-size:44px;background:linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%)}
-.card-body{padding:11px}
-.card-title{font-size:14px;font-weight:600;color:#333;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card-desc{font-size:11px;color:#888;margin-bottom:8px;line-height:1.4;height:30px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.card-footer{display:flex;justify-content:space-between;align-items:center}
-.price{font-size:17px;font-weight:700;color:#ff4757}
-.price span{font-size:11px;font-weight:400}
-.buy-btn{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border:none;padding:5px 12px;border-radius:14px;font-size:11px;cursor:pointer;font-weight:500}
-.footer{text-align:center;color:rgba(255,255,255,.5);padding:24px 0 12px;font-size:10px}
-.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px;backdrop-filter:blur(4px)}
-.modal-overlay.active{display:flex}
-.modal{background:#fff;border-radius:16px;width:100%;max-width:340px;padding:22px;text-align:center;animation:pop .25s ease}
-@keyframes pop{0%{transform:scale(.85);opacity:0}100%{transform:scale(1);opacity:1}}
-.modal h3{font-size:17px;margin-bottom:5px;color:#333}
-.modal .product-name{color:#888;margin-bottom:14px;font-size:13px}
-.modal .amount{font-size:30px;font-weight:700;color:#ff4757;margin:10px 0}
-.modal .amount span{font-size:15px}
-.pay-row{display:flex;gap:10px;margin-top:14px}
-.pay-btn{flex:1;color:#fff;border:none;padding:11px;border-radius:10px;font-size:13px;cursor:pointer;font-weight:500}
-.pay-btn.alipay{background:linear-gradient(135deg,#1677ff,#0958d9)}
-.pay-btn.wxpay{background:linear-gradient(135deg,#07c160,#06ad56)}
-.pay-btn:active{opacity:.85}
-.close-btn{margin-top:12px;background:none;border:none;color:#999;cursor:pointer;font-size:12px}
-.qr-box{padding:16px 0}
-.qr-img{width:180px;height:180px;background:#f5f5f5;border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;overflow:hidden}
-.qr-img img{width:100%;height:100%}
-.qr-tip{font-size:12px;color:#666;margin-bottom:6px}
-.qr-timer{font-size:11px;color:#999}
-.loading{display:inline-block;width:22px;height:22px;border:2px solid #f3f3f3;border-top:2px solid #667eea;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
-@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
-.big-loading{width:36px;height:36px;border-width:3px;margin:16px 0}
-/* 恢复订单横幅 */
-.recover-banner{background:rgba(255,255,255,.95);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;color:#333;box-shadow:0 4px 12px rgba(0,0,0,.1)}
-.recover-banner .recover-text{flex:1}
-.recover-banner .recover-text .recover-title{font-weight:600;color:#ff4757}
-.recover-banner .recover-text .recover-sub{font-size:11px;color:#888;margin-top:2px}
-.recover-btn{background:linear-gradient(135deg,#ff9a44,#fc6075);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500;white-space:nowrap}
-.recover-btn:active{opacity:.85}
-.recover-close{background:none;border:none;color:#bbb;font-size:18px;cursor:pointer;padding:0 4px}
-/* 订单查询弹窗 */
-.query-input{width:100%;border:2px solid #e0e0e0;border-radius:10px;padding:10px 12px;font-size:14px;margin:10px 0;outline:none}
-.query-input:focus{border-color:#667eea}
-.query-result{margin-top:12px;text-align:left;font-size:13px}
-.query-result .qr-status{padding:10px;border-radius:8px;margin-bottom:8px}
-.query-result .qr-status.paid{background:#e8f5e9;color:#2e7d32}
-.query-result .qr-status.pending{background:#fff3e0;color:#e65100}
-.query-result .qr-status.notfound{background:#ffebee;color:#c62828}
-.query-result .qr-goods{background:#f5f7fa;border-radius:8px;padding:12px;white-space:pre-wrap;word-break:break-all;font-size:12px;color:#555;line-height:1.6}
-.btn-primary{width:100%;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;cursor:pointer;font-weight:500;margin-top:8px}
-.btn-primary:active{opacity:.85}
-.copy-link{font-size:11px;color:#667eea;text-decoration:none}
-/* 后台支付检测浮标 */
-.pay-badge{position:fixed;bottom:16px;right:16px;background:#fff;border-radius:12px;padding:10px 14px;box-shadow:0 4px 16px rgba(0,0,0,.2);display:none;align-items:center;gap:8px;z-index:999;cursor:pointer;font-size:13px;color:#333}
-.pay-badge.active{display:flex}
-.pay-badge .pay-badge-dot{width:8px;height:8px;background:#ff9a44;border-radius:50%;animation:pulse 1.2s infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+  /* ===== Reset & Base ===== */
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{
+    scroll-behavior:smooth;
+    overflow-x:hidden;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:none;
+  }
+  body{
+    font-family:'Georgia','Times New Roman',serif;
+    background:#fff5f7;
+    color:#4a5568;
+    line-height:1.6;
+    overflow-x:clip;
+    position:relative;
+    touch-action:pan-y;
+    -webkit-overflow-scrolling:touch;
+    width:100%;
+  }
+  a{text-decoration:none;color:inherit}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  input{font-family:inherit}
+
+  /* ===== Screentone Texture ===== */
+  .screentone{
+    position:absolute;inset:0;pointer-events:none;
+    background-image:radial-gradient(circle,#ffb7c5 0.6px,transparent 0.6px);
+    background-size:10px 10px;
+    opacity:.06;
+  }
+  .screentone-dense{
+    background-image:radial-gradient(circle,#ffb7c5 1px,transparent 1px);
+    background-size:8px 8px;opacity:.12;
+  }
+
+  /* ===== Animations ===== */
+  @keyframes float{
+    0%,100%{transform:translateY(0) rotate(0deg)}
+    33%{transform:translateY(-12px) rotate(5deg)}
+    66%{transform:translateY(-6px) rotate(-3deg)}
+  }
+  @keyframes spin-slow{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes pulse-glow{
+    0%,100%{filter:drop-shadow(0 0 4px rgba(253,230,138,.6));opacity:.8}
+    50%{filter:drop-shadow(0 0 14px rgba(253,230,138,.9));opacity:1}
+  }
+  @keyframes heartbeat{
+    0%,100%{transform:scale(1)}
+    20%{transform:scale(1.18)}
+    40%{transform:scale(.95)}
+    60%{transform:scale(1.08)}
+  }
+  @keyframes petal-fall{
+    0%{transform:translateY(-30px) rotate(0deg);opacity:0}
+    10%{opacity:.9}
+    90%{opacity:.7}
+    100%{transform:translateY(100vh) rotate(540deg);opacity:0}
+  }
+  @keyframes shimmer{
+    0%,100%{opacity:.06}
+    50%{opacity:.12}
+  }
+
+  .float-slow{animation:float 6s ease-in-out infinite}
+  .float-mid{animation:float 4.5s ease-in-out infinite .8s}
+  .float-fast{animation:float 3.5s ease-in-out infinite 1.5s}
+  .spin-slow{animation:spin-slow 12s linear infinite}
+  .pulse-glow{animation:pulse-glow 2.5s ease-in-out infinite}
+  .heartbeat{animation:heartbeat 1.4s ease-in-out infinite}
+
+  /* ===== Ribbon ===== */
+  .ribbon-btn{
+    clip-path:polygon(10px 0%,calc(100% - 10px) 0%,100% 50%,calc(100% - 10px) 100%,10px 100%,0% 50%);
+  }
+  .ribbon-tab{
+    clip-path:polygon(0% 0%,calc(100% - 16px) 0%,100% 50%,calc(100% - 16px) 100%,0% 100%);
+  }
+
+  /* ===== Scallop Border ===== */
+  .scallop-bottom{
+    position:relative;
+  }
+  .scallop-bottom::after{
+    content:'';
+    position:absolute;bottom:-6px;left:0;right:0;height:12px;
+    background:radial-gradient(circle at 6px 0,#fff5f7 6px,transparent 6px);
+    background-size:12px 12px;
+  }
+
+  /* ===== Button (Official Style) ===== */
+  .btn-sakura{
+    padding:14px 40px;
+    background:#ffb7c5;
+    color:#fff;
+    font-size:16px;
+    font-weight:700;
+    letter-spacing:.5px;
+    border-radius:9999px;
+    box-shadow:0 8px 20px rgba(255,183,197,.4);
+    transition:all .3s ease-out;
+  }
+  .btn-sakura:hover{
+    background:#ff9eb3;
+    box-shadow:0 15px 30px rgba(255,183,197,.55);
+    transform:translateY(-2px) scale(1.03);
+  }
+  .btn-sakura:active{transform:scale(.96);box-shadow:0 4px 10px rgba(255,183,197,.35)}
+
+  .btn-ghost{
+    padding:14px 32px;
+    background:#fff;
+    color:#e879a0;
+    font-size:15px;font-weight:600;
+    border:2px solid #ffb7c5;
+    border-radius:9999px;
+    transition:all .3s ease-out;
+  }
+  .btn-ghost:hover{background:#fff5f7;box-shadow:0 8px 20px rgba(255,183,197,.25);transform:translateY(-2px)}
+  .btn-ghost:active{transform:scale(.96)}
+
+  /* ===== Card (Official Style) ===== */
+  .card-manga{
+    position:relative;
+    padding:48px 32px;
+    background:#fff5f7;
+    border:3px solid rgba(255,183,197,.25);
+    border-radius:24px;
+    box-shadow:0 10px 30px rgba(255,183,197,.12);
+    transition:all .5s ease-out;
+    overflow:hidden;
+  }
+  .card-manga:hover{
+    border-color:rgba(255,183,197,.5);
+    box-shadow:0 20px 50px rgba(255,183,197,.25);
+    transform:translateY(-4px);
+  }
+  .card-manga .screentone-hover{
+    position:absolute;inset:0;pointer-events:none;
+    background-image:radial-gradient(circle,#ffb7c5 1.5px,transparent 1px);
+    background-size:12px 12px;
+    opacity:0;transition:opacity .5s;
+  }
+  .card-manga:hover .screentone-hover{opacity:.06}
+
+  /* ===== Input (Official Style) ===== */
+  .input-sakura{
+    width:100%;
+    padding:14px 24px;
+    background:#fff5f7;
+    border:1px solid rgba(255,183,197,.25);
+    border-radius:9999px;
+    color:#4a5568;
+    font-size:15px;
+    transition:all .3s;
+    outline:none;
+  }
+  .input-sakura::placeholder{color:rgba(255,183,197,.45)}
+  .input-sakura:focus{
+    border-color:#ffb7c5;
+    box-shadow:0 0 12px rgba(255,183,197,.25);
+  }
+
+  .hero-title-main{
+    font-size:clamp(60px,14vw,120px);
+    font-weight:900;
+    line-height:1;
+    letter-spacing:-2px;
+    background:linear-gradient(180deg,#c084fc 0%,#a855f7 50%,#7c3aed 100%);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    background-clip:text;
+    text-shadow:0 4px 20px rgba(168,85,247,.2);
+    font-style:italic;
+  }
+  .hero-title-sub{
+    font-size:clamp(14px,3vw,20px);
+    color:#c4b5fd;
+    letter-spacing:.3em;
+    text-transform:uppercase;
+    margin:12px 0 8px;
+    font-weight:600;
+  }
+  .hero-subtitle-jp{
+    font-size:clamp(24px,5vw,42px);
+    font-weight:700;
+    color:#c4b5fd;
+    margin-bottom:16px;
+    letter-spacing:4px;
+    opacity:.7;
+  }
+  .hero-desc{
+    font-size:15px;color:#b06080;line-height:1.8;font-style:italic;
+    max-width:500px;margin:0 auto 28px;
+  }
+
+  /* ===== Product Grid ===== */
+  .product-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:24px;
+  }
+  .product-card{
+    position:relative;
+    background:#fff;
+    border:2px solid rgba(255,183,197,.2);
+    border-radius:24px;
+    padding:28px 24px;
+    text-align:center;
+    transition:all .4s ease-out;
+    overflow:hidden;
+    box-shadow:0 8px 24px rgba(255,183,197,.1);
+  }
+  .product-card:hover{
+    transform:translateY(-6px);
+    box-shadow:0 20px 40px rgba(255,183,197,.25);
+    border-color:rgba(255,183,197,.5);
+  }
+  .product-card .screentone-hover{
+    position:absolute;inset:0;pointer-events:none;
+    background-image:radial-gradient(circle,#ffb7c5 1.5px,transparent 1px);
+    background-size:12px 12px;
+    opacity:0;transition:opacity .5s;
+  }
+  .product-card:hover .screentone-hover{opacity:.05}
+  .product-icon{
+    font-size:48px;
+    margin-bottom:16px;
+    display:inline-block;
+    filter:drop-shadow(0 4px 8px rgba(255,183,197,.3));
+    transition:transform .4s;
+  }
+  .product-card:hover .product-icon{transform:scale(1.15) rotate(-5deg)}
+  .product-name{
+    font-size:18px;
+    font-weight:700;
+    color:#e879a0;
+    margin-bottom:8px;
+  }
+  .product-desc{
+    font-size:13px;
+    color:#b06080;
+    line-height:1.6;
+    margin-bottom:16px;
+    min-height:42px;
+  }
+  .product-price{
+    font-size:28px;
+    font-weight:900;
+    color:#ff6b8a;
+    margin-bottom:16px;
+    font-style:italic;
+  }
+  .product-price small{
+    font-size:14px;
+    font-weight:600;
+    color:#ffb7c5;
+  }
+  .product-tag{
+    display:inline-block;
+    padding:4px 12px;
+    background:linear-gradient(135deg,#fce7f3,#f3e8ff);
+    color:#a855f7;
+    font-size:11px;
+    font-weight:700;
+    border-radius:9999px;
+    margin-bottom:12px;
+    letter-spacing:1px;
+  }
+  .btn-buy{
+    display:inline-block;
+    padding:12px 36px;
+    background:linear-gradient(135deg,#ffb7c5,#f472b6);
+    color:#fff;
+    font-size:15px;
+    font-weight:700;
+    border-radius:9999px;
+    box-shadow:0 6px 16px rgba(255,183,197,.4);
+    transition:all .3s ease-out;
+    cursor:pointer;
+    border:none;
+  }
+  .btn-buy:hover{
+    transform:translateY(-2px) scale(1.03);
+    box-shadow:0 10px 24px rgba(255,183,197,.55);
+  }
+  .btn-buy:active{transform:scale(.96)}
+
+  /* ===== Modal ===== */
+  .modal-overlay{
+    display:none;
+    position:fixed;inset:0;
+    background:rgba(74,85,104,.4);
+    backdrop-filter:blur(4px);
+    z-index:100;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .modal-overlay.open{display:flex}
+  .modal-box{
+    background:#fff5f7;
+    border:2px solid rgba(255,183,197,.3);
+    border-radius:28px;
+    padding:36px 28px;
+    max-width:400px;
+    width:100%;
+    text-align:center;
+    position:relative;
+    box-shadow:0 20px 60px rgba(232,121,160,.3);
+    animation:modal-pop .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes modal-pop{
+    0%{transform:scale(.8);opacity:0}
+    100%{transform:scale(1);opacity:1}
+  }
+  .modal-close{
+    position:absolute;top:16px;right:16px;
+    width:32px;height:32px;border-radius:50%;
+    background:rgba(255,183,197,.15);
+    color:#e879a0;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;border:none;transition:background .2s;
+  }
+  .modal-close:hover{background:rgba(255,183,197,.3)}
+  .modal-title{
+    font-size:22px;font-weight:700;color:#e879a0;margin-bottom:8px;
+  }
+  .modal-sub{
+    font-size:13px;color:#b06080;margin-bottom:20px;
+  }
+  .pay-options{
+    display:flex;gap:12px;margin-bottom:20px;
+  }
+  .pay-option{
+    flex:1;padding:16px 12px;
+    border:2px solid rgba(255,183,197,.25);
+    border-radius:16px;
+    background:#fff;cursor:pointer;
+    transition:all .3s;text-align:center;
+  }
+  .pay-option:hover{border-color:#ffb7c5;background:#fff5f7}
+  .pay-option.active{
+    border-color:#f472b6;
+    background:linear-gradient(135deg,#fff5f7,#fce7f3);
+    box-shadow:0 4px 12px rgba(244,114,182,.2);
+  }
+  .pay-option .pay-icon{font-size:28px;margin-bottom:6px}
+  .pay-option .pay-name{font-size:13px;font-weight:700;color:#b06080}
+  .query-input{
+    width:100%;padding:14px 20px;
+    background:#fff;
+    border:2px solid rgba(255,183,197,.25);
+    border-radius:9999px;
+    color:#4a5568;font-size:15px;
+    outline:none;transition:all .3s;
+    margin-bottom:16px;text-align:center;
+  }
+  .query-input:focus{
+    border-color:#ffb7c5;
+    box-shadow:0 0 12px rgba(255,183,197,.25);
+  }
+  .query-result{
+    background:#fff;border-radius:16px;
+    padding:20px;margin-top:16px;text-align:left;
+    border:2px solid rgba(255,183,197,.15);
+    display:none;
+  }
+  .query-result.show{display:block}
+  .query-result .order-id{
+    font-size:12px;color:#c4b5fd;letter-spacing:1px;margin-bottom:8px;
+  }
+  .query-result .order-status{
+    display:inline-block;padding:4px 12px;border-radius:9999px;
+    font-size:11px;font-weight:700;margin-bottom:12px;
+  }
+  .order-status.paid{background:#dcfce7;color:#16a34a}
+  .order-status.pending{background:#fef3c7;color:#d97706}
+  .query-result .goods{
+    background:#fce7f3;border-radius:12px;padding:16px;
+    font-family:monospace;font-size:14px;color:#6b3a5a;
+    word-break:break-all;margin-top:8px;
+  }
+
+  /* ===== Hero Panel (Official Style) ===== */
+  .hero-panel{
+    position:relative;
+    border:2px solid rgba(255,183,197,.2);
+    border-radius:32px;
+    background:rgba(255,255,255,.7);
+    padding:64px 48px;
+    text-align:center;
+    overflow:hidden;
+  }
+
+  /* ===== Section Title ===== */
+  .section-eyebrow{
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    margin-bottom:12px;
+  }
+  .section-eyebrow span{
+    font-size:11px;letter-spacing:4px;text-transform:uppercase;
+    color:#b06080;font-family:'Georgia',serif;
+  }
+  .section-title{
+    font-size:clamp(28px,5vw,42px);
+    font-weight:700;
+    color:#e879a0;
+    text-align:center;
+    margin-bottom:8px;
+  }
+  .section-sub{
+    text-align:center;color:#b06080;font-style:italic;
+    font-size:14px;margin-bottom:48px;
+  }
+
+  /* ===== Manga Panel Grid ===== */
+  .manga-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(3,110px);
+    gap:5px;
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:0 8px 40px rgba(232,121,160,.12);
+  }
+  .manga-panel{
+    border-radius:5px;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;cursor:pointer;
+    transition:transform .3s,box-shadow .3s;
+    overflow:hidden;
+  }
+  .manga-panel:hover{transform:scale(1.02);box-shadow:0 4px 16px rgba(255,183,197,.3);z-index:2}
+  .manga-panel span{
+    font-style:italic;color:#6b3a5a;text-align:center;
+    padding:10px;font-size:13px;z-index:1;position:relative;
+  }
+  .manga-panel .heart-tag{
+    position:absolute;bottom:6px;right:8px;
+    font-size:14px;color:#fecdd3;transition:transform .3s;
+  }
+  .manga-panel:hover .heart-tag{transform:scale(1.3)}
+
+  /* ===== Palette Wheel ===== */
+  .palette-wrap{position:relative;min-height:420px;display:flex;align-items:center;justify-content:center}
+  .palette-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+  .palette-item{
+    position:absolute;text-align:center;
+  }
+  .palette-inner{transition:transform .3s}
+  .palette-item:hover .palette-inner{transform:scale(1.1)}
+  .palette-swatch{
+    width:72px;height:72px;
+    border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+    border:3px solid #fff;
+    margin:0 auto 8px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .palette-name{font-size:11px;font-weight:700;color:#6b3a5a;margin-bottom:2px;white-space:nowrap}
+  .palette-hex{font-size:10px;color:#b06080;letter-spacing:1px}
+  .palette-role{font-size:9px;color:#c4b5fd;text-transform:uppercase;letter-spacing:1px}
+
+  /* ===== Screentone Gallery ===== */
+  .tone-card{
+    border-radius:20px;padding:32px 24px;text-align:center;
+    border:2px solid rgba(255,183,197,.15);
+    background:#fff;position:relative;overflow:hidden;
+    transition:all .4s;
+  }
+  .tone-card:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(255,183,197,.2)}
+  .tone-preview{
+    width:100%;height:100px;border-radius:12px;margin-bottom:16px;
+    border:1px solid rgba(255,183,197,.15);
+  }
+
+  /* ===== Typography Showcase ===== */
+  .type-row{
+    padding:28px 32px;border-radius:18px;
+    background:#fff;border:2px solid rgba(255,183,197,.12);
+    margin-bottom:16px;display:flex;align-items:baseline;gap:24px;
+    flex-wrap:wrap;
+  }
+  .type-label{
+    font-size:11px;letter-spacing:3px;text-transform:uppercase;
+    color:#c4b5fd;min-width:80px;
+  }
+
+  /* ===== Petal ===== */
+  .petal{
+    position:fixed;top:-40px;z-index:1;pointer-events:none;
+    width:14px;height:14px;
+    border-radius:50% 0 50% 50%;
+    background:linear-gradient(135deg,#fecdd3,#ffb7c5);
+    animation:petal-fall linear infinite;
+    will-change:transform,opacity;
+  }
+
+  /* ===== Reduced Motion ===== */
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+  }
+
+  /* ===== Nav Toggle & Dropdown (all screens) ===== */
+  .nav-toggle{
+    display:flex;align-items:center;justify-content:center;
+    width:36px;height:36px;border-radius:50%;
+    background:rgba(255,183,197,.15);
+    cursor:pointer;transition:background .3s;
+  }
+  .nav-toggle:active{background:rgba(255,183,197,.35)}
+  .nav-dropdown{
+    display:none;position:absolute;top:64px;left:0;right:0;
+    background:#fff5f7;border-bottom:2px solid #ffb7c5;
+    padding:12px 24px;flex-direction:column;gap:4px;z-index:49;
+    box-shadow:0 8px 24px rgba(255,183,197,.15);
+  }
+  .nav-dropdown.open{display:flex}
+  .nav-dropdown a{
+    font-size:14px;color:#b06080;padding:10px 16px;
+    border-radius:9999px;transition:background .2s;
+  }
+  .nav-dropdown a:active{background:rgba(255,183,197,.15)}
+
+  /* ===== Responsive ===== */
+  @media (max-width:900px){
+    .hero-panel{padding:40px 24px}
+    .manga-grid{grid-template-rows:repeat(3,90px)}
+    .palette-wrap{min-height:500px}
+  }
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <h1>🚀 飞云商城</h1>
-    <p>虚拟商品 · 自动发货 · 24小时在线</p>
-    <div class="header-actions">
-      <a href="javascript:showQueryModal()">📋 查询订单</a>
-    </div>
-  </div>
-  <div id="recoverBanner" style="display:none;"></div>
-  <div class="products" id="productList"></div>
-  <div class="footer">飞云商城 · 支付成功自动发货</div>
+
+<!-- ============ Falling Petals (10 petals, random) ============ -->
+<div class="petal-container" style="position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:1">
+<div class="petal" style="left:5%;animation-duration:12s;animation-delay:0s;transform:rotate(20deg)"></div>
+<div class="petal" style="left:15%;animation-duration:15s;animation-delay:2s;transform:rotate(-15deg);width:10px;height:10px"></div>
+<div class="petal" style="left:28%;animation-duration:10s;animation-delay:4s;transform:rotate(45deg);width:16px;height:16px"></div>
+<div class="petal" style="left:40%;animation-duration:14s;animation-delay:1s;transform:rotate(-30deg)"></div>
+<div class="petal" style="left:52%;animation-duration:11s;animation-delay:3s;transform:rotate(10deg);width:12px;height:12px"></div>
+<div class="petal" style="left:63%;animation-duration:16s;animation-delay:5s;transform:rotate(-20deg);width:18px;height:18px"></div>
+<div class="petal" style="left:75%;animation-duration:13s;animation-delay:0.5s;transform:rotate(35deg)"></div>
+<div class="petal" style="left:85%;animation-duration:9s;animation-delay:2.5s;transform:rotate(-10deg);width:11px;height:11px"></div>
+<div class="petal" style="left:92%;animation-duration:14s;animation-delay:6s;transform:rotate(50deg);width:15px;height:15px"></div>
+<div class="petal" style="left:48%;animation-duration:17s;animation-delay:1.5s;transform:rotate(-40deg);width:9px;height:9px"></div>
 </div>
 
-<!-- 支付方式选择弹窗 -->
-<div class="modal-overlay" id="payModal">
-  <div class="modal">
-    <h3>选择支付方式</h3>
-    <p class="product-name" id="modalProductName">-</p>
-    <div class="amount"><span>¥</span><span id="modalPrice">0.00</span></div>
-    <div class="pay-row">
-      <button class="pay-btn alipay" onclick="goPay('alipay')">💰 支付宝</button>
-      <button class="pay-btn wxpay" onclick="goPay('wxpay')">💬 微信支付</button>
+<!-- ============ Header ============ -->
+<header style="position:sticky;top:0;z-index:50;background:#fff5f7;border-bottom:2px solid #ffb7c5">
+  <div style="max-width:1100px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:64px;position:relative">
+    <a href="#" style="display:flex;align-items:center;gap:10px;flex-shrink:0;white-space:nowrap">
+      <!-- Flower logo -->
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" style="flex-shrink:0">
+        <ellipse cx="16" cy="7" rx="4" ry="7" fill="#ffb7c5" opacity=".9"/>
+        <ellipse cx="16" cy="25" rx="4" ry="7" fill="#ffb7c5" opacity=".9"/>
+        <ellipse cx="7" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".9"/>
+        <ellipse cx="25" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".9"/>
+        <ellipse cx="9.5" cy="9.5" rx="4" ry="7" fill="#ffb7c5" opacity=".7" transform="rotate(-45 9.5 9.5)"/>
+        <ellipse cx="22.5" cy="22.5" rx="4" ry="7" fill="#ffb7c5" opacity=".7" transform="rotate(-45 22.5 22.5)"/>
+        <ellipse cx="22.5" cy="9.5" rx="4" ry="7" fill="#ffb7c5" opacity=".7" transform="rotate(45 22.5 9.5)"/>
+        <ellipse cx="9.5" cy="22.5" rx="4" ry="7" fill="#ffb7c5" opacity=".7" transform="rotate(45 9.5 22.5)"/>
+        <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+      </svg>
+      <span style="font-size:17px;font-weight:700;color:#e879a0;letter-spacing:1px;white-space:nowrap">少女漫画風</span>
+      <svg width="18" height="18" viewBox="0 0 32 32" fill="none" style="flex-shrink:0">
+        <ellipse cx="16" cy="7" rx="4" ry="7" fill="#c4b5fd" opacity=".9"/>
+        <ellipse cx="16" cy="25" rx="4" ry="7" fill="#c4b5fd" opacity=".9"/>
+        <ellipse cx="7" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".9"/>
+        <ellipse cx="25" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".9"/>
+        <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+      </svg>
+    </a>
+    <div class="nav-stars" style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+      <svg class="pulse-glow" width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 0 L11.5 8.5 L20 10 L11.5 11.5 L10 20 L8.5 11.5 L0 10 L8.5 8.5Z" fill="#fde68a"/></svg>
+      <svg class="pulse-glow" style="animation-delay:.6s" width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 0 L6.9 5.1 L12 6 L6.9 6.9 L6 12 L5.1 6.9 L0 6 L5.1 5.1Z" fill="#c4b5fd"/></svg>
+      <svg class="pulse-glow" style="animation-delay:1.2s" width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M10 0 L11.5 8.5 L20 10 L11.5 11.5 L10 20 L8.5 11.5 L0 10 L8.5 8.5Z" fill="#ffb7c5"/></svg>
     </div>
-    <button class="close-btn" onclick="closeModal()">取消</button>
+    <!-- Mobile menu toggle (three dots) -->
+    <button class="nav-toggle" onclick="var d=document.getElementById('navDrop');d.classList.toggle('open');this.style.transform=d.classList.contains('open')?'rotate(90deg)':'';this.style.transition='transform .3s'" aria-label="Menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="2" fill="#e879a0"/><circle cx="12" cy="12" r="2" fill="#e879a0"/><circle cx="19" cy="12" r="2" fill="#e879a0"/></svg>
+    </button>
+    <!-- Mobile dropdown menu -->
+    <nav class="nav-dropdown" id="navDrop">
+      <a href="#products" onclick="document.getElementById('navDrop').classList.remove('open')">全部商品</a>
+      <a href="#" onclick="document.getElementById('navDrop').classList.remove('open');openQueryModal();return false">查询订单</a>
+    </nav>
   </div>
-</div>
+  <!-- Scallop edge -->
+  <div style="height:10px;background:radial-gradient(circle at 6px -2px,#fff5f7 6px,#ffb7c5 6px);background-size:12px 10px"></div>
+</header>
 
-<!-- 微信二维码弹窗 -->
-<div class="modal-overlay" id="qrModal">
-  <div class="modal">
-    <h3>微信扫码支付</h3>
-    <p class="product-name" id="qrProductName">-</p>
-    <div class="amount"><span>¥</span><span id="qrPrice">0.00</span></div>
-    <div class="qr-box">
-      <div class="qr-img" id="qrImg">
-        <div class="loading big-loading"></div>
+<!-- ============ Hero ============ -->
+<section style="position:relative;min-height:680px;display:flex;align-items:center;justify-content:center;padding:60px 24px 80px;overflow:hidden">
+  <div class="screentone screentone-dense"></div>
+
+  <!-- Scattered flowers (8 random positions) -->
+  <div class="float-slow" style="position:absolute;top:8%;left:6%">
+    <svg width="52" height="52" viewBox="0 0 32 32" fill="none">
+      <ellipse cx="16" cy="7" rx="4" ry="7" fill="#ffb7c5" opacity=".85"/>
+      <ellipse cx="16" cy="25" rx="4" ry="7" fill="#ffb7c5" opacity=".85"/>
+      <ellipse cx="7" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".85"/>
+      <ellipse cx="25" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".85"/>
+      <ellipse cx="9.5" cy="9.5" rx="4" ry="7" fill="#ffb7c5" opacity=".65" transform="rotate(-45 9.5 9.5)"/>
+      <ellipse cx="22.5" cy="22.5" rx="4" ry="7" fill="#ffb7c5" opacity=".65" transform="rotate(-45 22.5 22.5)"/>
+      <ellipse cx="22.5" cy="9.5" rx="4" ry="7" fill="#ffb7c5" opacity=".65" transform="rotate(45 22.5 9.5)"/>
+      <ellipse cx="9.5" cy="22.5" rx="4" ry="7" fill="#ffb7c5" opacity=".65" transform="rotate(45 9.5 22.5)"/>
+      <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+    </svg>
+  </div>
+  <div class="float-mid" style="position:absolute;top:12%;right:8%">
+    <svg width="40" height="40" viewBox="0 0 32 32" fill="none">
+      <ellipse cx="16" cy="7" rx="4" ry="7" fill="#c4b5fd" opacity=".85"/>
+      <ellipse cx="16" cy="25" rx="4" ry="7" fill="#c4b5fd" opacity=".85"/>
+      <ellipse cx="7" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".85"/>
+      <ellipse cx="25" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".85"/>
+      <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+    </svg>
+  </div>
+  <div class="float-fast" style="position:absolute;top:35%;left:3%">
+    <svg width="36" height="36" viewBox="0 0 32 32" fill="none">
+      <ellipse cx="16" cy="7" rx="4" ry="7" fill="#fecdd3" opacity=".85"/>
+      <ellipse cx="16" cy="25" rx="4" ry="7" fill="#fecdd3" opacity=".85"/>
+      <ellipse cx="7" cy="16" rx="7" ry="4" fill="#fecdd3" opacity=".85"/>
+      <ellipse cx="25" cy="16" rx="7" ry="4" fill="#fecdd3" opacity=".85"/>
+      <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+    </svg>
+  </div>
+  <div class="float-slow" style="position:absolute;top:55%;right:4%">
+    <svg width="48" height="48" viewBox="0 0 32 32" fill="none">
+      <ellipse cx="16" cy="7" rx="4" ry="7" fill="#ffb7c5" opacity=".8"/>
+      <ellipse cx="16" cy="25" rx="4" ry="7" fill="#ffb7c5" opacity=".8"/>
+      <ellipse cx="7" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".8"/>
+      <ellipse cx="25" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".8"/>
+      <ellipse cx="9.5" cy="9.5" rx="4" ry="7" fill="#ffb7c5" opacity=".6" transform="rotate(-45 9.5 9.5)"/>
+      <ellipse cx="22.5" cy="22.5" rx="4" ry="7" fill="#ffb7c5" opacity=".6" transform="rotate(-45 22.5 22.5)"/>
+      <ellipse cx="22.5" cy="9.5" rx="4" ry="7" fill="#ffb7c5" opacity=".6" transform="rotate(45 22.5 9.5)"/>
+      <ellipse cx="9.5" cy="22.5" rx="4" ry="7" fill="#ffb7c5" opacity=".6" transform="rotate(45 9.5 22.5)"/>
+      <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+    </svg>
+  </div>
+  <div class="float-mid" style="position:absolute;bottom:15%;left:10%">
+    <svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+      <ellipse cx="16" cy="7" rx="4" ry="7" fill="#c4b5fd" opacity=".75"/>
+      <ellipse cx="16" cy="25" rx="4" ry="7" fill="#c4b5fd" opacity=".75"/>
+      <ellipse cx="7" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".75"/>
+      <ellipse cx="25" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".75"/>
+      <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+    </svg>
+  </div>
+  <div class="float-fast" style="position:absolute;bottom:10%;right:12%">
+    <svg width="44" height="44" viewBox="0 0 32 32" fill="none">
+      <ellipse cx="16" cy="7" rx="4" ry="7" fill="#fecdd3" opacity=".85"/>
+      <ellipse cx="16" cy="25" rx="4" ry="7" fill="#fecdd3" opacity=".85"/>
+      <ellipse cx="7" cy="16" rx="7" ry="4" fill="#fecdd3" opacity=".85"/>
+      <ellipse cx="25" cy="16" rx="7" ry="4" fill="#fecdd3" opacity=".85"/>
+      <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+    </svg>
+  </div>
+  <div class="float-slow" style="position:absolute;top:22%;left:42%">
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+      <ellipse cx="16" cy="7" rx="4" ry="7" fill="#ffb7c5" opacity=".7"/>
+      <ellipse cx="16" cy="25" rx="4" ry="7" fill="#ffb7c5" opacity=".7"/>
+      <ellipse cx="7" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".7"/>
+      <ellipse cx="25" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".7"/>
+      <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+    </svg>
+  </div>
+  <div class="float-mid" style="position:absolute;bottom:28%;right:30%">
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+      <ellipse cx="16" cy="7" rx="4" ry="7" fill="#c4b5fd" opacity=".7"/>
+      <ellipse cx="16" cy="25" rx="4" ry="7" fill="#c4b5fd" opacity=".7"/>
+      <ellipse cx="7" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".7"/>
+      <ellipse cx="25" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".7"/>
+      <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+    </svg>
+  </div>
+
+  <!-- Sparkle stars -->
+  <div class="pulse-glow" style="position:absolute;top:18%;left:22%">
+    <svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M10 0 L11.5 8.5 L20 10 L11.5 11.5 L10 20 L8.5 11.5 L0 10 L8.5 8.5Z" fill="#fde68a"/></svg>
+  </div>
+  <div class="pulse-glow" style="position:absolute;top:30%;right:20%;animation-delay:.5s">
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 0 L11.5 8.5 L20 10 L11.5 11.5 L10 20 L8.5 11.5 L0 10 L8.5 8.5Z" fill="#fde68a"/></svg>
+  </div>
+  <div class="pulse-glow" style="position:absolute;top:60%;left:18%;animation-delay:1s">
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M10 0 L11.5 8.5 L20 10 L11.5 11.5 L10 20 L8.5 11.5 L0 10 L8.5 8.5Z" fill="#fde68a"/></svg>
+  </div>
+  <div class="pulse-glow" style="position:absolute;top:50%;right:15%;animation-delay:1.5s">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 0 L11.5 8.5 L20 10 L11.5 11.5 L10 20 L8.5 11.5 L0 10 L8.5 8.5Z" fill="#c4b5fd"/></svg>
+  </div>
+  <div class="pulse-glow" style="position:absolute;bottom:22%;left:35%;animation-delay:.8s">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 0 L6.9 5.1 L12 6 L6.9 6.9 L6 12 L5.1 6.9 L0 6 L5.1 5.1Z" fill="#fde68a"/></svg>
+  </div>
+  <div class="pulse-glow" style="position:absolute;top:72%;right:38%;animation-delay:1.2s">
+    <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 0 L6.9 5.1 L12 6 L6.9 6.9 L6 12 L5.1 6.9 L0 6 L5.1 5.1Z" fill="#ffb7c5"/></svg>
+  </div>
+
+  <!-- Hero content -->
+  <div style="text-align:center;max-width:640px;position:relative;z-index:2">
+    <!-- Hero panel matching official style -->
+    <div class="hero-panel">
+      <div class="screentone"></div>
+      <!-- Flower corner decorations -->
+      <div style="position:absolute;top:-10px;left:-10px">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <ellipse cx="16" cy="7" rx="4" ry="7" fill="#ffb7c5" opacity=".4"/>
+          <ellipse cx="16" cy="25" rx="4" ry="7" fill="#ffb7c5" opacity=".4"/>
+          <ellipse cx="7" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".4"/>
+          <ellipse cx="25" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".4"/>
+          <circle cx="16" cy="16" r="4" fill="#fde68a" opacity=".5"/>
+        </svg>
       </div>
-      <p class="qr-tip">请使用微信扫描二维码完成支付</p>
-      <p class="qr-timer" id="qrTimer">正在获取二维码...</p>
+      <div style="position:absolute;top:-10px;right:-10px">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <ellipse cx="16" cy="7" rx="4" ry="7" fill="#c4b5fd" opacity=".4"/>
+          <ellipse cx="16" cy="25" rx="4" ry="7" fill="#c4b5fd" opacity=".4"/>
+          <ellipse cx="7" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".4"/>
+          <ellipse cx="25" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".4"/>
+          <circle cx="16" cy="16" r="4" fill="#fde68a" opacity=".5"/>
+        </svg>
+      </div>
+      <div style="position:relative;z-index:1">
+        <p class="hero-title-sub">Shoujo Manga Style</p>
+        <h1 class="hero-title-main">Shoujo<br/>Manga</h1>
+        <p class="hero-subtitle-jp">浪漫な物語</p>
+        <p class="hero-desc">
+          Romantic Story — where every heartbeat blooms into petals and every glance becomes a sparkle
+        </p>
+      </div>
     </div>
-    <p style="font-size:11px;color:#aaa;margin-top:8px;">支付成功后自动跳转，可安全关闭窗口</p>
-    <button class="close-btn" onclick="closeQrWithWarning()">关闭窗口</button>
+
+    <p style="font-size:15px;color:#b06080;margin:20px 0 24px;line-height:1.8;font-style:italic">
+      精选好物 · 自动发货 · 即买即得
+    </p>
+    <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap">
+      <button class="btn-sakura" onclick="openQueryModal()">查询订单</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Products ============ -->
+<section id="products" style="padding:80px 24px;background:#fce7f3;position:relative">
+  <div class="screentone"></div>
+  <div style="max-width:1000px;margin:0 auto;position:relative;z-index:1">
+    <div class="section-eyebrow">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M10 0 L11.5 8.5 L20 10 L11.5 11.5 L10 20 L8.5 11.5 L0 10 L8.5 8.5Z" fill="#fde68a"/></svg>
+      <span>shoujo shop</span>
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M10 0 L11.5 8.5 L20 10 L11.5 11.5 L10 20 L8.5 11.5 L0 10 L8.5 8.5Z" fill="#fde68a"/></svg>
+    </div>
+    <h2 class="section-title">精选好物</h2>
+    <p class="section-sub">即买即得 · 自动发货 · 浪漫甄选</p>
+
+    <div class="product-grid">
+      <!-- Product 1 -->
+      <div class="product-card">
+        <div class="screentone-hover"></div>
+        <div style="position:relative;z-index:1">
+          <span class="product-tag">HOT</span>
+          <div class="product-icon"><svg width="44" height="44" viewBox="0 0 32 32" fill="none" style="flex-shrink:0">
+        <ellipse cx="16" cy="7" rx="4" ry="7" fill="#ffb7c5" opacity=".9"/>
+        <ellipse cx="16" cy="25" rx="4" ry="7" fill="#ffb7c5" opacity=".9"/>
+        <ellipse cx="7" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".9"/>
+        <ellipse cx="25" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".9"/>
+        <ellipse cx="9.5" cy="9.5" rx="4" ry="7" fill="#ffb7c5" opacity=".7" transform="rotate(-45 9.5 9.5)"/>
+        <ellipse cx="22.5" cy="22.5" rx="4" ry="7" fill="#ffb7c5" opacity=".7" transform="rotate(-45 22.5 22.5)"/>
+        <ellipse cx="22.5" cy="9.5" rx="4" ry="7" fill="#ffb7c5" opacity=".7" transform="rotate(45 22.5 9.5)"/>
+        <ellipse cx="9.5" cy="22.5" rx="4" ry="7" fill="#ffb7c5" opacity=".7" transform="rotate(45 9.5 22.5)"/>
+        <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+      </svg></div>
+          <h3 class="product-name">VIP会员月卡</h3>
+          <p class="product-desc">全站资源免费下载，持续更新中</p>
+          <div class="product-price"><small>¥</small>9.90</div>
+          <button class="btn-buy" onclick="openBuyModal('vip_month','VIP会员月卡','9.90')">立即购买</button>
+        </div>
+      </div>
+
+      <!-- Product 2 -->
+      <div class="product-card">
+        <div class="screentone-hover"></div>
+        <div style="position:relative;z-index:1">
+          <span class="product-tag">超值</span>
+          <div class="product-icon"><svg width="44" height="44" viewBox="0 0 32 32" fill="none" style="flex-shrink:0">
+        <ellipse cx="16" cy="7" rx="4" ry="7" fill="#c4b5fd" opacity=".9"/>
+        <ellipse cx="16" cy="25" rx="4" ry="7" fill="#c4b5fd" opacity=".9"/>
+        <ellipse cx="7" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".9"/>
+        <ellipse cx="25" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".9"/>
+        <ellipse cx="9.5" cy="9.5" rx="4" ry="7" fill="#c4b5fd" opacity=".7" transform="rotate(-45 9.5 9.5)"/>
+        <ellipse cx="22.5" cy="22.5" rx="4" ry="7" fill="#c4b5fd" opacity=".7" transform="rotate(-45 22.5 22.5)"/>
+        <ellipse cx="22.5" cy="9.5" rx="4" ry="7" fill="#c4b5fd" opacity=".7" transform="rotate(45 22.5 9.5)"/>
+        <ellipse cx="9.5" cy="22.5" rx="4" ry="7" fill="#c4b5fd" opacity=".7" transform="rotate(45 9.5 22.5)"/>
+        <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+      </svg></div>
+          <h3 class="product-name">网盘资源合集</h3>
+          <p class="product-desc">海量网盘资源，涵盖各领域干货</p>
+          <div class="product-price"><small>¥</small>19.90</div>
+          <button class="btn-buy" onclick="openBuyModal('cloud_resource','网盘资源合集','19.90')">立即购买</button>
+        </div>
+      </div>
+
+      <!-- Product 3 -->
+      <div class="product-card">
+        <div class="screentone-hover"></div>
+        <div style="position:relative;z-index:1">
+          <span class="product-tag">推荐</span>
+          <div class="product-icon"><svg width="44" height="44" viewBox="0 0 32 32" fill="none" style="flex-shrink:0">
+        <ellipse cx="16" cy="7" rx="4" ry="7" fill="#fde68a" opacity=".9"/>
+        <ellipse cx="16" cy="25" rx="4" ry="7" fill="#fde68a" opacity=".9"/>
+        <ellipse cx="7" cy="16" rx="7" ry="4" fill="#fde68a" opacity=".9"/>
+        <ellipse cx="25" cy="16" rx="7" ry="4" fill="#fde68a" opacity=".9"/>
+        <ellipse cx="9.5" cy="9.5" rx="4" ry="7" fill="#fde68a" opacity=".7" transform="rotate(-45 9.5 9.5)"/>
+        <ellipse cx="22.5" cy="22.5" rx="4" ry="7" fill="#fde68a" opacity=".7" transform="rotate(-45 22.5 22.5)"/>
+        <ellipse cx="22.5" cy="9.5" rx="4" ry="7" fill="#fde68a" opacity=".7" transform="rotate(45 22.5 9.5)"/>
+        <ellipse cx="9.5" cy="22.5" rx="4" ry="7" fill="#fde68a" opacity=".7" transform="rotate(45 9.5 22.5)"/>
+        <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+      </svg></div>
+          <h3 class="product-name">学习资料大礼包</h3>
+          <p class="product-desc">考研/考证/编程资料合集</p>
+          <div class="product-price"><small>¥</small>5.90</div>
+          <button class="btn-buy" onclick="openBuyModal('study_pack','学习资料大礼包','5.90')">立即购买</button>
+        </div>
+      </div>
+
+      <!-- Product 4 -->
+      <div class="product-card">
+        <div class="screentone-hover"></div>
+        <div style="position:relative;z-index:1">
+          <span class="product-tag">新品</span>
+          <div class="product-icon"><svg width="44" height="44" viewBox="0 0 32 32" fill="none" style="flex-shrink:0">
+        <ellipse cx="16" cy="7" rx="4" ry="7" fill="#ffb7c5" opacity=".9"/>
+        <ellipse cx="16" cy="25" rx="4" ry="7" fill="#ffb7c5" opacity=".9"/>
+        <ellipse cx="7" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".9"/>
+        <ellipse cx="25" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".9"/>
+        <ellipse cx="9.5" cy="9.5" rx="4" ry="7" fill="#ffb7c5" opacity=".7" transform="rotate(-45 9.5 9.5)"/>
+        <ellipse cx="22.5" cy="22.5" rx="4" ry="7" fill="#ffb7c5" opacity=".7" transform="rotate(-45 22.5 22.5)"/>
+        <ellipse cx="22.5" cy="9.5" rx="4" ry="7" fill="#ffb7c5" opacity=".7" transform="rotate(45 22.5 9.5)"/>
+        <ellipse cx="9.5" cy="22.5" rx="4" ry="7" fill="#ffb7c5" opacity=".7" transform="rotate(45 9.5 22.5)"/>
+        <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+      </svg></div>
+          <h3 class="product-name">游戏激活码</h3>
+          <p class="product-desc">热门单机游戏激活码，即买即玩</p>
+          <div class="product-price"><small>¥</small>29.90</div>
+          <button class="btn-buy" onclick="openBuyModal('game_key','游戏激活码','29.90')">立即购买</button>
+        </div>
+      </div>
+
+      <!-- Product 5 -->
+      <div class="product-card">
+        <div class="screentone-hover"></div>
+        <div style="position:relative;z-index:1">
+          <span class="product-tag">人气</span>
+          <div class="product-icon"><svg width="44" height="44" viewBox="0 0 32 32" fill="none" style="flex-shrink:0">
+        <ellipse cx="16" cy="7" rx="4" ry="7" fill="#c4b5fd" opacity=".9"/>
+        <ellipse cx="16" cy="25" rx="4" ry="7" fill="#c4b5fd" opacity=".9"/>
+        <ellipse cx="7" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".9"/>
+        <ellipse cx="25" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".9"/>
+        <ellipse cx="9.5" cy="9.5" rx="4" ry="7" fill="#c4b5fd" opacity=".7" transform="rotate(-45 9.5 9.5)"/>
+        <ellipse cx="22.5" cy="22.5" rx="4" ry="7" fill="#c4b5fd" opacity=".7" transform="rotate(-45 22.5 22.5)"/>
+        <ellipse cx="22.5" cy="9.5" rx="4" ry="7" fill="#c4b5fd" opacity=".7" transform="rotate(45 22.5 9.5)"/>
+        <ellipse cx="9.5" cy="22.5" rx="4" ry="7" fill="#c4b5fd" opacity=".7" transform="rotate(45 9.5 22.5)"/>
+        <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+      </svg></div>
+          <h3 class="product-name">4K壁纸合集</h3>
+          <p class="product-desc">精选4K超清壁纸10000+</p>
+          <div class="product-price"><small>¥</small>1.00</div>
+          <button class="btn-buy" onclick="openBuyModal('wallpaper','4K壁纸合集','1.00')">立即购买</button>
+        </div>
+      </div>
+
+      <!-- Product 6 - Test -->
+      <div class="product-card">
+        <div class="screentone-hover"></div>
+        <div style="position:relative;z-index:1">
+          <span class="product-tag">测试</span>
+          <div class="product-icon"><svg width="44" height="44" viewBox="0 0 32 32" fill="none" style="flex-shrink:0">
+        <ellipse cx="16" cy="7" rx="4" ry="7" fill="#fde68a" opacity=".9"/>
+        <ellipse cx="16" cy="25" rx="4" ry="7" fill="#fde68a" opacity=".9"/>
+        <ellipse cx="7" cy="16" rx="7" ry="4" fill="#fde68a" opacity=".9"/>
+        <ellipse cx="25" cy="16" rx="7" ry="4" fill="#fde68a" opacity=".9"/>
+        <ellipse cx="9.5" cy="9.5" rx="4" ry="7" fill="#fde68a" opacity=".7" transform="rotate(-45 9.5 9.5)"/>
+        <ellipse cx="22.5" cy="22.5" rx="4" ry="7" fill="#fde68a" opacity=".7" transform="rotate(-45 22.5 22.5)"/>
+        <ellipse cx="22.5" cy="9.5" rx="4" ry="7" fill="#fde68a" opacity=".7" transform="rotate(45 22.5 9.5)"/>
+        <ellipse cx="9.5" cy="22.5" rx="4" ry="7" fill="#fde68a" opacity=".7" transform="rotate(45 9.5 22.5)"/>
+        <circle cx="16" cy="16" r="4.5" fill="#fde68a"/>
+      </svg></div>
+          <h3 class="product-name">1分钱测试商品</h3>
+          <p class="product-desc">测试购买流程，1分钱体验</p>
+          <div class="product-price"><small>¥</small>0.01</div>
+          <button class="btn-buy" onclick="openBuyModal('e_book','1分钱测试商品','0.01')">立即购买</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Footer ============ -->
+<footer style="background:#fff;padding:48px 24px 32px;border-top:2px solid #ffb7c5;position:relative">
+  <!-- Scallop top edge -->
+  <div style="position:absolute;top:-8px;left:0;right:0;height:12px;background:radial-gradient(circle at 6px 12px,#fff 6px,transparent 6px);background-size:12px 12px;transform:rotate(180deg)"></div>
+
+  <div style="max-width:900px;margin:0 auto;text-align:center">
+    <div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:16px">
+      <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+        <ellipse cx="16" cy="7" rx="4" ry="7" fill="#ffb7c5" opacity=".8"/>
+        <ellipse cx="16" cy="25" rx="4" ry="7" fill="#ffb7c5" opacity=".8"/>
+        <ellipse cx="7" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".8"/>
+        <ellipse cx="25" cy="16" rx="7" ry="4" fill="#ffb7c5" opacity=".8"/>
+        <circle cx="16" cy="16" r="4" fill="#fde68a"/>
+      </svg>
+      <span style="font-size:16px;font-weight:700;color:#e879a0;letter-spacing:1px">少女漫画風 · Shoujo Manga</span>
+      <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+        <ellipse cx="16" cy="7" rx="4" ry="7" fill="#c4b5fd" opacity=".8"/>
+        <ellipse cx="16" cy="25" rx="4" ry="7" fill="#c4b5fd" opacity=".8"/>
+        <ellipse cx="7" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".8"/>
+        <ellipse cx="25" cy="16" rx="7" ry="4" fill="#c4b5fd" opacity=".8"/>
+        <circle cx="16" cy="16" r="4" fill="#fde68a"/>
+      </svg>
+    </div>
+    <p style="font-size:13px;color:#b06080;font-style:italic;margin-bottom:20px">Romantic Dream Aesthetic — made with <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="display:inline-block;vertical-align:middle"><path d="M8 14s-5.5-3.5-5.5-7A3.5 3.5 0 0 1 8 4.5 3.5 3.5 0 0 1 13.5 7c0 3.5-5.5 7-5.5 7z" fill="#ffb7c5"/></svg> and sparkles</p>
+    <div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:24px">
+      <a href="#components" style="font-size:13px;color:#b06080;transition:color .2s">Components</a>
+      <a href="#chapter" style="font-size:13px;color:#b06080;transition:color .2s">Chapter</a>
+      <a href="#palette" style="font-size:13px;color:#b06080;transition:color .2s">Palette</a>
+      <a href="#screentone" style="font-size:13px;color:#b06080;transition:color .2s">Screentone</a>
+      <a href="#typography" style="font-size:13px;color:#b06080;transition:color .2s">Typography</a>
+    </div>
+    <div style="display:flex;justify-content:center;gap:8px;margin-bottom:16px">
+      <svg class="pulse-glow" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 0 L6.9 5.1 L12 6 L6.9 6.9 L6 12 L5.1 6.9 L0 6 L5.1 5.1Z" fill="#fde68a"/></svg>
+      <svg class="pulse-glow" style="animation-delay:.4s" width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 0 L6.9 5.1 L12 6 L6.9 6.9 L6 12 L5.1 6.9 L0 6 L5.1 5.1Z" fill="#ffb7c5"/></svg>
+      <svg class="pulse-glow" style="animation-delay:.8s" width="14" height="14" viewBox="0 0 12 12" fill="none"><path d="M6 0 L6.9 5.1 L12 6 L6.9 6.9 L6 12 L5.1 6.9 L0 6 L5.1 5.1Z" fill="#c4b5fd"/></svg>
+    </div>
+    <p style="font-size:11px;color:rgba(74,85,104,.35)">© 2026 少女漫画風商店. All dreams reserved.</p>
+  </div>
+</footer>
+
+<!-- ============ Buy Modal ============ -->
+<div class="modal-overlay" id="buyModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeBuyModal()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M3 3L13 13M13 3L3 13" stroke="#e879a0" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <h3 class="modal-title" id="buyName">商品名称</h3>
+    <p class="modal-sub">选择支付方式</p>
+    <div class="product-price" id="buyPrice" style="margin-bottom:20px"><small>¥</small>0.01</div>
+    <div class="pay-options">
+      <div class="pay-option active" id="payAlipay" onclick="selectPay('alipay')">
+        <div class="pay-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect x="4" y="6" width="24" height="20" rx="4" fill="#1677ff"/>
+            <path d="M10 14h12M10 18h8" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="22" cy="18" r="2" fill="#fff"/>
+          </svg>
+        </div>
+        <div class="pay-name">支付宝</div>
+      </div>
+      <div class="pay-option" id="payWechat" onclick="selectPay('wechat')">
+        <div class="pay-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect x="4" y="8" width="24" height="18" rx="4" fill="#07c160"/>
+            <circle cx="11" cy="15" r="1.5" fill="#fff"/>
+            <circle cx="21" cy="15" r="1.5" fill="#fff"/>
+            <path d="M10 20c1.5 2 4 3 6 3s4.5-1 6-3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <div class="pay-name">微信支付</div>
+      </div>
+    </div>
+    <button class="btn-buy" style="width:100%" onclick="confirmPay()">确认支付</button>
   </div>
 </div>
 
-<!-- 关闭确认弹窗 -->
-<div class="modal-overlay" id="closeConfirmModal">
-  <div class="modal">
-    <h3>确认关闭？</h3>
-    <p class="product-name" style="margin-top:8px;">关闭后系统将继续后台检测支付状态<br>付款成功后自动跳转发货，不会丢失订单</p>
-    <div class="pay-row">
-      <button class="pay-btn alipay" onclick="cancelCloseQr()">继续等待</button>
-      <button class="pay-btn wxpay" style="background:#999;" onclick="confirmCloseQr()">确认关闭</button>
-    </div>
-  </div>
-</div>
-
-<!-- 后台支付检测浮标 -->
-<div class="pay-badge" id="payBadge" onclick="reopenQr()">
-  <span class="pay-badge-dot"></span>
-  <span id="payBadgeText">后台检测支付中...</span>
-</div>
-
-<!-- 订单查询弹窗 -->
+<!-- ============ Query Modal ============ -->
 <div class="modal-overlay" id="queryModal">
-  <div class="modal">
-    <h3>查询订单</h3>
-    <p class="product-name">输入订单号查询支付状态和卡密</p>
-    <input class="query-input" id="queryOrderId" placeholder="请输入订单号" />
-    <button class="btn-primary" onclick="doQueryOrder()">查询</button>
-    <div class="query-result" id="queryResult" style="display:none;"></div>
-    <button class="close-btn" onclick="closeQueryModal()">关闭</button>
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeQueryModal()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M3 3L13 13M13 3L3 13" stroke="#e879a0" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <h3 class="modal-title">查询订单</h3>
+    <p class="modal-sub">输入订单号查询订单状态</p>
+    <input class="query-input" type="text" id="queryInput" placeholder="请输入订单号" onkeypress="if(event.key==='Enter')queryOrder()"/>
+    <button class="btn-sakura" style="width:100%" onclick="queryOrder()">查询</button>
+    <div class="query-result" id="queryResult">
+      <div class="order-id" id="qrOrderId">订单号：</div>
+      <span class="order-status" id="qrStatus">待支付</span>
+      <div style="font-size:14px;color:#b06080;margin-bottom:4px" id="qrProduct">商品：</div>
+      <div style="font-size:14px;color:#b06080" id="qrPrice">金额：</div>
+      <div class="goods" id="qrGoods" style="display:none"></div>
+    </div>
   </div>
 </div>
 
 <script>
-// 商品数据直接内嵌，零等待
-const PRODUCTS = [
-  {id:'vip_month',name:'VIP会员月卡',icon:'👑',price:'9.90',desc:'全站资源免费下载，持续更新'},
-  {id:'cloud_storage',name:'网盘资源合集',icon:'📁',price:'19.90',desc:'海量网盘资源，涵盖各领域干货'},
-  {id:'study_pack',name:'学习资料大礼包',icon:'📚',price:'5.90',desc:'考研/考证/编程资料合集'},
-  {id:'game_key',name:'游戏激活码',icon:'🎮',price:'29.90',desc:'热门单机游戏激活码，即买即玩'},
-  {id:'wallpaper',name:'4K壁纸合集',icon:'🖼️',price:'1.00',desc:'精选4K超清壁纸10000+'},
-  {id:'e_book',name:'1分钱测试商品',icon:'🎁',price:'0.01',desc:'测试购买流程，1分钱体验'}
-];
-
+// ===== API =====
 const API_BASE = 'https://fy-store.pages.dev/api';
+
+// ===== Product Data =====
+const PRODUCTS = {
+  vip_month: { id:'vip_month', name:'VIP会员月卡', price:'9.90' },
+  cloud_resource: { id:'cloud_resource', name:'网盘资源合集', price:'19.90' },
+  study_pack: { id:'study_pack', name:'学习资料大礼包', price:'5.90' },
+  game_key: { id:'game_key', name:'游戏激活码', price:'29.90' },
+  wallpaper: { id:'wallpaper', name:'4K壁纸合集', price:'1.00' },
+  e_book: { id:'e_book', name:'1分钱测试商品', price:'0.01' }
+};
+
 let currentProduct = null;
-let currentOrderId = null;
-let pollTimer = null;
-let pollCount = 0;
+let currentPayType = 'alipay';
 
-// ========== localStorage 订单管理 ==========
-function savePendingOrder(orderId, productName, price) {
-  var data = { orderId: orderId, productName: productName, price: price, createdAt: Date.now() };
-  try {
-    localStorage.setItem('fy_pending_order', JSON.stringify(data));
-  } catch(e) {}
+// ===== Buy Modal =====
+function openBuyModal(productId, name, price) {
+  currentProduct = PRODUCTS[productId];
+  document.getElementById('buyName').textContent = name;
+  document.getElementById('buyPrice').innerHTML = '<small>¥</small>' + price;
+  document.getElementById('buyModal').classList.add('open');
 }
-
-function getPendingOrder() {
-  try {
-    var str = localStorage.getItem('fy_pending_order');
-    if (!str) return null;
-    return JSON.parse(str);
-  } catch(e) { return null; }
+function closeBuyModal() {
+  document.getElementById('buyModal').classList.remove('open');
 }
-
-function clearPendingOrder() {
-  try { localStorage.removeItem('fy_pending_order'); } catch(e) {}
+function selectPay(type) {
+  currentPayType = type;
+  document.getElementById('payAlipay').classList.toggle('active', type === 'alipay');
+  document.getElementById('payWechat').classList.toggle('active', type === 'wechat');
 }
-
-// 页面加载时检查未完成订单
-function checkPendingOrder() {
-  var pending = getPendingOrder();
-  if (!pending) return;
-  
-  // 超过2小时的订单不再提示
-  if (Date.now() - pending.createdAt > 2 * 60 * 60 * 1000) {
-    clearPendingOrder();
-    return;
-  }
-  
-  // 先查一下订单状态
-  fetch(API_BASE + '/query?order_id=' + pending.orderId)
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data.status === 'paid') {
-        // 已支付，跳转成功页
-        clearPendingOrder();
-        window.location.href = '/success.html?out_trade_no=' + pending.orderId;
-      } else if (data.status === 'pending') {
-        // 未支付，显示恢复横幅
-        showRecoverBanner(pending);
-      } else {
-        clearPendingOrder();
-      }
-    })
-    .catch(function() {
-      // 查询失败也显示横幅，让用户可以手动重试
-      showRecoverBanner(pending);
-    });
-}
-
-function showRecoverBanner(pending) {
-  var banner = document.getElementById('recoverBanner');
-  banner.innerHTML = 
-    '<div class="recover-banner">' +
-      '<div class="recover-text">' +
-        '<div class="recover-title">📦 有未完成订单</div>' +
-        '<div class="recover-sub">' + pending.productName + ' · ¥' + pending.price + ' · ' + pending.orderId + '</div>' +
-      '</div>' +
-      '<button class="recover-btn" onclick="recoverOrder(\'' + pending.orderId + '\',\'' + pending.productName + '\',\'' + pending.price + '\')">查看订单</button>' +
-      '<button class="recover-close" onclick="dismissRecover()">×</button>' +
-    '</div>';
-  banner.style.display = 'block';
-}
-
-function dismissRecover() {
-  document.getElementById('recoverBanner').style.display = 'none';
-}
-
-function recoverOrder(orderId, productName, price) {
-  // 查询订单状态
-  fetch(API_BASE + '/query?order_id=' + orderId)
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data.status === 'paid') {
-        clearPendingOrder();
-        window.location.href = '/success.html?out_trade_no=' + orderId;
-      } else if (data.status === 'pending') {
-        // 还在等待支付，显示提示
-        document.getElementById('queryResult').innerHTML = 
-          '<div class="qr-status pending">⏳ 订单待支付<br>请重新扫码或重新下单</div>' +
-          '<div style="font-size:11px;color:#888;margin-top:8px;">订单号：' + orderId + '</div>';
-        document.getElementById('queryOrderId').value = orderId;
-        document.getElementById('queryResult').style.display = 'block';
-        showQueryModal();
-        dismissRecover();
-      } else {
-        clearPendingOrder();
-        dismissRecover();
-        alert('订单已失效，请重新下单');
-      }
-    })
-    .catch(function() {
-      alert('查询失败，请稍后重试');
-    });
-}
-
-// 立即渲染商品列表（页面加载即显示）
-(function renderProducts() {
-  var list = document.getElementById('productList');
-  list.innerHTML = PRODUCTS.map(function(p) {
-    return '<div class="card" onclick="buyProduct(\'' + p.id + '\')">' +
-      '<div class="card-icon">' + p.icon + '</div>' +
-      '<div class="card-body">' +
-        '<div class="card-title">' + p.name + '</div>' +
-        '<div class="card-desc">' + p.desc + '</div>' +
-        '<div class="card-footer">' +
-          '<div class="price"><span>¥</span>' + p.price + '</div>' +
-          '<button class="buy-btn">购买</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-  
-  // 检查未完成订单
-  checkPendingOrder();
-})();
-
-function buyProduct(id) {
-  var product = PRODUCTS.find(function(p) { return p.id === id; });
-  if (product) openPayModal(product);
-}
-
-function openPayModal(product) {
-  currentProduct = product;
-  document.getElementById('modalProductName').textContent = product.name;
-  document.getElementById('modalPrice').textContent = product.price;
-  document.getElementById('payModal').classList.add('active');
-}
-
-function closeModal() {
-  document.getElementById('payModal').classList.remove('active');
-}
-
-async function goPay(payType) {
+async function confirmPay() {
   if (!currentProduct) return;
-  closeModal();
-  
   try {
     var res = await fetch(API_BASE + '/create', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({productId: currentProduct.id, payType: payType})
+      body: JSON.stringify({productId: currentProduct.id, payType: currentPayType})
     });
     var data = await res.json();
-    
     if (data.success && data.payUrl) {
-      // 保存订单到 localStorage（无论支付宝还是微信都存）
+      // 保存订单到 localStorage
       savePendingOrder(data.orderId, currentProduct.name, currentProduct.price);
-      // 微信和支付宝都直接跳转到支付网关页面
+      closeBuyModal();
+      // 跳转到支付页面
       window.location.href = data.payUrl;
     } else {
       alert('创建订单失败: ' + (data.error || '未知错误'));
@@ -329,205 +1056,103 @@ async function goPay(payType) {
   }
 }
 
-function showQrCode(orderId, payUrl) {
-  currentOrderId = orderId;
-  pollCount = 0;
-  
-  document.getElementById('qrProductName').textContent = currentProduct.name;
-  document.getElementById('qrPrice').textContent = currentProduct.price;
-  document.getElementById('qrImg').innerHTML = '<div class="loading big-loading"></div>';
-  document.getElementById('qrTimer').textContent = '正在加载二维码...';
-  document.getElementById('qrModal').classList.add('active');
-  
-  fetchQrCode(orderId, currentProduct.name, currentProduct.price, payUrl);
-  startPolling(orderId);
+// ===== Order Storage =====
+function savePendingOrder(orderId, productName, price) {
+  var data = { orderId: orderId, productName: productName, price: price, createdAt: Date.now() };
+  try { localStorage.setItem('sm_pending_order', JSON.stringify(data)); } catch(e) {}
 }
-
-async function fetchQrCode(orderId, productName, money, payUrl) {
+function getPendingOrder() {
   try {
-    var res = await fetch(API_BASE + '/qrcode?order_id=' + encodeURIComponent(orderId) + '&name=' + encodeURIComponent(productName) + '&money=' + encodeURIComponent(money));
-    var data = await res.json();
-    if (data.success && data.qrCode) {
-      document.getElementById('qrImg').innerHTML = 
-        '<img src="' + data.qrCode + '" alt="支付二维码" />';
-      document.getElementById('qrTimer').textContent = '请使用微信扫码支付';
-    } else {
-      fallbackFetchQrCode(payUrl);
-    }
-  } catch(e) {
-    fallbackFetchQrCode(payUrl);
-  }
+    var str = localStorage.getItem('sm_pending_order');
+    if (!str) return null;
+    return JSON.parse(str);
+  } catch(e) { return null; }
+}
+function clearPendingOrder() {
+  try { localStorage.removeItem('sm_pending_order'); } catch(e) {}
 }
 
-function fallbackFetchQrCode(payUrl) {
-  fetch(API_BASE + '/qrcode?url=' + encodeURIComponent(payUrl))
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data.success && data.qrCode) {
-        document.getElementById('qrImg').innerHTML = 
-          '<img src="' + data.qrCode + '" alt="支付二维码" />';
-        document.getElementById('qrTimer').textContent = '请使用微信扫码支付';
-      } else {
-        document.getElementById('qrImg').innerHTML = 
-          '<div style="text-align:center;padding:16px;font-size:12px;color:#666;">获取失败<br><a href="' + payUrl + '" style="color:#667eea;" target="_blank">点此打开支付页</a></div>';
-      }
-    })
-    .catch(function() {
-      document.getElementById('qrImg').innerHTML = 
-        '<div style="text-align:center;padding:16px;font-size:12px;color:#666;">获取失败<br><a href="' + payUrl + '" style="color:#667eea;" target="_blank">点此打开支付页</a></div>';
-    });
+// ===== Query Modal =====
+function openQueryModal() {
+  document.getElementById('queryModal').classList.add('open');
+  document.getElementById('queryResult').classList.remove('show');
+  document.getElementById('queryInput').value = '';
+  document.getElementById('queryInput').focus();
 }
-
-function startPolling(orderId) {
-  if (pollTimer) clearInterval(pollTimer);
-  
-  pollTimer = setInterval(async function() {
-    pollCount++;
-    try {
-      var res = await fetch(API_BASE + '/query?order_id=' + orderId);
-      var data = await res.json();
-      
-      if (data.status === 'paid') {
-        clearInterval(pollTimer);
-        pollTimer = null;
-        // 隐藏浮标
-        document.getElementById('payBadge').classList.remove('active');
-        // 清除待处理订单
-        clearPendingOrder();
-        // 无论窗口是否打开，都跳转到成功页
-        var qrTimerEl = document.getElementById('qrTimer');
-        if (qrTimerEl) qrTimerEl.textContent = '✓ 支付成功，正在跳转...';
-        setTimeout(function() {
-          window.location.href = '/success.html?out_trade_no=' + orderId;
-        }, 800);
-      } else if (pollCount > 360) {
-        // 30分钟后停止后台轮询
-        clearInterval(pollTimer);
-        pollTimer = null;
-        document.getElementById('payBadge').classList.remove('active');
-        var qrTimerEl2 = document.getElementById('qrTimer');
-        if (qrTimerEl2) qrTimerEl2.textContent = '支付超时，如已付款请点击"查询订单"';
-      } else {
-        // 如果二维码窗口还开着，更新计时器
-        var qrTimerEl3 = document.getElementById('qrTimer');
-        if (qrTimerEl3) {
-          qrTimerEl3.textContent = '等待支付中... (' + (pollCount * 5) + 's)';
-        }
-        // 更新浮标文字
-        var badgeText = document.getElementById('payBadgeText');
-        if (badgeText) {
-          badgeText.textContent = '后台检测支付中... ' + (pollCount * 5) + 's';
-        }
-      }
-    } catch(e) {}
-  }, 5000);
-}
-
-// 关闭窗口前确认
-function closeQrWithWarning() {
-  // 如果已经支付成功就不提示
-  if (!pollTimer) {
-    closeQrDirect();
-    return;
-  }
-  document.getElementById('closeConfirmModal').classList.add('active');
-}
-
-function cancelCloseQr() {
-  document.getElementById('closeConfirmModal').classList.remove('active');
-}
-
-function confirmCloseQr() {
-  document.getElementById('closeConfirmModal').classList.remove('active');
-  closeQrDirect();
-}
-
-// 关闭窗口但保持后台轮询
-function closeQrDirect() {
-  document.getElementById('qrModal').classList.remove('active');
-  // 不停止轮询！保持后台检测
-  // 显示浮动提示
-  if (pollTimer && currentOrderId) {
-    document.getElementById('payBadge').classList.add('active');
-    document.getElementById('payBadgeText').textContent = '后台检测支付中...';
-  }
-}
-
-// 重新打开二维码窗口
-function reopenQr() {
-  if (currentOrderId) {
-    document.getElementById('qrModal').classList.add('active');
-    document.getElementById('payBadge').classList.remove('active');
-  }
-}
-
-// 旧函数保留兼容
-function closeQr() {
-  closeQrDirect();
-}
-
-// ========== 订单查询 ==========
-function showQueryModal() {
-  document.getElementById('queryModal').classList.add('active');
-  document.getElementById('queryResult').style.display = 'none';
-}
-
 function closeQueryModal() {
-  document.getElementById('queryModal').classList.remove('active');
+  document.getElementById('queryModal').classList.remove('open');
 }
+async function queryOrder() {
+  const orderId = document.getElementById('queryInput').value.trim();
+  if (!orderId) { alert('请输入订单号'); return; }
+  const result = document.getElementById('queryResult');
+  result.classList.add('show');
+  document.getElementById('qrOrderId').textContent = '订单号：' + orderId;
+  document.getElementById('qrStatus').textContent = '查询中...';
+  document.getElementById('qrStatus').className = 'order-status pending';
+  document.getElementById('qrProduct').textContent = '商品：查询中';
+  document.getElementById('qrPrice').textContent = '金额：--';
+  document.getElementById('qrGoods').style.display = 'none';
 
-async function doQueryOrder() {
-  var orderId = document.getElementById('queryOrderId').value.trim();
-  if (!orderId) {
-    alert('请输入订单号');
-    return;
-  }
-  
-  var resultDiv = document.getElementById('queryResult');
-  resultDiv.innerHTML = '<div style="text-align:center;padding:12px;"><div class="loading"></div></div>';
-  resultDiv.style.display = 'block';
-  
   try {
     var res = await fetch(API_BASE + '/query?order_id=' + encodeURIComponent(orderId));
     var data = await res.json();
-    
-    if (data.status === 'paid') {
-      clearPendingOrder();
-      resultDiv.innerHTML = 
-        '<div class="qr-status paid">✓ 支付成功</div>' +
-        '<div style="margin:8px 0;font-size:12px;color:#888;">商品：' + (data.productName || '-') + ' · 金额：¥' + (data.money || '-') + '</div>' +
-        '<div class="qr-goods">' + (data.goods || '暂无') + '</div>' +
-        '<button class="btn-primary" onclick="copyQueryGoods()">📋 复制卡密</button>';
-    } else if (data.status === 'pending') {
-      resultDiv.innerHTML = 
-        '<div class="qr-status pending">⏳ 订单待支付</div>' +
-        '<div style="font-size:11px;color:#888;margin-top:6px;">商品：' + (data.productName || '-') + ' · ¥' + (data.money || '-') + '</div>' +
-        '<div style="font-size:11px;color:#aaa;margin-top:4px;">如果已扫码付款，请等待几分钟后刷新页面再次查询</div>';
-    } else if (data.status === 'notfound') {
-      resultDiv.innerHTML = '<div class="qr-status notfound">✕ 订单不存在</div>';
+    if (data.success) {
+      document.getElementById('qrProduct').textContent = '商品：' + (data.productName || '-');
+      document.getElementById('qrPrice').textContent = '金额：¥' + (data.money || '0.00');
+      if (data.status === 'paid') {
+        document.getElementById('qrStatus').textContent = '已支付';
+        document.getElementById('qrStatus').className = 'order-status paid';
+        document.getElementById('qrGoods').style.display = 'block';
+        document.getElementById('qrGoods').textContent = '卡密：' + (data.goods || '-');
+      } else {
+        document.getElementById('qrStatus').textContent = '待支付';
+        document.getElementById('qrStatus').className = 'order-status pending';
+        document.getElementById('qrGoods').style.display = 'none';
+      }
     } else {
-      resultDiv.innerHTML = '<div class="qr-status notfound">✕ ' + (data.error || '查询失败') + '</div>';
+      document.getElementById('qrStatus').textContent = '未找到';
+      document.getElementById('qrStatus').className = 'order-status pending';
+      document.getElementById('qrProduct').textContent = '商品：-';
+      document.getElementById('qrPrice').textContent = '金额：-';
+      document.getElementById('qrGoods').style.display = 'none';
     }
   } catch(e) {
-    resultDiv.innerHTML = '<div class="qr-status notfound">✕ 网络错误，请稍后重试</div>';
+    document.getElementById('qrStatus').textContent = '查询失败';
+    document.getElementById('qrStatus').className = 'order-status pending';
+    document.getElementById('qrProduct').textContent = '商品：-';
+    document.getElementById('qrPrice').textContent = '金额：-';
   }
 }
 
-function copyQueryGoods() {
-  var goods = document.querySelector('#queryResult .qr-goods');
-  if (goods) {
-    var text = goods.textContent;
-    navigator.clipboard.writeText(text).then(function() {
-      var btn = document.querySelector('#queryResult .btn-primary');
-      if (btn) {
-        btn.textContent = '✓ 已复制';
-        setTimeout(function() { btn.textContent = '📋 复制卡密'; }, 2000);
-      }
-    }).catch(function() {
-      alert('复制失败，请手动复制');
-    });
+// 点击遮罩关闭
+document.getElementById('buyModal').addEventListener('click', function(e) {
+  if (e.target === this) closeBuyModal();
+});
+document.getElementById('queryModal').addEventListener('click', function(e) {
+  if (e.target === this) closeQueryModal();
+});
+
+// 页面加载时检查未完成订单
+window.addEventListener('load', function() {
+  var pending = getPendingOrder();
+  if (!pending) return;
+  // 超过2小时就不查了
+  if (Date.now() - pending.createdAt > 2 * 60 * 60 * 1000) {
+    clearPendingOrder();
+    return;
   }
-}
+  fetch(API_BASE + '/query?order_id=' + pending.orderId)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success && data.status === 'paid') {
+        clearPendingOrder();
+        alert('支付成功！\n\n商品：' + (data.productName || '') + '\n卡密：' + (data.goods || ''));
+      }
+    })
+    .catch(function() {});
+});
 </script>
+
 </body>
 </html>
