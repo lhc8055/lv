@@ -1046,14 +1046,45 @@ async function confirmPay() {
       // 保存订单到 localStorage
       savePendingOrder(data.orderId, currentProduct.name, currentProduct.price);
       closeBuyModal();
-      // 跳转到支付页面
-      window.location.href = data.payUrl;
+      // 跳转前提示手续费
+      showFeeTipSM(data.payUrl);
     } else {
       alert('创建订单失败: ' + (data.error || '未知错误'));
     }
   } catch(e) {
     alert('网络错误: ' + e.message);
   }
+}
+
+function showFeeTipSM(payUrl) {
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity 0.3s ease';
+  var modal = document.createElement('div');
+  modal.style.cssText = 'background:linear-gradient(180deg,#fff5f8 0%,#fce4ec 100%);border:2px solid #ffb6c1;border-radius:20px;max-width:320px;width:100%;padding:28px 24px;text-align:center;box-shadow:0 20px 60px rgba(255,182,193,0.3);transform:scale(0.9) translateY(20px);transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
+  modal.innerHTML =
+    '<div style="font-size:2rem;margin-bottom:10px">&#9888;</div>' +
+    '<h3 style="color:#d65a7c;font-size:1.1rem;font-weight:700;margin-bottom:10px">支付提示</h3>' +
+    '<p style="color:#8a4a5e;font-size:14px;line-height:1.8;margin-bottom:20px">系统有额外手续费<br><span style="color:#d65a7c;font-weight:600">联系客服可以免手续下单！</span></p>' +
+    '<div style="display:flex;gap:12px">' +
+      '<a href="https://qm.qq.com/q/6lbUQX9YZO" style="flex:1;background:linear-gradient(135deg,#ff9ec4,#ffb6c1);color:#fff;text-decoration:none;padding:14px;border-radius:12px;font-size:14px;font-weight:700">联系客服</a>' +
+      '<button id="smFeeBtn" style="flex:1;background:transparent;border:1px solid #ffb6c1;color:#8a4a5e;padding:14px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer">继续支付</button>' +
+    '</div>';
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  requestAnimationFrame(function() {
+    overlay.style.opacity = '1';
+    modal.style.transform = 'scale(1) translateY(0)';
+  });
+  function closeOverlay() {
+    overlay.style.opacity = '0';
+    modal.style.transform = 'scale(0.9) translateY(20px)';
+    setTimeout(function() { document.body.removeChild(overlay); }, 300);
+  }
+  document.getElementById('smFeeBtn').onclick = function() {
+    closeOverlay();
+    setTimeout(function() { window.location.href = payUrl; }, 100);
+  };
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeOverlay(); });
 }
 
 // ===== Order Storage =====
