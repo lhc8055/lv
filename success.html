@@ -73,6 +73,29 @@ h2{font-size:22px;color:#e879a0;margin-bottom:6px;position:relative;z-index:1}
     </div>
     <button class="back-btn" onclick="goHome()">返回商城首页</button>
   </div>
+  <div id="customContent" style="display:none;">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h2>支付成功</h2>
+    <p class="subtitle">正在跳转到客服QQ...</p>
+    <div class="amount"><span>¥</span><span id="customAmount">0.00</span></div>
+    <div class="info-box">
+      <div class="info-row">
+        <span class="label">商品</span>
+        <span class="value" id="customProductName">-</span>
+      </div>
+      <div class="info-row">
+        <span class="label">订单号</span>
+        <span class="value" id="customOrderId">-</span>
+      </div>
+    </div>
+    <p style="color:#b06080;font-size:13px;margin:12px 0;line-height:1.6;">请添加客服QQ联系代练事宜<br>页面将在 <span id="countdown" style="color:#ff6b8a;font-weight:700">2</span> 秒后自动跳转</p>
+    <a href="https://qm.qq.com/q/7s7UawEbOo" class="copy-btn" style="display:block;text-decoration:none;">立即添加客服QQ</a>
+    <button class="back-btn" onclick="goHome()">返回商城首页</button>
+  </div>
   <div id="failContent" style="display:none;">
     <div class="icon" style="background:linear-gradient(135deg,#ff6b8a,#e879a0);">
       <svg viewBox="0 0 24 24" fill="none">
@@ -118,6 +141,24 @@ async function checkOrder() {
 
 function showSuccess(data) {
   document.getElementById('loading').style.display = 'none';
+  // 自定义订单（代练等无卡密商品）直接跳转到加QQ好友
+  if (getQueryParam('custom') === '1') {
+    document.getElementById('customContent').style.display = 'block';
+    document.getElementById('customAmount').textContent = data.money || '0.00';
+    document.getElementById('customProductName').textContent = data.productName || '-';
+    document.getElementById('customOrderId').textContent = data.orderId || data.out_trade_no || '-';
+    // 倒计时
+    var count = 2;
+    setInterval(function() {
+      count--;
+      if (count >= 0) document.getElementById('countdown').textContent = count;
+    }, 1000);
+    // 2秒后自动跳转
+    setTimeout(function() {
+      window.location.href = 'https://qm.qq.com/q/7s7UawEbOo';
+    }, 2000);
+    return;
+  }
   document.getElementById('successContent').style.display = 'block';
   document.getElementById('amount').textContent = data.money || '0.00';
   document.getElementById('productName').textContent = data.productName || '-';
