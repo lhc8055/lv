@@ -21,9 +21,12 @@
 <!-- 顶部优惠条 --> <div class="notice" id="noticeBar"> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg> <span>下单立减3元，点击浏览器收藏本站，方便下次使用</span> <button class="n-close" data-action="close-notice" aria-label="关闭"> <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg> </button> </div>
 <main id="view"></main>
 <!-- 悬浮反馈按钮 --> <button class="fab" id="fabBtn" data-action="feedback"> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg> 反馈与投诉 </button>
-<script>/* 定位反馈按钮：只在页面加载时计算一次，之后不随滚动移动 */
+<script>/* 定位反馈按钮：只在首页加载时计算一次，之后固定不动 */
+var _fabLocked=false;
 function positionFab(){
   var fab=document.getElementById('fabBtn');if(!fab)return;
+  /* 如果已经锁定位置，不再重新计算 */
+  if(_fabLocked)return;
   var quick=document.querySelector('.quick');var games=document.querySelector('.home-games');
   if(!quick||!games){fab.style.top='58%';fab.style.transform='translateY(-50%)';return;}
   var qEnd=quick.getBoundingClientRect().bottom;
@@ -32,13 +35,10 @@ function positionFab(){
   /* 稍微往下偏移10px */
   fab.style.top=(mid+10)+'px';
   fab.style.transform='translateY(-50%)';
+  _fabLocked=true;
 }
-/* 只在加载时计算一次，不监听scroll，不随页面滚动移动 */
+/* 只在load和resize时计算，不监听scroll和DOM变化 */
 window.addEventListener('load',positionFab);
-window.addEventListener('resize',function(){positionFab();});
-/* DOM变化后重新定位一次（页面切换时） */
-var _fabObs=new MutationObserver(function(){positionFab();});
-if(document.getElementById('view')){_fabObs.observe(document.getElementById('view'),{childList:true,subtree:true});}
 setTimeout(positionFab,300);
 setTimeout(positionFab,800);</script>
 <!-- 底部导航 --> <nav class="tabbar" id="tabbar"> <button class="tab t-home" data-action="route" data-route="home"> <img class="ic-off" src="https://aka.doubaocdn.com/s/elNc3OrUAV" alt="首页"> <img class="ic-on" src="https://aka.doubaocdn.com/s/2iOdbKTlYP" alt="首页"> 首页 </button> <button class="tab t-cat" data-action="route" data-route="category"> <img class="ic-off" src="https://aka.doubaocdn.com/s/aURD240X65" alt="分类"> <img class="ic-on" src="https://aka.doubaocdn.com/s/elUINzvx0Z" alt="分类"> 分类 </button> <button class="tab t-me" data-action="route" data-route="profile"> <img class="ic-off" src="https://aka.doubaocdn.com/s/e9I7Mn8TKK" alt="我的"> <img class="ic-on" src="https://aka.doubaocdn.com/s/6PZvnZcu7x" alt="我的"> 我的 </button> </nav>
