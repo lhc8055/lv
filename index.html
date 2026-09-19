@@ -57,6 +57,14 @@
   padding:0;border:none;background:none;cursor:pointer;line-height:0;}
 .fab img{width:90px;height:auto;display:block;}
 @media(min-width:480px){ .fab{left:0;}}
+
+/* Payment redirect loading overlay */
+.pay-loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.98);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .3s;}
+.pay-loading-overlay .pl-spinner{width:48px;height:48px;border:4px solid #e8e8e8;border-top-color:#6c5ce7;border-radius:50%;animation:pl-spin .8s linear infinite;}
+.pay-loading-overlay .pl-text{font-size:15px;color:#666;letter-spacing:.5px;}
+.pay-loading-overlay .pl-sub{font-size:12px;color:#aaa;}
+@keyframes pl-spin{to{transform:rotate(360deg);}}
+
 </style></head><body><div id="app">
 <!-- 顶部优惠条 --> <div class="notice" id="noticeBar"> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg> <span>下单立减3元，点击浏览器收藏本站，方便下次使用</span> <button class="n-close" data-action="close-notice" aria-label="关闭"> <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg> </button> </div>
 <main id="view"></main>
@@ -210,7 +218,12 @@ var PAY_CONFIG={pid:'1312',key:'w5bxw5eJb5jbNTtoj8jtj3OlknHjB6Eb',gateway:'https
 
 /* Start payment - fy-store style API */
 function startPayment(orderNo,name,money){
-  toast('正在创建支付订单…', false);
+  /* Show branded loading overlay for better perceived performance during multi-hop redirect */
+  var ov=document.createElement('div');
+  ov.className='pay-loading-overlay';
+  ov.innerHTML='<div class="pl-spinner"></div><div class="pl-text">\u6b63\u5728\u8df3\u8f6c\u5230\u6536\u94f6\u53f0\u2026</div><div class="pl-sub">\u8bf7\u7a0d\u5019\uff0c\u6b63\u5728\u5b89\u5168\u8fde\u63a5\u652f\u4ed8\u7f51\u5173</div>';
+  document.body.appendChild(ov);
+  /* Build payment params */
   var params={
     pid:PAY_CONFIG.pid,
     type:'alipay',
@@ -223,7 +236,8 @@ function startPayment(orderNo,name,money){
   params.sign=paySign(params,PAY_CONFIG.key);
   params.sign_type='MD5';
   var payUrl=PAY_CONFIG.gateway+'?'+new URLSearchParams(params).toString();
-  location.href=payUrl;
+  /* Redirect after overlay renders (50ms) */
+  setTimeout(function(){location.href=payUrl;},50);
 }
 /* Check payment return */
 function checkPayReturn(){
