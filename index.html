@@ -1276,7 +1276,16 @@ document.addEventListener("visibilitychange",()=>{if(document.visibilityState===
 
 function queryPaid(no){
   const url=PAY_CONFIG.queryApi+"?act=order&pid="+PAY_CONFIG.pid+"&key="+PAY_CONFIG.key+"&out_trade_no="+encodeURIComponent(no);
-  return fetch(url).then(r=>r.json()).then(d=>!!(d.success&&d.status==="paid")).catch(()=>false);
+  return fetch(url).then(r=>r.text()).then(txt=>{
+    let d={};
+    try{d=JSON.parse(txt);}catch(e){return false;}
+    if(!d) return false;
+    if(d.status===1) return true;                                        // 彩虹易支付: status=1 已支付
+    if(d.trade_status==="TRADE_SUCCESS") return true;                    // 官方易支付
+    if(d.status==="paid"||d.status==="success") return true;
+    if(d.success===true&&(d.status===1||d.status==="paid")) return true;
+    return false;
+  }).catch(()=>false);
 }
 function markPaid(o,forceJump){
   o.status="pending";o.paidAt=Date.now();
@@ -1290,10 +1299,11 @@ function pollUnpaidOrders(){
     queryPaid(o.no).then(paid=>{if(paid&&o.status==="unpaid") markPaid(o);});
   });
 }
-function verifyPayReturn(no){
+function verifyPayReturn(no,successFlag){
   const o=findOrder(no);
   if(!o) return;
   if(o.status!=="unpaid"){go("#/orders?f=pending");return;}
+  if(successFlag){markPaid(o,true);return;}
   queryPaid(no).then(paid=>{
     if(paid){markPaid(o,true);return;}
     toast("正在确认支付结果，请稍候…",false);
@@ -1341,12 +1351,12 @@ function azeReturn(raw){
 }
 function handleUrlParams(){
   const q=Object.fromEntries(new URLSearchParams(location.search));
-  const isPay=q.trade_status&&q.out_trade_no;
+  const isPay=q.out_trade_no;
   const isCallback=q.code&&q.type;
   const isReturn=q.aze_login==="1"&&q.u;
   if(!(isPay||isCallback||isReturn)) return;
   history.replaceState(null,"",location.pathname+location.hash);
-  if(isPay) verifyPayReturn(q.out_trade_no);
+  if(isPay) verifyPayReturn(q.out_trade_no,q.trade_status==="TRADE_SUCCESS");
   else if(isCallback) azeCallback(q.code,q.type);
   else azeReturn(q.u);
 }
