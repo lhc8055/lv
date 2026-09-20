@@ -1022,20 +1022,13 @@ function syncOrders(){
   const now=Date.now();
   // 取消订单：每天凌晨0点后清空一次
   clearCancelledDaily(now);
-  // 待支付订单：超过5分钟未支付，直接清除
-  store.orders=store.orders.filter(o=>{
-    if(o.status==="unpaid"&&now-o.ts>UNPAID_TTL){releaseCoupon(o);return false;}
-    return true;
-  });
-  // 待支付订单：只保留最近 MAX_UNPAID 条，更早的直接清除
+  // 待支付订单：找出超时/超额的，删除前先查网关确认真未支付（防止误删已付款订单）
   const unpaid=store.orders.filter(o=>o.status==="unpaid").sort((a,b)=>b.ts-a.ts);
-  if(unpaid.length>MAX_UNPAID){
-    const keep=new Set(unpaid.slice(0,MAX_UNPAID).map(o=>o.no));
-    store.orders=store.orders.filter(o=>{
-      if(o.status==="unpaid"&&!keep.has(o.no)){releaseCoupon(o);return false;}
-      return true;
-    });
-  }
+  unpaid.forEach((o,idx)=>{
+    const expired=now-o.ts>UNPAID_TTL;
+    const overflow=idx>=MAX_UNPAID;
+    if(expired||overflow) confirmUnpaidThenRemove(o);
+  });
   // 取消订单：只保留最近 MAX_CANCELLED 条，更早的直接清除
   const cancelled=store.orders.filter(o=>o.status==="cancelled").sort((a,b)=>(b.cancelAt||b.ts)-(a.cancelAt||a.ts));
   if(cancelled.length>MAX_CANCELLED){
@@ -1060,6 +1053,14 @@ function clearCancelledDaily(now){
     return true;
   }
   return false;
+}
+function confirmUnpaidThenRemove(o){
+  if(o.status!=="unpaid") return;
+  queryPaid(o.no).then(paid=>{
+    if(paid){ if(o.status==="unpaid") markPaid(o); return; }   // 网关已支付→救回并保留
+    const i=store.orders.findIndex(x=>x.no===o.no);
+    if(i>=0){ store.orders.splice(i,1); releaseCoupon(o); saveStore(); if(parseHash().name==="orders") render(true); }
+  }).catch(()=>{});   // 查询失败则不删除（保守，避免误删已付款订单）
 }
 function unpaidRateLimited(){
   const now=Date.now();
