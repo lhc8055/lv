@@ -1089,11 +1089,52 @@ const ACTIONS={
   login(){openLogin();},
   "aze-login"(el){
     const type=el.dataset.type;
-    toast("正在跳转到"+(type==="qq"?"QQ":"微信")+"登录…");
-    const url=AZE_CONFIG.proxy+"?act=login&appid="+AZE_CONFIG.appid+"&appkey="+AZE_CONFIG.appkey+"&type="+type+"&redirect_uri="+encodeURIComponent(location.origin+location.pathname);
+    toast("正在打开"+(type==="qq"?"QQ":"微信")+"登录…");
+    const redirectUri=location.origin+location.pathname+"?aze_popup=1";
+    const url=AZE_CONFIG.proxy+"?act=login&appid="+AZE_CONFIG.appid+"&appkey="+AZE_CONFIG.appkey+"&type="+type+"&redirect_uri="+encodeURIComponent(redirectUri);
     fetch(url,{mode:"cors"}).then(r=>r.json()).then(d=>{
-      if(d.code===0&&d.url) location.href=d.url;
-      else toast("登录跳转失败："+(d.msg||"未知错误"),false);
+      if(d.code===0&&d.url){
+        // 用新窗口打开登录，避免QQ跳转系统浏览器
+        const w=window.open(d.url,"aze_login","width=420,height=640");
+        if(!w){
+          // 弹窗被拦截，降级为当前页跳转
+          location.href=d.url;
+          return;
+        }
+        // 监听 localStorage 同步登录状态
+        const onStorage=function(e){
+          if(e.key==="aze_login_result"&&e.newValue){
+            try{
+              const data=JSON.parse(e.newValue);
+              processAzeLogin(data);
+              try{localStorage.removeItem("aze_login_result");}catch(e2){}
+              try{w.close();}catch(e2){}
+            }catch(e2){}
+            window.removeEventListener("storage",onStorage);
+          }
+        };
+        window.addEventListener("storage",onStorage);
+        // 兜底：轮询检查
+        const checkTimer=setInterval(function(){
+          try{
+            const raw=localStorage.getItem("aze_login_result");
+            if(raw){
+              const data=JSON.parse(raw);
+              processAzeLogin(data);
+              localStorage.removeItem("aze_login_result");
+              try{w.close();}catch(e2){}
+              clearInterval(checkTimer);
+              window.removeEventListener("storage",onStorage);
+            }
+          }catch(e2){}
+        },500);
+        // 3分钟后自动清理
+        setTimeout(function(){
+          clearInterval(checkTimer);
+          window.removeEventListener("storage",onStorage);
+          try{localStorage.removeItem("aze_login_result");}catch(e2){}
+        },180000);
+      }else toast("登录跳转失败："+(d.msg||"未知错误"),false);
     }).catch(()=>toast("网络异常，请重试",false));
   },
   logout(){
@@ -1344,11 +1385,55 @@ function handleUrlParams(){
   const isPay=q.trade_status&&q.out_trade_no;
   const isCallback=q.code&&q.type;
   const isReturn=q.aze_login==="1"&&q.u;
+  const isPopup=q.aze_popup==="1";
   if(!(isPay||isCallback||isReturn)) return;
+  // 弹窗登录模式：登录成功后写入 localStorage 通知主窗口
+  if(isPopup&&(isCallback||isReturn)){
+    const origProcess=window.__origProcessLogin||processAzeLogin;
+    // 先执行正常登录流程（保存数据），然后通知主窗口并关闭
+    const oldSave=saveStore;
+    const userData={};
+    // 拦截 processAzeLogin 来获取登录结果
+    window.__popupLoginDone=function(d){
+      processAzeLogin(d);
+      try{
+        // 把登录结果写入 localStorage 通知主窗口
+        localStorage.setItem("aze_login_result",JSON.stringify({
+          code:0,social_uid:store.user.aze.uid,nickname:store.user.name,
+          faceimg:store.user.aze.avatar,type:store.user.aze.type
+        }));
+      }catch(e){}
+      setTimeout(function(){
+        try{window.close();}catch(e){}
+        // 如果关不掉，跳转回首页
+        if(!window.closed) location.href=location.pathname;
+      },300);
+    };
+    history.replaceState(null,"",location.pathname);
+    if(isCallback) azeCallbackPopup(q.code,q.type);
+    else azeReturnPopup(q.u);
+    return;
+  }
   history.replaceState(null,"",location.pathname+location.hash);
   if(isPay) verifyPayReturn(q.out_trade_no);
   else if(isCallback) azeCallback(q.code,q.type);
   else azeReturn(q.u);
+}
+function azeCallbackPopup(code,type){
+  const url=AZE_CONFIG.proxy+"?act=callback&appid="+AZE_CONFIG.appid+"&appkey="+AZE_CONFIG.appkey+"&type="+encodeURIComponent(type)+"&code="+encodeURIComponent(code);
+  fetch(url,{mode:"cors"}).then(r=>r.json()).then(function(d){
+    window.__popupLoginDone(d);
+  }).catch(function(){toast("网络异常，请重试",false);});
+}
+function azeReturnPopup(raw){
+  try{
+    let s=raw.replace(/ /g,"+").replace(/-/g,"+").replace(/_/g,"/");
+    while(s.length%4) s+="=";
+    const bin=atob(s);
+    let pct="";
+    for(let i=0;i<bin.length;i++) pct+="%"+("00"+bin.charCodeAt(i).toString(16)).slice(-2);
+    window.__popupLoginDone(JSON.parse(decodeURIComponent(pct)));
+  }catch(e){toast("登录数据解析失败",false);}
 }
 
 function initPromo(){
