@@ -283,7 +283,7 @@ button.pf-header:active{opacity:.8}
 .tabbar.hide{display:none}
 
 .fab{position:fixed;left:0;z-index:24;
-  bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px) + 16px);
+  top:55%;transform:translateY(-50%);
   padding:0;border:none;background:none;cursor:pointer;line-height:0;}
 .fab img{width:90px;height:auto;display:block;}
 @media(min-width:480px){ .fab{left:0;}}
@@ -357,6 +357,10 @@ button.pf-header:active{opacity:.8}
 @keyframes promoPop{from{transform:scale(.86);opacity:0}to{transform:none;opacity:1}}
 .promo-close{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.3);color:#fff;font-size:22px;font-weight:300;line-height:1;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.45)}
 
+.page-loader{position:fixed;inset:0;background:#f3f5fc;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;opacity:0;transition:opacity .2s;}
+.page-loader.show{opacity:1;pointer-events:auto;}
+.page-loader .pl-spin{width:40px;height:40px;border:4px solid #e8e8f0;border-top-color:#6c5ce7;border-radius:50%;animation:pl-spin .8s linear infinite;}
+.page-loader .pl-msg{font-size:14px;color:#8b90b2;}
 .pay-loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.98);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
 .pay-loading-overlay .pl-spinner{width:48px;height:48px;border:4px solid #e8e8e8;border-top-color:#6c5ce7;border-radius:50%;animation:pl-spin .8s linear infinite}
 .pay-loading-overlay .pl-text{font-size:15px;color:#666;letter-spacing:.5px}
@@ -365,6 +369,7 @@ button.pf-header:active{opacity:.8}
 </style>
 </head>
 <body>
+<div class="page-loader show" id="pageLoader"><div class="pl-spin"></div><div class="pl-msg">加载中…</div></div>
 <div id="app">
   <div class="notice" id="noticeBar">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
@@ -381,16 +386,26 @@ var _fabLocked=false;
 function positionFab(){
   var fab=document.getElementById('fabBtn');if(!fab)return;
   if(_fabLocked)return;
-  /* Position at bottom blank area, above tabbar */
-  fab.style.top='auto';
-  fab.style.bottom='calc(var(--tab-h) + env(safe-area-inset-bottom,0px) + 16px)';
+  var games=document.querySelector('.home-games');
+  var grid=document.querySelector('.goods-grid');
+  if(!games||!grid){fab.style.top='55%';fab.style.transform='translateY(-50%)';fab.style.bottom='auto';return;}
+  var gEnd=games.getBoundingClientRect().bottom;
+  var gStart=grid.getBoundingClientRect().top;
+  var mid=(gEnd+gStart)/2;
+  fab.style.top=(mid-45)+'px';
+  fab.style.bottom='auto';
   fab.style.transform='none';
   _fabLocked=true;
 }
-window.addEventListener('load',positionFab);
+window.addEventListener('load',function(){positionFab();setTimeout(hidePageLoader,100);});
 setTimeout(positionFab,300);
-setTimeout(positionFab,800);
+setTimeout(positionFab,800);setTimeout(hidePageLoader,500);
 </script>
+<script>
+function showPageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.add('show');}}
+function hidePageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.remove('show');}}
+</script>
+
 
 
   <nav class="tabbar" id="tabbar">
