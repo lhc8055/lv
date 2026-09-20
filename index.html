@@ -19,6 +19,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
+body.cat-mode{overflow:hidden}
 body{font-family:var(--font-body);color:var(--ink);-webkit-font-smoothing:antialiased;
   background:#f3f5fc}
 button{font-family:inherit;border:none;background:none;cursor:pointer;color:inherit}
@@ -109,9 +110,9 @@ a{color:inherit;text-decoration:none}
 .gcard .g-price small{font-size:10px;font-weight:500}
 .gcard .g-heat{font-size:10.5px;color:var(--weak)}
 
-.cat-game-row{display:flex;align-items:flex-start;padding:16px 12px 14px;overflow-x:auto}
-.cat-game-row .game{width:81px;gap:9px}
-.cat-game-row .gicon{--gr:12px;width:48px;height:48px}
+.cat-game-row{display:flex;align-items:flex-start;padding:12px 12px 10px;overflow-x:auto}
+.cat-game-row .game{width:70px;gap:6px}
+.cat-game-row .gicon{--gr:12px;width:44px;height:44px}
 .cat-game-row .gname{font-size:12.5px;color:#4b5068}
 .cat-game-row .game.on .gname{color:#7c3aed;font-weight:800}
 /* 分类页固定头部 + 固定侧边栏布局 */
@@ -694,8 +695,10 @@ function render(keepScroll){
   const y=window.scrollY;
   $("#view").innerHTML=VIEWS[r.name](r.params);
   const isDetail=r.name==="detail";
+  const isCat=r.name==="category";
   $("#tabbar").classList.toggle("hide",isDetail);
   $("#fabBtn").classList.toggle("hide",isDetail);
+  document.body.classList.toggle("cat-mode",isCat);
   window.scrollTo(0,keepScroll===true?y:0);
   bindViewEvents();
   if(needLogin) openLogin();
