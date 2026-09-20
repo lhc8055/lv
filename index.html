@@ -513,6 +513,8 @@ const UNPAID_TTL=5*60*1000;
 const MAX_UNPAID=5;
 const UNPAID_RATE_LIMIT=3;
 const UNPAID_RATE_WINDOW=60*1000;
+const MAX_CANCELLED=3;
+const CANCEL_CLEAR_HOUR=0;
 const AUTH_ROUTES=["orders","coupons","favs"];
 
 /* 密钥直接写在前端只适合演示，正式环境应移到服务端 */
@@ -520,7 +522,7 @@ const AZE_CONFIG={appid:"1055",appkey:"8a71675d91f617c2fed7fd911391defe",proxy:"
 const PAY_CONFIG={pid:"1312",key:"w5bxw5eJb5jbNTtoj8jtj3OlknHjB6Eb",gateway:"https://pay1987.com/submit.php",notifyUrl:"https://pay1987.pages.dev/api/notify",queryApi:"https://pay1987.com/api.php"};
 
 const STORE_KEY="xingyou_esports_v1";
-const store={user:null,orders:[],coupons:[],favs:[],noticeClosed:false,homeGame:"val"};
+const store={user:null,orders:[],coupons:[],favs:[],noticeClosed:false,homeGame:"val",cancelClearedAt:0};
 const catState={game:"val",zone:"all",sort:"default",q:""};
 let orderFilter="all";
 let currentBuy=null;
@@ -1018,6 +1020,8 @@ function releaseCoupon(o){
 }
 function syncOrders(){
   const now=Date.now();
+  // 取消订单：每天凌晨0点后清空一次
+  clearCancelledDaily(now);
   // 待支付订单：超过5分钟未支付，直接清除
   store.orders=store.orders.filter(o=>{
     if(o.status==="unpaid"&&now-o.ts>UNPAID_TTL){releaseCoupon(o);return false;}
@@ -1032,11 +1036,30 @@ function syncOrders(){
       return true;
     });
   }
+  // 取消订单：只保留最近 MAX_CANCELLED 条，更早的直接清除
+  const cancelled=store.orders.filter(o=>o.status==="cancelled").sort((a,b)=>(b.cancelAt||b.ts)-(a.cancelAt||a.ts));
+  if(cancelled.length>MAX_CANCELLED){
+    const keepC=new Set(cancelled.slice(0,MAX_CANCELLED).map(o=>o.no));
+    store.orders=store.orders.filter(o=>{
+      if(o.status==="cancelled"&&!keepC.has(o.no)) return false;
+      return true;
+    });
+  }
   store.orders.forEach(o=>{
     if(o.status==="待接单") o.status="pending";
     if(o.status==="pending"&&now-(o.paidAt||o.ts)>15000) o.status="ongoing";
     if(o.status==="refunding"&&o.refundTs&&now-o.refundTs>8000) o.status="refunded";
   });
+}
+function clearCancelledDaily(now){
+  const d=new Date(now);
+  const clearAt=new Date(d.getFullYear(),d.getMonth(),d.getDate(),CANCEL_CLEAR_HOUR,0,0).getTime();
+  if(now>=clearAt&&(store.cancelClearedAt||0)<clearAt){
+    store.orders=store.orders.filter(o=>o.status!=="cancelled");
+    store.cancelClearedAt=now;
+    return true;
+  }
+  return false;
 }
 function unpaidRateLimited(){
   const now=Date.now();
@@ -1148,7 +1171,7 @@ const ACTIONS={
   "order-cancel"(el){
     const o=findOrder(el.dataset.no);
     if(!o||o.status!=="unpaid"||!confirm("确定取消该订单吗？")) return;
-    o.status="cancelled";
+    o.status="cancelled";o.cancelAt=Date.now();
     releaseCoupon(o);
     saveStore();render(true);
     toast("订单已取消",false);
