@@ -1114,7 +1114,12 @@ const ACTIONS={
   invite(){if(!requireLogin()) openInvite();},
   "copy-invite"(el){copyText(el.dataset.code);toast("邀请码已复制："+el.dataset.code);},
 
-  "order-filter"(el){orderFilter=el.dataset.f;render(true);},
+  "order-filter"(el){
+    orderFilter=el.dataset.f;
+    var base=(location.hash||"#/orders").split("?")[0]||"#/orders";
+    history.replaceState(null,"",base+"?f="+encodeURIComponent(orderFilter));
+    render(true);
+  },
   "order-pay"(el){
     const o=findOrder(el.dataset.no);
     if(o&&o.status==="unpaid") startPayment(o.no,o.title,o.total,o.payType||"alipay");
