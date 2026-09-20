@@ -1326,10 +1326,10 @@ function queryPaid(no){
     let d={};
     try{d=JSON.parse(txt);}catch(e){return false;}
     if(!d) return false;
-    if(d.status===1) return true;                                        // 彩虹易支付: status=1 已支付
-    if(d.trade_status==="TRADE_SUCCESS") return true;                    // 官方易支付
-    if(d.status==="paid"||d.status==="success") return true;
-    if(d.success===true&&(d.status===1||d.status==="paid")) return true;
+    const st=String(d.status==null?"":d.status).toLowerCase();
+    if(st==="1"||st==="paid"||st==="success"||st==="true") return true;   // 兼容网关返回 status 为字符串 "1"
+    if(d.trade_status==="TRADE_SUCCESS") return true;                      // 官方易支付
+    if(String(d.code)==="1"&&st==="1") return true;
     return false;
   }).catch(()=>false);
 }
