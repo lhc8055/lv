@@ -519,7 +519,7 @@ const AUTH_ROUTES=["orders","coupons","favs"];
 
 /* 密钥直接写在前端只适合演示，正式环境应移到服务端 */
 const AZE_CONFIG={appid:"1055",appkey:"8a71675d91f617c2fed7fd911391defe",proxy:"https://aze-login-proxy.pages.dev/"};
-const PAY_CONFIG={pid:"1312",key:"w5bxw5eJb5jbNTtoj8jtj3OlknHjB6Eb",gateway:"https://pay1987.com/submit.php",notifyUrl:"https://pay1987.pages.dev/api/notify",queryApi:"https://pay1987.com/api.php"};
+const PAY_CONFIG={pid:"1312",key:"w5bxw5eJb5jbNTtoj8jtj3OlknHjB6Eb",gateway:"https://pay1987.com/submit.php",notifyUrl:"https://pay1987.pages.dev/api/notify",queryApi:"https://pay1987.pages.dev/api/query"};
 
 const STORE_KEY="xingyou_esports_v1";
 const store={user:null,orders:[],coupons:[],favs:[],noticeClosed:false,homeGame:"val",cancelClearedAt:0};
@@ -1322,10 +1322,8 @@ window.addEventListener("pageshow",removePayOverlay);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible") removePayOverlay();});
 
 function queryPaid(no){
-  const url=PAY_CONFIG.queryApi+"?act=order&pid="+PAY_CONFIG.pid+"&key="+PAY_CONFIG.key+"&out_trade_no="+encodeURIComponent(no);
-  return fetch(url).then(r=>r.text()).then(txt=>{
-    let d={};
-    try{d=JSON.parse(txt);}catch(e){return false;}
+  const url=PAY_CONFIG.queryApi+"?out_trade_no="+encodeURIComponent(no);
+  return fetch(url).then(r=>r.json()).then(d=>{
     if(!d) return false;
     const st=String(d.status==null?"":d.status).toLowerCase();
     if(st==="1"||st==="paid"||st==="success"||st==="true") return true;   // 兼容网关返回 status 为字符串 "1"
