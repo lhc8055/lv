@@ -21,7 +21,7 @@
 html,body{height:100%}
 body{font-family:var(--font-body);color:var(--ink);-webkit-font-smoothing:antialiased;
   background:#f3f5fc}
-button{font-family:inherit;border:none;background:none;cursor:pointer;color:inherit}
+button{font-family:inherit;border:none;background:none;cursor:pointer;color:inherit;touch-action:manipulation}
 input,select,textarea{font-family:inherit;outline:none;border:none;background:none;color:inherit}
 img{display:block}
 ul{list-style:none}
@@ -177,11 +177,11 @@ button.pf-header:active{opacity:.8}
 
 .d-back{flex:none;width:36px;height:36px;border-radius:50%;background:#fff;box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:center}
 .d-back svg{width:18px;height:18px}
-.page-head{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;height:var(--head-h);padding:0 12px;background:rgba(243,245,252,.92);backdrop-filter:blur(10px)}
+.page-head{position:sticky;position:-webkit-sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;height:var(--head-h);padding:0 12px;background:rgba(243,245,252,.92);backdrop-filter:blur(10px)}
 .page-head h1{font-size:16px;font-weight:800;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.order-tabs{display:flex;gap:8px;padding:2px 14px 12px;position:sticky;top:var(--head-h);z-index:19;background:linear-gradient(180deg,var(--bg) 75%,rgba(243,245,252,0));overflow-x:auto}
-.order-tabs button{flex:none;font-size:12.5px;color:var(--sub);padding:7px 16px;border-radius:999px;background:#fff;box-shadow:var(--shadow-sm);white-space:nowrap}
+.order-tabs{display:flex;gap:8px;padding:2px 14px 12px;position:sticky;position:-webkit-sticky;top:var(--head-h);z-index:19;background:linear-gradient(180deg,var(--bg) 75%,rgba(243,245,252,0));overflow-x:auto;touch-action:pan-x;-webkit-overflow-scrolling:touch}
+.order-tabs button{flex:none;font-size:12.5px;color:var(--sub);padding:7px 16px;border-radius:999px;background:#fff;box-shadow:var(--shadow-sm);white-space:nowrap;touch-action:manipulation;cursor:pointer}
 .order-tabs button.on{background:linear-gradient(135deg,var(--pri),var(--purple));color:#fff;font-weight:700}
 .order-list{padding:0 14px}
 .order-card{margin-bottom:12px;background:#fff;border-radius:var(--r-md);box-shadow:var(--shadow-sm);padding:14px}
@@ -364,8 +364,9 @@ button.pf-header:active{opacity:.8}
 @keyframes promoPop{from{transform:scale(.86);opacity:0}to{transform:none;opacity:1}}
 .promo-close{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.3);color:#fff;font-size:22px;font-weight:300;line-height:1;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.45)}
 
-.page-loader{position:fixed;inset:0;background:#f3f5fc;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;opacity:0;transition:opacity .2s;animation:autoHide 3s forwards}@keyframes autoHide{0%,88%{opacity:1;pointer-events:auto}100%{opacity:0;pointer-events:none}}
+.page-loader{position:fixed;inset:0;background:#f3f5fc;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;opacity:0;transition:opacity .2s;animation:autoHide 3s forwards}@keyframes autoHide{0%,88%{opacity:1}100%{opacity:0}}
 .page-loader.show{opacity:1;pointer-events:auto;}
+.page-loader.hide{display:none !important;}
 .page-loader .pl-spin{width:40px;height:40px;border:4px solid #e8e8f0;border-top-color:#6c5ce7;border-radius:50%;animation:pl-spin .8s linear infinite;}
 .page-loader .pl-msg{font-size:14px;color:#8b90b2;}
 .pay-loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.98);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
@@ -381,16 +382,16 @@ button.pf-header:active{opacity:.8}
   <div class="notice" id="noticeBar">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
     <span>下单立减3元，点击浏览器收藏本站，方便下次使用</span>
-    <button class="n-close" data-action="close-notice" aria-label="关闭"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <button type="button" class="n-close" data-action="close-notice" aria-label="关闭"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
 
   <main id="view"></main>
 
-  <button class="fab" id="fabBtn" data-action="feedback" aria-label="反馈与投诉"><img src="feedback-btn.png" alt="反馈与投诉"></button>
+  <button type="button" class="fab" id="fabBtn" data-action="feedback" aria-label="反馈与投诉"><img src="feedback-btn.png" alt="反馈与投诉"></button>
 
 <script>
-function showPageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.add('show');}}
-function hidePageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.remove('show');}}
+function showPageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.remove('hide');pl.classList.add('show');}}
+function hidePageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.remove('show');pl.classList.add('hide');pl.style.pointerEvents='none';pl.style.opacity='0';}}
 </script>
 <script>
 var _fabLocked=false;
@@ -426,13 +427,13 @@ window.addEventListener('orientationchange',function(){_fabLocked=false;setTimeo
 
 
   <nav class="tabbar" id="tabbar">
-    <button class="tab t-home" data-action="route" data-route="home">
+    <button type="button" class="tab t-home" data-action="route" data-route="home">
       <img class="ic-off" src="https://aka.doubaocdn.com/s/elNc3OrUAV" alt="首页"><img class="ic-on" src="https://aka.doubaocdn.com/s/2iOdbKTlYP" alt="首页">首页
     </button>
-    <button class="tab t-cat" data-action="route" data-route="category">
+    <button type="button" class="tab t-cat" data-action="route" data-route="category">
       <img class="ic-off" src="https://aka.doubaocdn.com/s/aURD240X65" alt="分类"><img class="ic-on" src="https://aka.doubaocdn.com/s/elUINzvx0Z" alt="分类">分类
     </button>
-    <button class="tab t-me" data-action="route" data-route="profile">
+    <button type="button" class="tab t-me" data-action="route" data-route="profile">
       <img class="ic-off" src="https://aka.doubaocdn.com/s/e9I7Mn8TKK" alt="我的"><img class="ic-on" src="https://aka.doubaocdn.com/s/6PZvnZcu7x" alt="我的">我的
     </button>
   </nav>
@@ -619,23 +620,23 @@ function emptyHtml(o){
     (o.btn?'<button class="e-btn" '+o.btn.attrs+'>'+o.btn.text+'</button>':'')+'</div>';
 }
 const HOME_BTN={text:"去首页逛逛",attrs:'data-action="route" data-route="home"'};
-const pageHead=(title,to)=>'<div class="page-head"><button class="d-back" data-action="back"'+(to?' data-to="'+to+'"':'')+' aria-label="返回">'+icon("back")+'</button><h1>'+esc(title)+'</h1></div>';
-const searchBar=(id,val)=>'<div class="searchbar"><button class="s-go" data-action="do-search" aria-label="搜索">'+icon("search")+'</button>'+
+const pageHead=(title,to)=>'<div class="page-head"><button type="button" class="d-back" data-action="back"'+(to?' data-to="'+to+'"':'')+' aria-label="返回">'+icon("back")+'</button><h1>'+esc(title)+'</h1></div>';
+const searchBar=(id,val)=>'<div class="searchbar"><button type="button" class="s-go" data-action="do-search" aria-label="搜索">'+icon("search")+'</button>'+
   '<input id="'+id+'" type="text" enterkeyhint="search" autocomplete="off" placeholder="请输入商品名称" value="'+esc(val||"")+'">'+
-  '<button class="s-clear'+(val?" show":"")+'" data-action="clear-search" aria-label="清除">'+icon("close")+'</button></div>';
+  '<button type="button" class="s-clear'+(val?" show":"")+'" data-action="clear-search" aria-label="清除">'+icon("close")+'</button></div>';
 
 function gameIcon(g){
   return '<span class="gicon '+g.cls+'">'+(g.id==="all"?icon("grid"):'<img src="'+g.icon+'" alt="'+g.name+'">')+'</span>';
 }
 function cardHtml(p){
-  return '<button class="gcard" data-action="detail" data-id="'+p.id+'">'+
+  return '<button type="button" class="gcard" data-action="detail" data-id="'+p.id+'">'+
     '<div class="g-img"><span class="g-tag">'+(p.zone==="tech"?"技术单局":"娱乐陪玩")+'</span><img src="'+p.img+'" alt="'+esc(p.title)+'" loading="lazy"></div>'+
     '<div class="g-body"><div class="g-title">'+esc(p.title)+'</div>'+
     '<div class="g-tags">'+p.tags.slice(0,2).map(t=>'<span>'+esc(t)+'</span>').join("")+'</div>'+
     '<div class="g-foot"><span class="g-price">¥'+p.price+'<small>/'+p.unit+'</small></span><span class="g-heat">热度'+p.heat+'</span></div></div></button>';
 }
 function rowHtml(p){
-  return '<button class="grow" data-action="detail" data-id="'+p.id+'">'+
+  return '<button type="button" class="grow" data-action="detail" data-id="'+p.id+'">'+
     '<div class="gr-img"><img src="'+p.img+'" alt="'+esc(p.title)+'" loading="lazy"></div>'+
     '<div class="gr-body"><div><div class="gr-title">'+esc(p.title)+'</div><div class="gr-rank">'+esc(p.rank)+'</div></div>'+
     '<div class="gr-foot"><span class="gr-price"><small>¥</small>'+p.price+'<small>/'+p.unit+'</small></span><span class="gr-heat">热度'+p.heat+'</span></div></div></button>';
@@ -694,13 +695,13 @@ window.addEventListener("hashchange",()=>{hasInternalNav=true;render();_fabLocke
 function viewHome(){
   const hg=store.homeGame||"val";
   const hot=PRODUCTS.filter(p=>p.game===hg).sort((a,b)=>b.heat-a.heat).slice(0,6);
-  const games=GAMES.map(g=>'<button class="game'+(hg===g.id?" on":"")+'" data-action="home-game" data-game="'+g.id+'">'+gameIcon(g)+'<span class="gname">'+g.name+'</span></button>').join("");
+  const games=GAMES.map(g=>'<button type="button" class="game'+(hg===g.id?" on":"")+'" data-action="home-game" data-game="'+g.id+'">'+gameIcon(g)+'<span class="gname">'+g.name+'</span></button>').join("");
   return '<section class="view">'+
     searchBar("homeSearch","")+
     '<div class="banner"><img src="'+IMG.banner+'" alt="星柚电竞"><div class="b-text"><div class="b-name">星柚电竞</div><div class="b-sub">瓦手 · 三角洲行动<br>王者荣耀 · 技术上分娱乐陪玩</div></div></div>'+
     '<div class="quick">'+
-      '<button class="quick-card hot" data-action="cat-hot"><img src="'+IMG.hot+'" alt="热门推荐"><div class="q-center"><div class="q-title">热门推荐</div><span class="q-btn">查看推荐</span></div></button>'+
-      '<button class="quick-card all" data-action="cat-game" data-game="all"><img src="'+IMG.all+'" alt="全部商品"><div class="q-center"><div class="q-title">全部商品</div><span class="q-btn">查看商品</span></div></button>'+
+      '<button type="button" class="quick-card hot" data-action="cat-hot"><img src="'+IMG.hot+'" alt="热门推荐"><div class="q-center"><div class="q-title">热门推荐</div><span class="q-btn">查看推荐</span></div></button>'+
+      '<button type="button" class="quick-card all" data-action="cat-game" data-game="all"><img src="'+IMG.all+'" alt="全部商品"><div class="q-center"><div class="q-title">全部商品</div><span class="q-btn">查看商品</span></div></button>'+
     '</div>'+
     '<div class="games home-games">'+games+'</div>'+
     '<div class="section-title" style="visibility:hidden"><span>'+gameById(hg).name+' · 热门商品</span><button class="more" data-action="cat-game" data-game="'+hg+'">查看全部'+icon("chevron")+'</button></div>'+
@@ -737,16 +738,16 @@ function filterProducts(){
 }
 function viewCategory(){
   const sort=catState.sort;
-  const tabs=[ALL_GAME].concat(GAMES).map(g=>'<button class="game'+(!catState.q&&catState.game===g.id?" on":"")+'" data-action="filter-game" data-game="'+g.id+'">'+gameIcon(g)+'<span class="gname">'+g.name+'</span></button>').join("");
-  const zones=ZONES.map(z=>'<button class="zone'+(catState.zone===z.id?" on":"")+'" data-action="filter-zone" data-zone="'+z.id+'">'+z.name+'</button>').join("");
+  const tabs=[ALL_GAME].concat(GAMES).map(g=>'<button type="button" class="game'+(!catState.q&&catState.game===g.id?" on":"")+'" data-action="filter-game" data-game="'+g.id+'">'+gameIcon(g)+'<span class="gname">'+g.name+'</span></button>').join("");
+  const zones=ZONES.map(z=>'<button type="button" class="zone'+(catState.zone===z.id?" on":"")+'" data-action="filter-zone" data-zone="'+z.id+'">'+z.name+'</button>').join("");
   return '<section class="view">'+
     searchBar("catSearch",catState.q)+
     '<div class="cat-game-row">'+tabs+'</div>'+
     '<div class="cat-wrap"><div class="cat-side">'+zones+'</div>'+
     '<div class="cat-main"><div class="sortbar">'+
-      '<button class="sort'+(sort==="default"?" on":"")+'" data-action="sort" data-sort="default">默认</button>'+
-      '<button class="sort'+(sort.indexOf("heat")===0?" on":"")+'" data-action="sort" data-sort="heat">热度'+sortArrow("heat")+'</button>'+
-      '<button class="sort'+(sort.indexOf("price")===0?" on":"")+'" data-action="sort" data-sort="price">价格'+sortArrow("price")+'</button>'+
+      '<button type="button" class="sort'+(sort==="default"?" on":"")+'" data-action="sort" data-sort="default">默认</button>'+
+      '<button type="button" class="sort'+(sort.indexOf("heat")===0?" on":"")+'" data-action="sort" data-sort="heat">热度'+sortArrow("heat")+'</button>'+
+      '<button type="button" class="sort'+(sort.indexOf("price")===0?" on":"")+'" data-action="sort" data-sort="price">价格'+sortArrow("price")+'</button>'+
     '</div><div id="catList">'+listHtml(filterProducts())+'</div></div></div><div style="height:24px"></div></section>';
 }
 function refreshCatList(){
@@ -766,14 +767,14 @@ function viewProfile(){
     {ico:"gift",cls:"f-orange",label:"邀请有礼",action:"invite"},
     {ico:"headset",cls:"f-purple",label:"联系客服",action:"contact-service"},
     {ico:u?"logout":"user",cls:u?"f-gray":"f-blue",label:u?"退出登录":"登录",action:u?"logout":"login"}
-  ].map(f=>'<button class="pf-item" data-action="'+f.action+'"'+(f.f?' data-f="'+f.f+'"':'')+'>'+
+  ].map(f=>'<button type="button" class="pf-item" data-action="'+f.action+'"'+(f.f?' data-f="'+f.f+'"':'')+'>'+
     '<span class="pf-ico '+f.cls+'">'+icon(f.ico)+'</span>'+(f.badge?'<span class="pf-badge">'+f.badge+'</span>':'')+
     '<span class="pf-label">'+f.label+'</span></button>').join("");
   const avatar=esc(u&&u.aze&&u.aze.avatar?u.aze.avatar:IMG.avatar);
   const inner='<div class="pf-avatar'+(u?'':' pf-avatar-off')+'"><img src="'+avatar+'" alt="头像">'+(u?'':'<div class="pf-avatar-mask"></div>')+'</div>'+
     '<div class="pf-name">'+(u?esc(u.name):"未登录")+'</div>'+(u&&u.uid?'<div class="pf-id">ID:'+esc(u.uid)+'</div>':'');
   return '<section class="view">'+
-    (u?'<div class="pf-header">'+inner+'</div>':'<button class="pf-header" data-action="login">'+inner+'</button>')+
+    (u?'<div class="pf-header">'+inner+'</div>':'<button type="button" class="pf-header" data-action="login">'+inner+'</button>')+
     '<div class="pf-section"><div class="pf-sec-title">常用功能</div><div class="pf-grid">'+funcs+'</div></div>'+
     '<div style="height:40px"></div></section>';
 }
@@ -825,31 +826,31 @@ function viewDetail(params){
       '<div class="detail-select"><span class="k">区服</span><div class="field" style="flex:1;margin:0"><select id="serverSel">'+servers+'</select></div></div></div>'+
     '<div class="detail-block"><h3>服务说明</h3><ul class="serve">'+serveLines(p).map(l=>'<li>'+icon("check")+'<span>'+l+'</span></li>').join("")+'</ul></div>'+
     '<div class="detail-block"><h3>同类推荐</h3><div class="rel-grid">'+rel.map(r=>
-      '<button class="rel" data-action="detail" data-id="'+r.id+'"><div class="r-img"><img src="'+r.img+'" alt="'+esc(r.title)+'"></div>'+
+      '<button type="button" class="rel" data-action="detail" data-id="'+r.id+'"><div class="r-img"><img src="'+r.img+'" alt="'+esc(r.title)+'"></div>'+
       '<div class="r-name">'+esc(r.title)+'</div><div class="r-price">¥'+r.price+'/'+r.unit+'</div></button>').join("")+'</div></div>'+
     '<div class="detail-pad"></div>'+
     '<div class="detail-bar">'+
-      '<button class="db-icon db-service" data-action="contact-service">'+icon("headset")+'客服</button>'+
-      '<button class="db-icon'+(fav?" on":"")+'" data-action="toggle-fav" data-id="'+p.id+'">'+icon("heart",fav?"currentColor":"none")+'收藏</button>'+
-      '<button class="db-buy" data-action="open-buy" data-id="'+p.id+'">立即下单</button>'+
+      '<button type="button" class="db-icon db-service" data-action="contact-service">'+icon("headset")+'客服</button>'+
+      '<button type="button" class="db-icon'+(fav?" on":"")+'" data-action="toggle-fav" data-id="'+p.id+'">'+icon("heart",fav?"currentColor":"none")+'收藏</button>'+
+      '<button type="button" class="db-buy" data-action="open-buy" data-id="'+p.id+'">立即下单</button>'+
     '</div></section>';
 }
 
 function orderActions(o){
-  const btn=(cls,action,text,extra)=>'<button class="oc-btn '+cls+'" data-action="'+action+'" data-no="'+o.no+'"'+(extra||"")+'>'+text+'</button>';
+  const btn=(cls,action,text,extra)=>'<button type="button" class="oc-btn '+cls+'" data-action="'+action+'" data-no="'+o.no+'"'+(extra||"")+'>'+text+'</button>';
   switch(o.status){
     case "unpaid":return btn("gray","order-cancel","取消订单")+btn("solid","order-pay","去支付");
     case "pending":return btn("gray","order-refund","申请退款")+btn("","contact-player","联系陪玩");
     case "ongoing":return btn("","contact-player","联系陪玩")+btn("solid","order-complete","确认完成");
     case "done":return o.rating?"":btn("solid","order-rate","去评价");
-    case "refunding":return '<button class="oc-btn gray" disabled>退款处理中…</button>';
+    case "refunding":return '<button type="button" class="oc-btn gray" disabled>退款处理中…</button>';
     default:return btn("","detail","再次下单",' data-id="'+o.id+'"');
   }
 }
 function viewOrders(params){
   if(params&&params.f) orderFilter=params.f;
   syncOrders();saveStore();
-  const tabs=ORDER_TABS.map(t=>'<button class="'+(orderFilter===t.f?"on":"")+'" data-action="order-filter" data-f="'+t.f+'">'+t.label+'</button>').join("");
+  const tabs=ORDER_TABS.map(t=>'<button type="button" class="'+(orderFilter===t.f?"on":"")+'" data-action="order-filter" data-f="'+t.f+'">'+t.label+'</button>').join("");
   const list=store.orders.slice().reverse().filter(o=>{
     if(orderFilter==="all") return true;
     if(orderFilter==="after") return o.status==="refunding"||o.status==="refunded";
