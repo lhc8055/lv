@@ -19,7 +19,6 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
-body.cat-mode{overflow:hidden}
 body{font-family:var(--font-body);color:var(--ink);-webkit-font-smoothing:antialiased;
   background:#f3f5fc}
 button{font-family:inherit;border:none;background:none;cursor:pointer;color:inherit}
@@ -42,7 +41,8 @@ a{color:inherit;text-decoration:none}
 .section-title .more svg{width:13px;height:13px}
 
 .searchbar{display:flex;align-items:center;gap:8px;margin:12px 14px;padding:0 12px 0 14px;height:40px;background:#fff;border-radius:999px;border:1.5px solid #2563eb}
-.searchbar>svg{flex:none;width:18px;height:18px;color:#9ca3af}
+.searchbar .s-go{flex:none;width:30px;height:30px;margin:0 -6px;display:flex;align-items:center;justify-content:center;color:#9ca3af}
+.searchbar .s-go svg{width:18px;height:18px}
 .searchbar input{flex:1;min-width:0;font-size:14px;color:var(--ink)}
 .searchbar input::placeholder{color:#9ca3af}
 .s-clear{display:none;flex:none;width:18px;height:18px;border-radius:50%;background:#cfd3e6;color:#fff;align-items:center;justify-content:center}
@@ -110,31 +110,20 @@ a{color:inherit;text-decoration:none}
 .gcard .g-price small{font-size:10px;font-weight:500}
 .gcard .g-heat{font-size:10.5px;color:var(--weak)}
 
-.cat-game-row{display:flex;align-items:flex-start;padding:12px 12px 10px;overflow-x:auto}
-.cat-game-row .game{width:70px;gap:6px}
-.cat-game-row .gicon{--gr:12px;width:44px;height:44px}
+.cat-game-row{display:flex;align-items:flex-start;padding:16px 12px 14px;overflow-x:auto}
+.cat-game-row .game{width:81px;gap:9px}
+.cat-game-row .gicon{--gr:12px;width:48px;height:48px}
 .cat-game-row .gname{font-size:12.5px;color:#4b5068}
 .cat-game-row .game.on .gname{color:#7c3aed;font-weight:800}
-/* 分类页固定头部 + 固定侧边栏布局 */
-.cat-view{height:100vh;display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px))}
-.cat-header{flex:none;background:var(--bg);padding:12px 0 0;z-index:10}
-.cat-header .searchbar{margin:0 14px}
-.cat-body{flex:1;display:flex;align-items:flex-start;gap:10px;padding:0 10px;overflow:hidden}
-.cat-body .cat-side{flex:none;width:100px;height:100%;overflow-y:auto}
-.cat-right{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;overflow:hidden;background:#fff;border-radius:var(--r-md);box-shadow:var(--shadow-sm)}
-.cat-right .sortbar{flex:none;margin:0 8px}
-.cat-list-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overflow-x:hidden}
-.cat-list-scroll #catList{padding-bottom:20px}
-.cat-view{min-height:100vh}
-.cat-header{position:sticky;top:0;z-index:20;background:var(--bg);padding:12px 0 2px}
-.cat-header .searchbar{margin:0 14px}
-.cat-view .cat-wrap{padding-bottom:calc(var(--tab-h) + 30px)}
 .cat-wrap{display:flex;align-items:flex-start;gap:10px;padding:0 10px 14px}
-.cat-side{flex:none;width:100px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm)}
-.cat-side .zone{display:block;width:100%;text-align:left;padding:14px 16px;font-size:12px;line-height:1.3;color:#9a9eb5;background:#fff;transition:background .15s}
+.cat-side{flex:none;width:88px;background:#fff;border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-sm)}
+.cat-side .zone{position:relative;display:block;width:100%;text-align:left;padding:15px 12px;font-size:12px;line-height:1.3;color:#9a9eb5;background:#fff}
 .cat-side .zone.on{background:#f4f5fa;color:var(--ink);font-weight:800}
+.cat-side .zone.on::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:16px;border-radius:0 3px 3px 0;background:linear-gradient(180deg,#a78bfa,#7c3aed)}
 .cat-main{flex:1;min-width:0;background:#fff;border-radius:var(--r-md);box-shadow:var(--shadow-sm);min-height:340px;padding-bottom:8px}
 .sortbar{display:flex;align-items:center;justify-content:center;gap:16px;height:44px;margin:0 8px;border-bottom:1px solid #eeeff5;font-size:13px;color:#9a9ab0}
+.cat-main .sortbar{position:sticky;top:0;z-index:6;margin:0;padding:0 8px;border-bottom:none;background:#fff;border-radius:var(--r-md) var(--r-md) 0 0}
+.cat-main .sortbar::after{content:"";position:absolute;left:8px;right:8px;bottom:0;height:1px;background:#eeeff5}
 .sortbar .sort{display:flex;align-items:center;gap:4px;padding:6px 2px;color:#9a9ab0}
 .sortbar .sort.on{color:var(--ink);font-weight:800}
 .sort-arrows{display:inline-flex;flex-direction:column;gap:2px}
@@ -631,7 +620,7 @@ function emptyHtml(o){
 }
 const HOME_BTN={text:"去首页逛逛",attrs:'data-action="route" data-route="home"'};
 const pageHead=(title,to)=>'<div class="page-head"><button class="d-back" data-action="back"'+(to?' data-to="'+to+'"':'')+' aria-label="返回">'+icon("back")+'</button><h1>'+esc(title)+'</h1></div>';
-const searchBar=(id,val)=>'<div class="searchbar">'+icon("search")+
+const searchBar=(id,val)=>'<div class="searchbar"><button class="s-go" data-action="do-search" aria-label="搜索">'+icon("search")+'</button>'+
   '<input id="'+id+'" type="text" enterkeyhint="search" autocomplete="off" placeholder="请输入商品名称" value="'+esc(val||"")+'">'+
   '<button class="s-clear'+(val?" show":"")+'" data-action="clear-search" aria-label="清除">'+icon("close")+'</button></div>';
 
@@ -694,10 +683,8 @@ function render(keepScroll){
   const y=window.scrollY;
   $("#view").innerHTML=VIEWS[r.name](r.params);
   const isDetail=r.name==="detail";
-  const isCat=r.name==="category";
   $("#tabbar").classList.toggle("hide",isDetail);
   $("#fabBtn").classList.toggle("hide",isDetail);
-  document.body.classList.toggle("cat-mode",isCat);
   window.scrollTo(0,keepScroll===true?y:0);
   bindViewEvents();
   if(needLogin) openLogin();
@@ -752,15 +739,15 @@ function viewCategory(){
   const sort=catState.sort;
   const tabs=[ALL_GAME].concat(GAMES).map(g=>'<button class="game'+(!catState.q&&catState.game===g.id?" on":"")+'" data-action="filter-game" data-game="'+g.id+'">'+gameIcon(g)+'<span class="gname">'+g.name+'</span></button>').join("");
   const zones=ZONES.map(z=>'<button class="zone'+(catState.zone===z.id?" on":"")+'" data-action="filter-zone" data-zone="'+z.id+'">'+z.name+'</button>').join("");
-  return '<section class="view cat-view"><div class="cat-header">'+
+  return '<section class="view">'+
     searchBar("catSearch",catState.q)+
-    '<div class="cat-game-row">'+tabs+'</div></div>'+
-    '<div class="cat-body"><div class="cat-side">'+zones+'</div>'+
-    '<div class="cat-right"><div class="sortbar">'+
+    '<div class="cat-game-row">'+tabs+'</div>'+
+    '<div class="cat-wrap"><div class="cat-side">'+zones+'</div>'+
+    '<div class="cat-main"><div class="sortbar">'+
       '<button class="sort'+(sort==="default"?" on":"")+'" data-action="sort" data-sort="default">默认</button>'+
       '<button class="sort'+(sort.indexOf("heat")===0?" on":"")+'" data-action="sort" data-sort="heat">热度'+sortArrow("heat")+'</button>'+
       '<button class="sort'+(sort.indexOf("price")===0?" on":"")+'" data-action="sort" data-sort="price">价格'+sortArrow("price")+'</button>'+
-    '</div><div class="cat-list-scroll"><div id="catList">'+listHtml(filterProducts())+'</div></div></div></div></section>';
+    '</div><div id="catList">'+listHtml(filterProducts())+'</div></div></div><div style="height:24px"></div></section>';
 }
 function refreshCatList(){
   $("#catList").innerHTML=listHtml(filterProducts());
@@ -880,7 +867,7 @@ function viewOrders(params){
         '<div class="oc-right">¥'+o.price+'/'+o.unit+'</div></div>'+rate+
         '<div class="oc-foot"><span class="oc-total">合计 <b>¥'+o.total+'</b></span><span class="oc-actions">'+orderActions(o)+'</span></div></div>';
     }).join("")+'</div><div class="no-more">没有更多了</div>'+
-    '';
+    '<div class="qs-tip">下单后约15秒陪玩自动接单进入「进行中」，确认完成后可评价</div>';
   }else{
     body=orderFilter==="all"
       ? emptyHtml({ico:"order",title:"还没有订单",desc:"挑选心仪的陪玩，开黑上分吧",btn:HOME_BTN})
@@ -1077,6 +1064,11 @@ const ACTIONS={
     if($("#catSearch")) refreshCatList();
     else $(".s-clear").classList.remove("show");
   },
+  "do-search"(){
+    const hs=$("#homeSearch"),cs=$("#catSearch");
+    if(hs){catState.q=hs.value.trim();catState.game="all";go("#/category");}
+    else if(cs){catState.q=cs.value.trim();refreshCatList();cs.blur();}
+  },
   detail(el){go("#/detail?id="+el.dataset.id);},
   back(el){
     if(el.dataset.to) go(el.dataset.to);
@@ -1091,52 +1083,11 @@ const ACTIONS={
   login(){openLogin();},
   "aze-login"(el){
     const type=el.dataset.type;
-    toast("正在打开"+(type==="qq"?"QQ":"微信")+"登录…");
-    const redirectUri=location.origin+location.pathname+"?aze_popup=1";
-    const url=AZE_CONFIG.proxy+"?act=login&appid="+AZE_CONFIG.appid+"&appkey="+AZE_CONFIG.appkey+"&type="+type+"&redirect_uri="+encodeURIComponent(redirectUri);
+    toast("正在跳转到"+(type==="qq"?"QQ":"微信")+"登录…");
+    const url=AZE_CONFIG.proxy+"?act=login&appid="+AZE_CONFIG.appid+"&appkey="+AZE_CONFIG.appkey+"&type="+type+"&redirect_uri="+encodeURIComponent(location.origin+location.pathname);
     fetch(url,{mode:"cors"}).then(r=>r.json()).then(d=>{
-      if(d.code===0&&d.url){
-        // 用新窗口打开登录，避免QQ跳转系统浏览器
-        const w=window.open(d.url,"aze_login","width=420,height=640");
-        if(!w){
-          // 弹窗被拦截，降级为当前页跳转
-          location.href=d.url;
-          return;
-        }
-        // 监听 localStorage 同步登录状态
-        const onStorage=function(e){
-          if(e.key==="aze_login_result"&&e.newValue){
-            try{
-              const data=JSON.parse(e.newValue);
-              processAzeLogin(data);
-              try{localStorage.removeItem("aze_login_result");}catch(e2){}
-              try{w.close();}catch(e2){}
-            }catch(e2){}
-            window.removeEventListener("storage",onStorage);
-          }
-        };
-        window.addEventListener("storage",onStorage);
-        // 兜底：轮询检查
-        const checkTimer=setInterval(function(){
-          try{
-            const raw=localStorage.getItem("aze_login_result");
-            if(raw){
-              const data=JSON.parse(raw);
-              processAzeLogin(data);
-              localStorage.removeItem("aze_login_result");
-              try{w.close();}catch(e2){}
-              clearInterval(checkTimer);
-              window.removeEventListener("storage",onStorage);
-            }
-          }catch(e2){}
-        },500);
-        // 3分钟后自动清理
-        setTimeout(function(){
-          clearInterval(checkTimer);
-          window.removeEventListener("storage",onStorage);
-          try{localStorage.removeItem("aze_login_result");}catch(e2){}
-        },180000);
-      }else toast("登录跳转失败："+(d.msg||"未知错误"),false);
+      if(d.code===0&&d.url) location.href=d.url;
+      else toast("登录跳转失败："+(d.msg||"未知错误"),false);
     }).catch(()=>toast("网络异常，请重试",false));
   },
   logout(){
@@ -1387,55 +1338,11 @@ function handleUrlParams(){
   const isPay=q.trade_status&&q.out_trade_no;
   const isCallback=q.code&&q.type;
   const isReturn=q.aze_login==="1"&&q.u;
-  const isPopup=q.aze_popup==="1";
   if(!(isPay||isCallback||isReturn)) return;
-  // 弹窗登录模式：登录成功后写入 localStorage 通知主窗口
-  if(isPopup&&(isCallback||isReturn)){
-    const origProcess=window.__origProcessLogin||processAzeLogin;
-    // 先执行正常登录流程（保存数据），然后通知主窗口并关闭
-    const oldSave=saveStore;
-    const userData={};
-    // 拦截 processAzeLogin 来获取登录结果
-    window.__popupLoginDone=function(d){
-      processAzeLogin(d);
-      try{
-        // 把登录结果写入 localStorage 通知主窗口
-        localStorage.setItem("aze_login_result",JSON.stringify({
-          code:0,social_uid:store.user.aze.uid,nickname:store.user.name,
-          faceimg:store.user.aze.avatar,type:store.user.aze.type
-        }));
-      }catch(e){}
-      setTimeout(function(){
-        try{window.close();}catch(e){}
-        // 如果关不掉，跳转回首页
-        if(!window.closed) location.href=location.pathname;
-      },300);
-    };
-    history.replaceState(null,"",location.pathname);
-    if(isCallback) azeCallbackPopup(q.code,q.type);
-    else azeReturnPopup(q.u);
-    return;
-  }
   history.replaceState(null,"",location.pathname+location.hash);
   if(isPay) verifyPayReturn(q.out_trade_no);
   else if(isCallback) azeCallback(q.code,q.type);
   else azeReturn(q.u);
-}
-function azeCallbackPopup(code,type){
-  const url=AZE_CONFIG.proxy+"?act=callback&appid="+AZE_CONFIG.appid+"&appkey="+AZE_CONFIG.appkey+"&type="+encodeURIComponent(type)+"&code="+encodeURIComponent(code);
-  fetch(url,{mode:"cors"}).then(r=>r.json()).then(function(d){
-    window.__popupLoginDone(d);
-  }).catch(function(){toast("网络异常，请重试",false);});
-}
-function azeReturnPopup(raw){
-  try{
-    let s=raw.replace(/ /g,"+").replace(/-/g,"+").replace(/_/g,"/");
-    while(s.length%4) s+="=";
-    const bin=atob(s);
-    let pct="";
-    for(let i=0;i<bin.length;i++) pct+="%"+("00"+bin.charCodeAt(i).toString(16)).slice(-2);
-    window.__popupLoginDone(JSON.parse(decodeURIComponent(pct)));
-  }catch(e){toast("登录数据解析失败",false);}
 }
 
 function initPromo(){
