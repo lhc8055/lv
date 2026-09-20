@@ -283,7 +283,7 @@ button.pf-header:active{opacity:.8}
 .tabbar.hide{display:none}
 
 .fab{position:fixed;left:0;z-index:24;
-  top:50%;transform:translateY(-50%);
+  bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px) + 16px);
   padding:0;border:none;background:none;cursor:pointer;line-height:0;}
 .fab img{width:90px;height:auto;display:block;}
 @media(min-width:480px){ .fab{left:0;}}
@@ -381,13 +381,10 @@ var _fabLocked=false;
 function positionFab(){
   var fab=document.getElementById('fabBtn');if(!fab)return;
   if(_fabLocked)return;
-  var quick=document.querySelector('.quick');var games=document.querySelector('.home-games');
-  if(!quick||!games){fab.style.top='58%';fab.style.transform='translateY(-50%)';return;}
-  var qEnd=quick.getBoundingClientRect().bottom;
-  var gStart=games.getBoundingClientRect().top;
-  var mid=(qEnd+gStart)/2;
-  fab.style.top=(mid+10)+'px';
-  fab.style.transform='translateY(-50%)';
+  /* Position at bottom blank area, above tabbar */
+  fab.style.top='auto';
+  fab.style.bottom='calc(var(--tab-h) + env(safe-area-inset-bottom,0px) + 16px)';
+  fab.style.transform='none';
   _fabLocked=true;
 }
 window.addEventListener('load',positionFab);
@@ -674,7 +671,7 @@ function viewHome(){
       '<button class="quick-card all" data-action="cat-game" data-game="all"><img src="'+IMG.all+'" alt="全部商品"><div class="q-center"><div class="q-title">全部商品</div><span class="q-btn">查看商品</span></div></button>'+
     '</div>'+
     '<div class="games home-games">'+games+'</div>'+
-    '<div class="section-title"><span>'+gameById(hg).name+' · 热门商品</span><button class="more" data-action="cat-game" data-game="'+hg+'">查看全部'+icon("chevron")+'</button></div>'+
+    '<div class="section-title" style="visibility:hidden"><span>'+gameById(hg).name+' · 热门商品</span><button class="more" data-action="cat-game" data-game="'+hg+'">查看全部'+icon("chevron")+'</button></div>'+
     '<div class="goods-grid">'+hot.map(cardHtml).join("")+'</div>'+
     '<div class="no-more">没有更多了</div><div style="height:40px"></div></section>';
 }
