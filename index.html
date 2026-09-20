@@ -114,12 +114,16 @@ a{color:inherit;text-decoration:none}
 .cat-game-row .gicon{--gr:12px;width:48px;height:48px}
 .cat-game-row .gname{font-size:12.5px;color:#4b5068}
 .cat-game-row .game.on .gname{color:#7c3aed;font-weight:800}
-/* 分类页固定头部布局 */
+/* 分类页固定头部 + 固定侧边栏布局 */
 .cat-view{height:100vh;display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px))}
 .cat-header{flex:none;background:var(--bg);padding:12px 0 0;z-index:10}
 .cat-header .searchbar{margin:0 14px}
-.cat-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overflow-x:hidden}
-.cat-scroll .cat-wrap{padding:0 10px 20px}
+.cat-body{flex:1;display:flex;align-items:flex-start;gap:10px;padding:0 10px;overflow:hidden}
+.cat-body .cat-side{flex:none;width:88px;height:100%;overflow-y:auto}
+.cat-right{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;overflow:hidden;background:#fff;border-radius:var(--r-md);box-shadow:var(--shadow-sm)}
+.cat-right .sortbar{flex:none;margin:0 8px}
+.cat-list-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overflow-x:hidden}
+.cat-list-scroll #catList{padding-bottom:20px}
 .cat-view{min-height:100vh}
 .cat-header{position:sticky;top:0;z-index:20;background:var(--bg);padding:12px 0 2px}
 .cat-header .searchbar{margin:0 14px}
@@ -749,12 +753,12 @@ function viewCategory(){
   return '<section class="view cat-view"><div class="cat-header">'+
     searchBar("catSearch",catState.q)+
     '<div class="cat-game-row">'+tabs+'</div></div>'+
-    '<div class="cat-scroll"><div class="cat-wrap"><div class="cat-side">'+zones+'</div>'+
-    '<div class="cat-main"><div class="sortbar">'+
+    '<div class="cat-body"><div class="cat-side">'+zones+'</div>'+
+    '<div class="cat-right"><div class="sortbar">'+
       '<button class="sort'+(sort==="default"?" on":"")+'" data-action="sort" data-sort="default">默认</button>'+
       '<button class="sort'+(sort.indexOf("heat")===0?" on":"")+'" data-action="sort" data-sort="heat">热度'+sortArrow("heat")+'</button>'+
       '<button class="sort'+(sort.indexOf("price")===0?" on":"")+'" data-action="sort" data-sort="price">价格'+sortArrow("price")+'</button>'+
-    '</div><div id="catList">'+listHtml(filterProducts())+'</div></div></div></div></section>';
+    '</div><div class="cat-list-scroll"><div id="catList">'+listHtml(filterProducts())+'</div></div></div></div></section>';
 }
 function refreshCatList(){
   $("#catList").innerHTML=listHtml(filterProducts());
