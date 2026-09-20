@@ -357,7 +357,7 @@ button.pf-header:active{opacity:.8}
 @keyframes promoPop{from{transform:scale(.86);opacity:0}to{transform:none;opacity:1}}
 .promo-close{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.3);color:#fff;font-size:22px;font-weight:300;line-height:1;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.45)}
 
-.page-loader{position:fixed;inset:0;background:#f3f5fc;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;opacity:0;transition:opacity .2s;}
+.page-loader{position:fixed;inset:0;background:#f3f5fc;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;opacity:0;transition:opacity .2s;animation:autoHide 3s forwards}@keyframes autoHide{0%,88%{opacity:1;pointer-events:auto}100%{opacity:0;pointer-events:none}}
 .page-loader.show{opacity:1;pointer-events:auto;}
 .page-loader .pl-spin{width:40px;height:40px;border:4px solid #e8e8f0;border-top-color:#6c5ce7;border-radius:50%;animation:pl-spin .8s linear infinite;}
 .page-loader .pl-msg{font-size:14px;color:#8b90b2;}
@@ -382,6 +382,10 @@ button.pf-header:active{opacity:.8}
   <button class="fab" id="fabBtn" data-action="feedback" aria-label="反馈与投诉"><img src="feedback-btn.png" alt="反馈与投诉"></button>
 
 <script>
+function showPageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.add('show');}}
+function hidePageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.remove('show');}}
+</script>
+<script>
 var _fabLocked=false;
 var _fabPct=58;
 function positionFab(){
@@ -402,18 +406,15 @@ function positionFab(){
   fab.style.bottom='auto';
   fab.style.transform='translateY(-50%)';
 }
-window.addEventListener('load',function(){positionFab();setTimeout(hidePageLoader,100);});
+window.addEventListener('load',function(){positionFab();setTimeout(function(){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}},100)});setTimeout(function(){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}},2000);
 setTimeout(positionFab,300);
 setTimeout(positionFab,800);
 setTimeout(positionFab,1200);
-setTimeout(hidePageLoader,500);
+setTimeout(function(){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}},500);
 window.addEventListener('resize',function(){_fabLocked=false;positionFab();});
 window.addEventListener('orientationchange',function(){_fabLocked=false;setTimeout(positionFab,300);});
 </script>
-<script>
-function showPageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.add('show');}}
-function hidePageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.remove('show');}}
-</script>
+
 
 
 
