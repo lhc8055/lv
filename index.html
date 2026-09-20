@@ -383,10 +383,22 @@ button.pf-header:active{opacity:.8}
 
 <script>
 var _fabLocked=false;
+var _fabPct=56;
 function positionFab(){
   var fab=document.getElementById('fabBtn');if(!fab)return;
-  /* Use fixed viewport percentage for consistent position across all pages */
-  fab.style.top='56%';
+  var games=document.querySelector('.home-games');
+  var grid=document.querySelector('.goods-grid');
+  var section=document.querySelector('.section-title');
+  if(games){
+    var gEnd=games.getBoundingClientRect().bottom;
+    var bottomBound=gEnd+80;
+    if(grid){bottomBound=grid.getBoundingClientRect().top;}
+    else if(section){bottomBound=section.getBoundingClientRect().top;}
+    var mid=(gEnd+bottomBound)/2;
+    var vh=window.innerHeight||document.documentElement.clientHeight;
+    if(vh>0){_fabPct=Math.round(mid/vh*100);}
+  }
+  fab.style.top=_fabPct+'%';
   fab.style.bottom='auto';
   fab.style.transform='translateY(-50%)';
 }
