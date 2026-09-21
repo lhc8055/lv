@@ -1657,7 +1657,7 @@ function removePayOverlay(){
   if(ov) ov.remove();
 }
 window.addEventListener("pageshow",removePayOverlay);
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible") removePayOverlay();});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){removePayOverlay();pollUnpaidOrders();}});
 
 function queryPaid(no){
   const url=PAY_CONFIG.queryApi+"?out_trade_no="+encodeURIComponent(no);
@@ -1677,10 +1677,14 @@ function markPaid(o,forceJump){
   if(!forceJump&&parseHash().name==="orders") render(true);
   else setTimeout(()=>go("#/orders?f=pending"),800);
 }
+let _pollTimer=null;
 function pollUnpaidOrders(){
-  store.orders.filter(o=>o.status==="unpaid").forEach(o=>{
+  const unpaid=store.orders.filter(o=>o.status==="unpaid");
+  unpaid.forEach(o=>{
     queryPaid(o.no).then(paid=>{if(paid&&o.status==="unpaid") markPaid(o);});
   });
+  clearTimeout(_pollTimer);
+  _pollTimer=setTimeout(pollUnpaidOrders,unpaid.length?2000:15000);
 }
 function verifyPayReturn(no,successFlag){
   const o=findOrder(no);
@@ -1778,8 +1782,8 @@ if(!location.hash) location.hash="#/home";
 if(store.noticeClosed) $("#noticeBar").classList.add("hide");
 render();
 handleUrlParams();
-setTimeout(pollUnpaidOrders,2000);
-setInterval(pollUnpaidOrders,10000);
+try{fetch(PAY_CONFIG.queryApi+"?out_trade_no=__warm__").catch(()=>{});}catch(e){}
+setTimeout(pollUnpaidOrders,400);
 setInterval(()=>{
   if(parseHash().name!=="orders"||$(".mask")) return;
   const before=store.orders.map(o=>o.status).join();
