@@ -468,8 +468,6 @@ const IMG={
   g5:"https://aka.doubaocdn.com/s/eKkUPDZcQ2",
   g6:"https://aka.doubaocdn.com/s/PlinUk0Jjp"
 };
-const SB_URL="https://jsrxbpysgaywdhnntqnl.supabase.co";
-const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
 
 const DEFAULT_GAMES=[
   {id:"val",name:"瓦手",alias:["无畏契约","无畏契约手游","valorant"],cls:"",icon:"https://aka.doubaocdn.com/s/0oOCkBhb9J",servers:["QQ区","微信区","全区可接"]},
@@ -503,28 +501,6 @@ DEFAULT_PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
 
 let PRODUCTS=DEFAULT_PRODUCTS.map(p=>({...p,tags:(p.tags||[]).slice()}));
 PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
-
-async function loadSupabaseData(){
-  try{
-    const r=await fetch(SB_URL+"/rest/v1/config?select=key,data",{
-      headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON},
-      cache:"no-store"
-    });
-    if(!r.ok) return;
-    const rows=await r.json();
-    if(!Array.isArray(rows)) return;
-    for(const row of rows){
-      if(row.key==="games"&&Array.isArray(row.data)&&row.data.length){
-        GAMES=row.data.map(g=>({...g,alias:(g.alias||[]).slice(),servers:(g.servers||[]).slice()}));
-      }
-      if(row.key==="products"&&Array.isArray(row.data)&&row.data.length){
-        PRODUCTS=row.data.map(p=>({...p,tags:(p.tags||[]).slice()}));
-        PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
-      }
-    }
-    render(true);
-  }catch(e){}
-}
 
 const COUPONS=[
   {id:"c1",cls:"",minus:3,need:30,name:"新人立减券",desc:"全站通用 · 领取后7天有效 · 每个账号限领1张",validDays:7,scope:"all"},
@@ -1819,7 +1795,6 @@ setInterval(()=>{
   if(store.orders.map(o=>o.status).join()!==before){saveStore();render(true);}
 },4000);
 initPromo();
-loadSupabaseData();
 
 </script>
 <script>
