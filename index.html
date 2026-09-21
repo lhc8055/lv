@@ -468,16 +468,19 @@ const IMG={
   g5:"https://aka.doubaocdn.com/s/eKkUPDZcQ2",
   g6:"https://aka.doubaocdn.com/s/PlinUk0Jjp"
 };
+const SB_URL="https://jsrxbpysgaywdhnntqnl.supabase.co";
+const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
 
-const GAMES=[
+const DEFAULT_GAMES=[
   {id:"val",name:"瓦手",alias:["无畏契约","无畏契约手游","valorant"],cls:"",icon:"https://aka.doubaocdn.com/s/0oOCkBhb9J",servers:["QQ区","微信区","全区可接"]},
   {id:"df",name:"三角洲行动",alias:["三角洲","delta"],cls:"",icon:"https://aka.doubaocdn.com/s/NDn5woVxJC",servers:["QQ区","微信区","全区可接"]},
   {id:"wz",name:"王者荣耀",alias:["王者","农药"],cls:"",icon:"https://aka.doubaocdn.com/s/y7SpdNXCiT",servers:["微信区","QQ区","全区可接"]}
 ];
 const ALL_GAME={id:"all",name:"全部",cls:"all"};
+let GAMES=DEFAULT_GAMES.map(g=>({...g,alias:(g.alias||[]).slice(),servers:(g.servers||[]).slice()}));
 const ZONES=[{id:"all",name:"全部"},{id:"tech",name:"技术单局区"},{id:"fun",name:"娱乐小时区"}];
 
-const PRODUCTS=[
+const DEFAULT_PRODUCTS=[
   {id:1,game:"val",zone:"tech",cat:"铂金排位",name:"神话打手",price:0.01,unit:"局",heat:4351,sales:2180,img:IMG.g1,tags:["秒上号","质保一局","打完结算"],rank:"铂金→钻石"},
   {id:2,game:"val",zone:"tech",cat:"黄金排位",name:"稳上分车队",price:45,unit:"局",heat:5606,sales:3065,img:IMG.g2,tags:["三排车队","不赢补打"],rank:"黄金→铂金"},
   {id:3,game:"val",zone:"tech",cat:"下三排位",name:"黑铁青铜白银",price:40,unit:"局",heat:4669,sales:2540,img:IMG.g6,tags:["萌新友好","耐心教学"],rank:"黑铁→白银"},
@@ -496,7 +499,32 @@ const PRODUCTS=[
   {id:16,game:"wz",zone:"fun",cat:"五排车队",name:"差你一个上车",price:25,unit:"小时",heat:5870,sales:5600,img:IMG.g6,tags:["五排固定队","欢乐连麦"],rank:"不限段位"},
   {id:17,game:"wz",zone:"tech",cat:"巅峰赛",name:"小国标配打手",price:88,unit:"局",heat:4560,sales:760,img:IMG.g3,tags:["小国标","巅峰高分"],rank:"巅峰赛"}
 ];
+DEFAULT_PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
+
+let PRODUCTS=DEFAULT_PRODUCTS.map(p=>({...p,tags:(p.tags||[]).slice()}));
 PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
+
+async function loadSupabaseData(){
+  try{
+    const r=await fetch(SB_URL+"/rest/v1/config?select=key,data",{
+      headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON},
+      cache:"no-store"
+    });
+    if(!r.ok) return;
+    const rows=await r.json();
+    if(!Array.isArray(rows)) return;
+    for(const row of rows){
+      if(row.key==="games"&&Array.isArray(row.data)&&row.data.length){
+        GAMES=row.data.map(g=>({...g,alias:(g.alias||[]).slice(),servers:(g.servers||[]).slice()}));
+      }
+      if(row.key==="products"&&Array.isArray(row.data)&&row.data.length){
+        PRODUCTS=row.data.map(p=>({...p,tags:(p.tags||[]).slice()}));
+        PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
+      }
+    }
+    render(true);
+  }catch(e){}
+}
 
 const COUPONS=[
   {id:"c1",cls:"",minus:3,need:30,name:"新人立减券",desc:"全站通用 · 领取后7天有效 · 每个账号限领1张",validDays:7,scope:"all"},
@@ -1791,6 +1819,8 @@ setInterval(()=>{
   if(store.orders.map(o=>o.status).join()!==before){saveStore();render(true);}
 },4000);
 initPromo();
+loadSupabaseData();
+
 </script>
 <script>
 (function(){
