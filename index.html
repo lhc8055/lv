@@ -997,7 +997,7 @@ function render(keepScroll){
     }
   }
   const toY=ret?ret.y:(keepScroll===true?y:0);
-  const ghost=fx&&(heroIn||ret)&&oldNode?makeGhost(oldNode,y,toY):null;
+  const ghost=fx&&!FX_LITE&&(heroIn||ret)&&oldNode?makeGhost(oldNode,y,toY):null;
   if(ghost){fxOn();setTimeout(fxOff,FX_MS+900);}
   if(useStash){
     view.textContent="";
@@ -1014,8 +1014,10 @@ function render(keepScroll){
   skipFab=!!ret;
   fxBusyUntil=ghost?Date.now()+FX_MS+500:0;
   if(!useStash) bindViewEvents();
-  if(heroIn) playHero(heroIn,ghost);
-  else if(ghost) playBack(back,leftId,ghost);
+  if(!FX_LITE&&(heroIn||ghost)) requestAnimationFrame(()=>{
+    if(heroIn) playHero(heroIn,ghost);
+    else if(ghost) playBack(back,leftId,ghost);
+  });
   if(needLogin) openLogin();
 }
 window.addEventListener("hashchange",()=>{hasInternalNav=true;render();_fabLocked=false;if(!skipFab) setTimeout(positionFab,Date.now()<fxBusyUntil?900:100);});
