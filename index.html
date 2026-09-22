@@ -703,17 +703,17 @@ function gameIcon(g){
   return '<span class="gicon '+g.cls+'">'+(g.id==="all"?icon("grid"):'<img src="'+g.icon+'" alt="'+g.name+'">')+'</span>';
 }
 function cardHtml(p){
-  var imgSrc = p.img && p.img.indexOf("data:")!==0 ? p.img : "https://aka.doubaocdn.com/s/ctZqDYRbtQ";
+  var imgSrc = p.img || "https://aka.doubaocdn.com/s/ctZqDYRbtQ";
   return '<button type="button" class="gcard" data-action="detail" data-id="'+p.id+'">'+
-    '<div class="g-img"><span class="g-tag">'+(p.zone==="tech"?"技术单局":"娱乐陪玩")+'</span><img src="'+imgSrc+'" alt="'+esc(p.title)+'" loading="lazy" onerror="this.src=\'https://aka.doubaocdn.com/s/ctZqDYRbtQ\'"></div>'+
+    '<div class="g-img"><span class="g-tag">'+(p.zone==="tech"?"技术单局":"娱乐陪玩")+'</span><img src="'+imgSrc+'" alt="'+esc(p.title)+'" loading="lazy" onerror="this.onerror=null;this.src=\'https://aka.doubaocdn.com/s/ctZqDYRbtQ\'"></div>'+
     '<div class="g-body"><div class="g-title">'+esc(p.title)+'</div>'+
     '<div class="g-tags">'+p.tags.slice(0,2).map(t=>'<span>'+esc(t)+'</span>').join("")+'</div>'+
     '<div class="g-foot"><span class="g-price">¥'+p.price+'<small>/'+p.unit+'</small></span><span class="g-heat">热度'+p.heat+'</span></div></div></button>';
 }
 function rowHtml(p){
-  var imgSrc = p.img && p.img.indexOf("data:")!==0 ? p.img : "https://aka.doubaocdn.com/s/ctZqDYRbtQ";
+  var imgSrc = p.img || "https://aka.doubaocdn.com/s/ctZqDYRbtQ";
   return '<button type="button" class="grow" data-action="detail" data-id="'+p.id+'">'+
-    '<div class="gr-img"><img src="'+imgSrc+'" alt="'+esc(p.title)+'" loading="lazy" onerror="this.src=\'https://aka.doubaocdn.com/s/ctZqDYRbtQ\'"></div>'+
+    '<div class="gr-img"><img src="'+imgSrc+'" alt="'+esc(p.title)+'" loading="lazy" onerror="this.onerror=null;this.src=\'https://aka.doubaocdn.com/s/ctZqDYRbtQ\'"></div>'+
     '<div class="gr-body"><div><div class="gr-title">'+esc(p.title)+'</div><div class="gr-rank">'+esc(p.rank)+'</div></div>'+
     '<div class="gr-foot"><span class="gr-price"><small>¥</small>'+p.price+'<small>/'+p.unit+'</small></span><span class="gr-heat">热度'+p.heat+'</span></div></div></button>';
 }
@@ -1194,9 +1194,9 @@ function viewDetail(params){
   const fav=store.favs.includes(p.id);
   const rel=PRODUCTS.filter(x=>x.game===p.game&&x.id!==p.id).slice(0,3);
   const servers=g.servers.map((s,i)=>'<option'+(i===0?" selected":"")+'>'+s+'</option>').join("");
-  var imgSrc = p.img && p.img.indexOf("data:")!==0 ? p.img : "https://aka.doubaocdn.com/s/ctZqDYRbtQ";
+  var imgSrc = p.img || "https://aka.doubaocdn.com/s/ctZqDYRbtQ";
   return '<section class="view">'+pageHead(p.title)+
-    '<div class="detail-hero"><img src="'+imgSrc+'" alt="'+esc(p.title)+'" onerror="this.src=\'https://aka.doubaocdn.com/s/ctZqDYRbtQ\'"></div>'+
+    '<div class="detail-hero"><img src="'+imgSrc+'" alt="'+esc(p.title)+'" onerror="this.onerror=null;this.src=\'https://aka.doubaocdn.com/s/ctZqDYRbtQ\'"></div>'+
     '<div class="detail-rest">'+
     '<div class="detail-price"><div class="dp-row"><span class="dp-price"><small>¥</small>'+p.price+'<small>/'+p.unit+'</small></span>'+
       '<span class="dp-heat">热度'+p.heat+' · 已售'+p.sales+'</span></div>'+
