@@ -1020,24 +1020,32 @@ async function ghGetFile(){
 async function ghPutFile(content){
   const token = getGhToken();
   if(!token){ setSyncStatus("请先输入 GitHub Token", false); return false; }
-  const existing = await ghGetFile();
-  const body = {
-    message: "update: site data sync",
-    content: btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2)))),
-    branch: GH_BRANCH
-  };
-  if(existing && existing.sha) body.sha = existing.sha;
-  const r = await fetch("https://api.github.com/repos/"+GH_REPO+"/contents/"+GH_FILE, {
-    method:"PUT",
-    headers:{ Authorization:"Bearer "+token, "Content-Type":"application/json", Accept:"application/vnd.github.v3+json" },
-    body: JSON.stringify(body)
-  });
-  if(!r.ok){
+
+  // 重试 2 次，解决 SHA 不匹配的冲突问题
+  for(let attempt=0; attempt<2; attempt++){
+    const existing = await ghGetFile();
+    const body = {
+      message: "update: site data sync",
+      content: btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2)))),
+      branch: GH_BRANCH
+    };
+    if(existing && existing.sha) body.sha = existing.sha;
+    const r = await fetch("https://api.github.com/repos/"+GH_REPO+"/contents/"+GH_FILE, {
+      method:"PUT",
+      headers:{ Authorization:"Bearer "+token, "Content-Type":"application/json", Accept:"application/vnd.github.v3+json" },
+      body: JSON.stringify(body)
+    });
+    if(r.ok) return true;
     const err = await r.json().catch(()=>({}));
+    // 如果是 SHA 不匹配，重试一次（重新获取最新 SHA）
+    if(err.message && err.message.includes("does not match") && attempt===0){
+      setSyncStatus("版本冲突，正在重试...", null);
+      continue;
+    }
     setSyncStatus("推送失败："+(err.message || "HTTP "+r.status), false);
     return false;
   }
-  return true;
+  return false;
 }
 
 $("#syncPushBtn").addEventListener("click", async () => {
