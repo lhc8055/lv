@@ -476,7 +476,7 @@ const DEFAULT_GAMES=[
 ];
 const ALL_GAME={id:"all",name:"全部",cls:"all"};
 let GAMES=DEFAULT_GAMES.map(g=>({...g,alias:(g.alias||[]).slice(),servers:(g.servers||[]).slice()}));
-const ZONES=[{id:"all",name:"全部"},{id:"tech",name:"技术单局区"},{id:"fun",name:"娱乐小时区"}];
+let ZONES=[{id:"all",name:"全部"},{id:"tech",name:"技术单局区"},{id:"fun",name:"娱乐小时区"}];
 
 const DEFAULT_PRODUCTS=[
   {id:1,game:"val",zone:"tech",cat:"铂金排位",name:"神话打手",price:0.01,unit:"局",heat:4351,sales:2180,img:IMG.g1,tags:["秒上号","质保一局","打完结算"],rank:"铂金→钻石"},
@@ -509,17 +509,20 @@ async function loadSiteData(){
     if(!r.ok) return;
     const d=await r.json();
     if(!d || typeof d!=="object") return;
+    let changed=false;
     if(Array.isArray(d.games)&&d.games.length){
       GAMES=d.games.slice().sort((a,b)=>(a.sort||0)-(b.sort||0)).map(g=>({
         id:g.id, name:g.name, alias:(g.alias||[]).slice(), cls:g.cls||"", icon:g.icon, servers:(g.servers||[]).slice()
       }));
+      changed=true;
     }
     if(Array.isArray(d.zones)&&d.zones.length){
       const sorted=d.zones.slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
       ZONES=[{id:"all",name:"全部"},...sorted.map(z=>({id:z.id,name:z.name}))];
+      changed=true;
     }
     if(Array.isArray(d.products)&&d.products.length){
-      PRODUCTS=d.products.slice().sort((a,b)=>(a.sort||0)-(b.sort||0)).map(p=>({
+      const newProds=d.products.slice().sort((a,b)=>(a.sort||0)-(b.sort||0)).map(p=>({
         id:p.id, game:p.game, zone:p.zone, cat:p.cat, name:p.name,
         desc:p.desc||"", rank:p.rank||"",
         price:Number(p.price)||0, unit:p.unit||"局",
@@ -527,8 +530,15 @@ async function loadSiteData(){
         heat:Number(p.heat)||0, sales:Number(p.sales)||0,
         title:"【"+p.cat+"】"+p.name
       }));
+      PRODUCTS.length=0;
+      newProds.forEach(p=>PRODUCTS.push(p));
+      changed=true;
     }
-    render(true);
+    if(changed){
+      // 清空视图缓存，强制重渲染
+      stash=null;
+      render();
+    }
   }catch(e){}
 }
 
