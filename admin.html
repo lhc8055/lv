@@ -496,6 +496,32 @@ $("#tabnav").addEventListener("click", e => {
 /* ================================================================
    4. 图片选择器组件（上传 或 链接 二选一，通用于 Banner / 游戏图标 / 商品图片）
    ================================================================ */
+function compressImage(file, maxW, maxH, quality){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if(w > maxW){ h = Math.round(h * maxW / w); w = maxW; }
+        if(h > maxH){ w = Math.round(w * maxH / h); h = maxH; }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        let dataUrl = canvas.toDataURL("image/jpeg", quality);
+        if(dataUrl.length > 80*1024 && quality > 0.3){
+          dataUrl = canvas.toDataURL("image/jpeg", Math.max(0.1, quality - 0.2));
+        }
+        resolve(dataUrl);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 function renderImgPicker(container, value, onChange){
   container.className = "field";
   container.innerHTML =
@@ -528,10 +554,10 @@ function renderImgPicker(container, value, onChange){
   fileInput.addEventListener("change", () => {
     const f = fileInput.files[0];
     if(!f) return;
-    if(f.size > 200*1024){ toast("图片超过200KB，请使用图床链接 instead"); return; }
-    const reader = new FileReader();
-    reader.onload = () => { onChange(reader.result); paintPreview(reader.result); };
-    reader.readAsDataURL(f);
+    compressImage(f, 400, 300, 0.8).then(dataUrl => {
+      if(dataUrl.length > 100*1024){ toast("压缩后仍超过100KB，建议使用图床链接"); }
+      onChange(dataUrl); paintPreview(dataUrl);
+    }).catch(() => toast("图片处理失败"));
   });
 
   // 初始化：判断当前值是否为 base64（上传）还是普通链接
