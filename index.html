@@ -1252,8 +1252,7 @@ function viewOrders(params){
         '<div class="oc-meta">'+esc(o.gameName)+' · '+esc(o.server)+' · ×'+o.qty+o.unit+(o.note?'<br>备注：'+esc(o.note):"")+'<br>'+fmtTime(o.ts)+'</div></div>'+
         '<div class="oc-right">¥'+o.price+'/'+o.unit+'</div></div>'+rate+
         '<div class="oc-foot"><span class="oc-total">合计 <b>¥'+o.total+'</b></span><span class="oc-actions">'+orderActions(o)+'</span></div></div>';
-    }).join("")+'</div><div class="no-more">没有更多了</div>'+
-    '<div class="qs-tip">下单后约15秒陪玩自动接单进入「进行中」，确认完成后可评价</div>';
+    }).join("")+'</div><div class="no-more">没有更多了</div>';
   }else{
     body=orderFilter==="all"
       ? emptyHtml({ico:"order",title:"还没有订单",desc:"挑选心仪的陪玩，开黑上分吧",btn:HOME_BTN})
