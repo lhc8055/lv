@@ -1,6 +1,6 @@
 {
   "home": {
-    "bannerImg": "https://aka.doubaocdn.com/s/oLEHCcxF6M",
+    "bannerImg": "",
     "bannerTitle": "星柚电竞",
     "bannerSubtitle": "瓦手 · 三角洲行动\n王者荣耀 · 技术上分娱乐陪玩",
     "noticeText": "下单立减3元，点击浏览器收藏本站，方便下次使用",
@@ -461,14 +461,14 @@
       "rank": "版本",
       "price": 0.03,
       "unit": "局",
-      "img": "https://aka.doubaocdn.com/s/ctZqDYRbtQ",
+      "img": "",
       "tags": [],
       "cornerMode": "auto",
       "cornerText": "",
       "couponEnabled": true,
       "heat": 88,
       "sales": 1000,
-      "sort": 170
+      "sort": 2
     }
   ],
   "nextProductId": 20
