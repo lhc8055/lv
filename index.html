@@ -1083,7 +1083,7 @@ window.addEventListener("hashchange",()=>{hasInternalNav=true;render();_fabLocke
 
 function viewHome(){
   const hg=store.homeGame||"val";
-  const hot=PRODUCTS.filter(p=>p.game===hg).sort((a,b)=>b.heat-a.heat).slice(0,6);
+  const hot=PRODUCTS.filter(p=>p.game===hg).sort((a,b)=>(a.sort||0)-(b.sort||0));
   const games=GAMES.map(g=>'<button type="button" class="game'+(hg===g.id?" on":"")+'" data-action="home-game" data-game="'+g.id+'">'+gameIcon(g)+'<span class="gname">'+g.name+'</span></button>').join("");
   return '<section class="view">'+
     searchBar("homeSearch","")+
