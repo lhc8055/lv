@@ -1,0 +1,478 @@
+{
+  "home": {
+    "bannerImg": "https://aka.doubaocdn.com/s/oLEHCcxF6M",
+    "bannerTitle": "星柚电竞",
+    "bannerSubtitle": "瓦手 · 三角洲行动\n王者荣耀 · 技术上分娱乐陪玩",
+    "noticeText": "下单立减3元，点击浏览器收藏本站，方便下次使用",
+    "quickHot": {
+      "img": "https://aka.doubaocdn.com/s/j2bricbfWc",
+      "title": "热门推荐",
+      "btn": "查看推荐"
+    },
+    "quickAll": {
+      "img": "https://aka.doubaocdn.com/s/kYSyCmHaZd",
+      "title": "全部商品",
+      "btn": "查看商品"
+    }
+  },
+  "games": [
+    {
+      "id": "val",
+      "name": "瓦手",
+      "icon": "https://aka.doubaocdn.com/s/0oOCkBhb9J",
+      "servers": [
+        "QQ区",
+        "微信区",
+        "全区可接"
+      ],
+      "sort": 10
+    },
+    {
+      "id": "df",
+      "name": "三角洲行动",
+      "icon": "https://aka.doubaocdn.com/s/NDn5woVxJC",
+      "servers": [
+        "QQ区",
+        "微信区",
+        "全区可接"
+      ],
+      "sort": 20
+    },
+    {
+      "id": "wz",
+      "name": "王者荣耀",
+      "icon": "https://aka.doubaocdn.com/s/y7SpdNXCiT",
+      "servers": [
+        "微信区",
+        "QQ区",
+        "全区可接"
+      ],
+      "sort": 30
+    }
+  ],
+  "zones": [
+    {
+      "id": "tech",
+      "name": "技术单局区",
+      "sort": 10
+    },
+    {
+      "id": "fun",
+      "name": "娱乐小时区",
+      "sort": 20
+    }
+  ],
+  "tagPool": [
+    "秒上号",
+    "质保一局",
+    "打完结算",
+    "三排车队",
+    "不赢补打",
+    "萌新友好",
+    "耐心教学",
+    "赋能大神",
+    "全程录屏",
+    "声优陪聊",
+    "氛围拉满",
+    "可刚可苟",
+    "包开心",
+    "保底红卡",
+    "装备全包",
+    "固定车队",
+    "连胜冲刺",
+    "高难图",
+    "稳撤离",
+    "手把手教",
+    "路线规划",
+    "轻松休闲",
+    "话多不冷场",
+    "国服打手",
+    "渡劫稳过",
+    "性价比高",
+    "秒开",
+    "甜妹御姐",
+    "可点歌",
+    "五排固定队",
+    "欢乐连麦",
+    "小国标",
+    "巅峰高分"
+  ],
+  "products": [
+    {
+      "id": 1,
+      "game": "val",
+      "zone": "tech",
+      "cat": "铂金排位",
+      "name": "神话打手",
+      "desc": "",
+      "rank": "铂金→钻石",
+      "price": 0.01,
+      "unit": "局",
+      "img": "https://aka.doubaocdn.com/s/ctZqDYRbtQ",
+      "tags": [
+        "秒上号",
+        "质保一局",
+        "打完结算"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 4351,
+      "sales": 2180,
+      "sort": 10
+    },
+    {
+      "id": 2,
+      "game": "val",
+      "zone": "tech",
+      "cat": "黄金排位",
+      "name": "稳上分车队",
+      "desc": "",
+      "rank": "黄金→铂金",
+      "price": 45,
+      "unit": "局",
+      "img": "https://aka.doubaocdn.com/s/9DMlHgX2Ff",
+      "tags": [
+        "三排车队",
+        "不赢补打"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 5606,
+      "sales": 3065,
+      "sort": 20
+    },
+    {
+      "id": 3,
+      "game": "val",
+      "zone": "tech",
+      "cat": "下三排位",
+      "name": "黑铁青铜白银",
+      "desc": "",
+      "rank": "黑铁→白银",
+      "price": 40,
+      "unit": "局",
+      "img": "https://aka.doubaocdn.com/s/PlinUk0Jjp",
+      "tags": [
+        "萌新友好",
+        "耐心教学"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 4669,
+      "sales": 2540,
+      "sort": 30
+    },
+    {
+      "id": 4,
+      "game": "val",
+      "zone": "tech",
+      "cat": "钻石排位",
+      "name": "顶尖赋能局",
+      "desc": "",
+      "rank": "钻石→神话",
+      "price": 70,
+      "unit": "局",
+      "img": "https://aka.doubaocdn.com/s/NbFFhyn4Ij",
+      "tags": [
+        "赋能大神",
+        "全程录屏"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 6420,
+      "sales": 1290,
+      "sort": 40
+    },
+    {
+      "id": 5,
+      "game": "val",
+      "zone": "fun",
+      "cat": "娱乐开黑",
+      "name": "甜妹声优陪玩",
+      "desc": "",
+      "rank": "不限段位",
+      "price": 25,
+      "unit": "小时",
+      "img": "https://aka.doubaocdn.com/s/eKkUPDZcQ2",
+      "tags": [
+        "声优陪聊",
+        "氛围拉满"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 3890,
+      "sales": 4210,
+      "sort": 50
+    },
+    {
+      "id": 6,
+      "game": "val",
+      "zone": "fun",
+      "cat": "娱乐双排",
+      "name": "技术娱乐双修",
+      "desc": "",
+      "rank": "不限段位",
+      "price": 30,
+      "unit": "小时",
+      "img": "https://aka.doubaocdn.com/s/QVmOyjpk99",
+      "tags": [
+        "可刚可苟",
+        "包开心"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 5210,
+      "sales": 3680,
+      "sort": 60
+    },
+    {
+      "id": 7,
+      "game": "df",
+      "zone": "tech",
+      "cat": "烽火地带",
+      "name": "红卡撤离护航",
+      "desc": "",
+      "rank": "烽火地带",
+      "price": 60,
+      "unit": "局",
+      "img": "https://aka.doubaocdn.com/s/NbFFhyn4Ij",
+      "tags": [
+        "保底红卡",
+        "装备全包"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 3320,
+      "sales": 1560,
+      "sort": 70
+    },
+    {
+      "id": 8,
+      "game": "df",
+      "zone": "tech",
+      "cat": "全面战场",
+      "name": "上分车队",
+      "desc": "",
+      "rank": "全面战场",
+      "price": 45,
+      "unit": "局",
+      "img": "https://aka.doubaocdn.com/s/QVmOyjpk99",
+      "tags": [
+        "固定车队",
+        "连胜冲刺"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 4012,
+      "sales": 2230,
+      "sort": 80
+    },
+    {
+      "id": 9,
+      "game": "df",
+      "zone": "tech",
+      "cat": "机密行动",
+      "name": "哈夫克大楼代打",
+      "desc": "",
+      "rank": "机密行动",
+      "price": 80,
+      "unit": "局",
+      "img": "https://aka.doubaocdn.com/s/ctZqDYRbtQ",
+      "tags": [
+        "高难图",
+        "稳撤离"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 2890,
+      "sales": 980,
+      "sort": 90
+    },
+    {
+      "id": 10,
+      "game": "df",
+      "zone": "fun",
+      "cat": "跑刀教学",
+      "name": "萌新带刷百万",
+      "desc": "",
+      "rank": "新手友好",
+      "price": 35,
+      "unit": "小时",
+      "img": "https://aka.doubaocdn.com/s/PlinUk0Jjp",
+      "tags": [
+        "手把手教",
+        "路线规划"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 2650,
+      "sales": 1740,
+      "sort": 100
+    },
+    {
+      "id": 11,
+      "game": "df",
+      "zone": "fun",
+      "cat": "娱乐摸金",
+      "name": "轻松开黑唠嗑",
+      "desc": "",
+      "rank": "不限模式",
+      "price": 30,
+      "unit": "小时",
+      "img": "https://aka.doubaocdn.com/s/eKkUPDZcQ2",
+      "tags": [
+        "轻松休闲",
+        "话多不冷场"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 3105,
+      "sales": 2010,
+      "sort": 110
+    },
+    {
+      "id": 12,
+      "game": "wz",
+      "zone": "tech",
+      "cat": "钻石排位",
+      "name": "星耀冲刺局",
+      "desc": "",
+      "rank": "钻石→星",
+      "price": 40,
+      "unit": "局",
+      "img": "https://aka.doubaocdn.com/s/9DMlHgX2Ff",
+      "tags": [
+        "国服打手",
+        "不赢补打"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 8920,
+      "sales": 6820,
+      "sort": 120
+    },
+    {
+      "id": 13,
+      "game": "wz",
+      "zone": "tech",
+      "cat": "星耀排位",
+      "name": "王者渡劫局",
+      "desc": "",
+      "rank": "星耀→王者",
+      "price": 68,
+      "unit": "局",
+      "img": "https://aka.doubaocdn.com/s/ctZqDYRbtQ",
+      "tags": [
+        "渡劫稳过",
+        "全程录屏"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 9450,
+      "sales": 4310,
+      "sort": 130
+    },
+    {
+      "id": 14,
+      "game": "wz",
+      "zone": "tech",
+      "cat": "黄金铂金",
+      "name": "稳上分",
+      "desc": "",
+      "rank": "黄金→钻石",
+      "price": 28,
+      "unit": "局",
+      "img": "https://aka.doubaocdn.com/s/QVmOyjpk99",
+      "tags": [
+        "性价比高",
+        "秒开"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 7230,
+      "sales": 8900,
+      "sort": 140
+    },
+    {
+      "id": 15,
+      "game": "wz",
+      "zone": "fun",
+      "cat": "娱乐匹配",
+      "name": "声优陪玩",
+      "desc": "",
+      "rank": "不限段位",
+      "price": 20,
+      "unit": "小时",
+      "img": "https://aka.doubaocdn.com/s/eKkUPDZcQ2",
+      "tags": [
+        "甜妹御姐",
+        "可点歌"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 6100,
+      "sales": 9200,
+      "sort": 150
+    },
+    {
+      "id": 16,
+      "game": "wz",
+      "zone": "fun",
+      "cat": "五排车队",
+      "name": "差你一个上车",
+      "desc": "",
+      "rank": "不限段位",
+      "price": 25,
+      "unit": "小时",
+      "img": "https://aka.doubaocdn.com/s/PlinUk0Jjp",
+      "tags": [
+        "五排固定队",
+        "欢乐连麦"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 5870,
+      "sales": 5600,
+      "sort": 160
+    },
+    {
+      "id": 17,
+      "game": "wz",
+      "zone": "tech",
+      "cat": "巅峰赛",
+      "name": "小国标配打手",
+      "desc": "",
+      "rank": "巅峰赛",
+      "price": 88,
+      "unit": "局",
+      "img": "https://aka.doubaocdn.com/s/NbFFhyn4Ij",
+      "tags": [
+        "小国标",
+        "巅峰高分"
+      ],
+      "cornerMode": "auto",
+      "cornerText": "",
+      "couponEnabled": true,
+      "heat": 4560,
+      "sales": 760,
+      "sort": 170
+    }
+  ],
+  "nextProductId": 18
+}

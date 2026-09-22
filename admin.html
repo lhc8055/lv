@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>星柚电竞 · 后台管理</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛠️</text></svg>">
+<style>
+/* ============================================================
+   1. 基础变量与重置
+   说明：配色沿用「星柚电竞」前台站点的紫蓝渐变主色，方便后台与
+   前台视觉统一；同时适配浅色/深色系统外观与手机安全区域。
+   ============================================================ */
+:root{
+  --pri:#5b6cf0;--purple:#8a63ff;--pri-soft:#eef0ff;
+  --ink:#22264b;--sub:#767c9e;--weak:#a7acc9;
+  --bg:#f3f5fc;--card:#ffffff;--line:#e7e9f6;--red:#ff4d4f;--green:#12b779;
+  --r-sm:10px;--r-md:14px;--r-lg:18px;
+  --shadow:0 6px 20px rgba(84,99,220,.10);
+  --font:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ink:#eef0fb;--sub:#a3a8cf;--weak:#6b7099;
+    --bg:#14152b;--card:#1c1e3a;--line:#2b2d55;--pri-soft:#23264a;
+    --shadow:0 6px 20px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#eef0fb;--sub:#a3a8cf;--weak:#6b7099;
+  --bg:#14152b;--card:#1c1e3a;--line:#2b2d55;--pri-soft:#23264a;
+  --shadow:0 6px 20px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  font-family:var(--font);background:var(--bg);color:var(--ink);
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font-family:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+img{max-width:100%;display:block}
+::-webkit-scrollbar{height:6px;width:6px}
+::-webkit-scrollbar-thumb{background:var(--weak);border-radius:6px}
+
+/* ============================================================
+   2. 顶部栏 + Tab 导航
+   ============================================================ */
+.topbar{
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:50;
+  display:flex;align-items:center;gap:10px;padding:12px 16px;
+  background:linear-gradient(120deg,var(--pri),var(--purple));color:#fff;
+  box-shadow:0 4px 16px rgba(91,108,240,.25);
+}
+.topbar h1{font-size:16px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar .save-state{font-size:11.5px;opacity:.9;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:#7be0a8;flex:none}
+.tabnav{
+  position:sticky;top:calc(env(safe-area-inset-top,0px) + 48px);z-index:49;
+  display:flex;gap:8px;padding:10px 14px;background:var(--bg);
+  overflow-x:auto;-webkit-overflow-scrolling:touch;border-bottom:1px solid var(--line);
+}
+.tabnav::-webkit-scrollbar{display:none}
+.tabnav button{
+  flex:none;font-size:13px;font-weight:600;color:var(--sub);
+  padding:8px 16px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);
+  white-space:nowrap;
+}
+.tabnav button.on{background:linear-gradient(120deg,var(--pri),var(--purple));color:#fff}
+
+main{max-width:920px;margin:0 auto;padding:16px 14px 60px}
+.panel{display:none}
+.panel.on{display:block}
+
+/* ============================================================
+   3. 通用卡片 / 表单 / 按钮 组件
+   ============================================================ */
+.card{background:var(--card);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.card h2{font-size:15px;font-weight:800;margin-bottom:4px}
+.card .hint{font-size:12px;color:var(--sub);line-height:1.6;margin-bottom:14px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12.5px;color:var(--sub);margin-bottom:6px;font-weight:600}
+.field input[type=text],.field input[type=number],.field input[type=url],.field textarea,.field select{
+  width:100%;background:var(--bg);border:1.5px solid var(--line);border-radius:var(--r-sm);
+  padding:10px 12px;font-size:13.5px;transition:border-color .15s;
+}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--pri);outline:none}
+.field textarea{resize:vertical;min-height:60px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media (max-width:480px){.row3{grid-template-columns:1fr 1fr}}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 18px;border-radius:999px;font-size:13.5px;font-weight:700;
+  background:var(--pri-soft);color:var(--pri);
+}
+.btn.primary{background:linear-gradient(120deg,var(--pri),var(--purple));color:#fff;box-shadow:0 6px 14px rgba(91,108,240,.3)}
+.btn.danger{background:#ffe9e9;color:var(--red)}
+.btn.ghost{background:transparent;border:1.5px solid var(--line);color:var(--sub)}
+.btn.sm{padding:7px 13px;font-size:12px}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.5;pointer-events:none}
+
+.toggle{
+  position:relative;width:42px;height:24px;border-radius:99px;background:var(--line);flex:none;transition:background .15s;
+}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:transform .15s}
+.toggle.on{background:linear-gradient(120deg,var(--pri),var(--purple))}
+.toggle.on::after{transform:translateX(18px)}
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0}
+.switch-row .st-label{font-size:13px;font-weight:600}
+.switch-row .st-desc{font-size:11.5px;color:var(--sub);margin-top:2px}
+
+/* 图片来源：上传 / 链接 二选一 */
+.img-picker{display:flex;gap:8px;margin-bottom:8px}
+.img-picker button{flex:1;font-size:12px;padding:7px;border-radius:var(--r-sm);background:var(--bg);border:1.5px solid var(--line);color:var(--sub);font-weight:600}
+.img-picker button.on{border-color:var(--pri);color:var(--pri);background:var(--pri-soft)}
+.img-preview{width:100%;aspect-ratio:1/1;max-width:140px;border-radius:var(--r-sm);overflow:hidden;background:var(--bg);border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--weak);margin-top:8px}
+.img-preview img{width:100%;height:100%;object-fit:cover}
+
+/* 标签芯片选择器 */
+.chip-pool{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-size:12px;padding:6px 12px;border-radius:999px;background:var(--bg);border:1.5px solid var(--line);color:var(--sub);font-weight:600}
+.chip.on{background:var(--pri-soft);border-color:var(--pri);color:var(--pri)}
+.chip-add{display:flex;gap:8px;margin-top:10px}
+.chip-add input{flex:1}
+
+/* ============================================================
+   4. 列表行（游戏 / 分区 / 商品 通用）
+   ============================================================ */
+.list-item{
+  display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--r-md);
+  background:var(--bg);border:1px solid var(--line);margin-bottom:10px;
+}
+.list-item .li-thumb{width:48px;height:48px;border-radius:10px;overflow:hidden;flex:none;background:var(--card)}
+.list-item .li-thumb img{width:100%;height:100%;object-fit:cover}
+.list-item .li-body{flex:1;min-width:0}
+.list-item .li-title{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-item .li-sub{font-size:11.5px;color:var(--sub);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-item .li-sort{
+  flex:none;width:52px;height:38px;text-align:center;border-radius:var(--r-sm);
+  background:var(--card);border:1.5px solid var(--line);font-size:13px;font-weight:700;color:var(--pri);
+}
+.list-item .li-actions{flex:none;display:flex;gap:6px}
+.li-actions button{width:32px;height:32px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
+.li-actions svg{width:15px;height:15px}
+.li-actions .del{color:var(--red)}
+.li-actions .edit{color:var(--pri)}
+
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.section-head h2{font-size:15px;font-weight:800}
+
+.empty-tip{text-align:center;color:var(--weak);font-size:12.5px;padding:30px 0}
+
+/* 分组标题（商品管理按“游戏”分组显示） */
+.group-title{
+  font-size:12px;font-weight:700;color:var(--pri);margin:16px 0 8px;
+  display:flex;align-items:center;gap:6px;
+}
+.group-title::before{content:"";width:3px;height:12px;border-radius:2px;background:linear-gradient(180deg,var(--pri),var(--purple))}
+
+/* ============================================================
+   5. 弹窗（新增/编辑 表单）
+   ============================================================ */
+.mask{position:fixed;inset:0;background:rgba(20,22,50,.5);z-index:90;display:flex;align-items:flex-end;justify-content:center}
+.mask.center{align-items:center;padding:16px}
+.sheet{
+  width:100%;max-width:520px;max-height:88vh;overflow-y:auto;background:var(--card);
+  border-radius:var(--r-lg) var(--r-lg) 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px));
+}
+.mask.center .sheet{border-radius:var(--r-lg)}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sheet-head h3{font-size:16px;font-weight:800}
+.sheet-head .close{width:30px;height:30px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--sub)}
+.sheet-foot{display:flex;gap:10px;margin-top:16px;position:sticky;bottom:0;background:var(--card);padding-top:6px}
+.sheet-foot .btn{flex:1}
+
+/* 商品卡片实时预览（沿用前台样式，方便所见即所得） */
+.mini-card{width:140px;border-radius:var(--r-md);overflow:hidden;background:var(--bg);border:1px solid var(--line);box-shadow:var(--shadow)}
+.mini-card .mc-img{position:relative;aspect-ratio:1/1;background:#e3e9ff}
+.mini-card .mc-img img{width:100%;height:100%;object-fit:cover}
+.mini-card .mc-tag{position:absolute;left:6px;top:6px;font-size:9px;color:#fff;font-weight:600;padding:2px 7px;border-radius:6px;background:linear-gradient(135deg,rgba(255,93,126,.92),rgba(255,138,92,.92))}
+.mini-card .mc-body{padding:8px}
+.mini-card .mc-title{font-size:11.5px;font-weight:700;line-height:1.4;height:32px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.mini-card .mc-tags{display:flex;gap:4px;margin-top:5px;overflow:hidden}
+.mini-card .mc-tags span{font-size:9px;color:var(--pri);background:var(--pri-soft);padding:2px 5px;border-radius:5px;white-space:nowrap}
+.mini-card .mc-foot{display:flex;justify-content:space-between;align-items:baseline;margin-top:6px}
+.mini-card .mc-price{color:var(--red);font-weight:800;font-size:13px}
+.mini-card .mc-heat{font-size:9px;color:var(--weak)}
+.preview-wrap{display:flex;justify-content:center;padding:10px 0 4px}
+
+/* ============================================================
+   6. 导出/导入 面板
+   ============================================================ */
+.code-box{
+  width:100%;min-height:160px;background:#14152b;color:#c9ceff;font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:11.5px;line-height:1.6;border-radius:var(--r-md);padding:14px;border:none;resize:vertical;white-space:pre;
+}
+.export-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+input[type=file]{display:none}
+
+/* ============================================================
+   7. Toast 提示
+   ============================================================ */
+#toastRoot{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:rgba(20,22,50,.92);color:#fff;font-size:12.5px;padding:10px 18px;border-radius:999px;box-shadow:0 10px 24px rgba(0,0,0,.25);animation:toastIn .2s ease}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     顶部栏：标题 + 自动保存状态提示
+     ============================================================ -->
+<div class="topbar">
+  <h1>🛠️ 星柚电竞 · 后台管理</h1>
+  <span class="save-state"><span class="dot"></span><span id="saveState">已自动保存</span></span>
+</div>
+
+<!-- Tab 导航：首页设置 / 游戏管理 / 分区管理 / 商品管理 / 数据导出 -->
+<nav class="tabnav" id="tabnav">
+  <button data-tab="home" class="on">首页设置</button>
+  <button data-tab="games">游戏管理</button>
+  <button data-tab="zones">分区管理</button>
+  <button data-tab="products">商品管理</button>
+  <button data-tab="export">数据导出/导入</button>
+</nav>
+
+<main>
+
+  <!-- ============================================================
+       面板一：首页设置（横幅 / 公告 / 快捷入口两张图）
+       ============================================================ -->
+  <section class="panel on" id="panel-home">
+    <div class="card">
+      <h2>顶部横幅（首页 Banner）</h2>
+      <p class="hint">对应前台首页最上方的大图区域，标题会叠加显示在图片右侧。</p>
+      <div id="bannerImgPicker"></div>
+      <div class="field"><label>主标题</label><input type="text" id="bannerTitle"></div>
+      <div class="field"><label>副标题（支持换行）</label><textarea id="bannerSubtitle"></textarea></div>
+    </div>
+
+    <div class="card">
+      <h2>顶部公告条</h2>
+      <p class="hint">首页最顶部滚动/常驻的小提示文字，可关闭。</p>
+      <div class="field"><label>公告文字</label><input type="text" id="noticeText"></div>
+    </div>
+
+    <div class="card">
+      <h2>两张快捷入口卡片</h2>
+      <p class="hint">首页横幅下方左右两张入口图（如“热门推荐”“全部商品”）。</p>
+      <div class="group-title">左侧卡片</div>
+      <div id="quickHotImgPicker"></div>
+      <div class="row2">
+        <div class="field"><label>标题</label><input type="text" id="quickHotTitle"></div>
+        <div class="field"><label>按钮文字</label><input type="text" id="quickHotBtn"></div>
+      </div>
+      <div class="group-title">右侧卡片</div>
+      <div id="quickAllImgPicker"></div>
+      <div class="row2">
+        <div class="field"><label>标题</label><input type="text" id="quickAllTitle"></div>
+        <div class="field"><label>按钮文字</label><input type="text" id="quickAllBtn"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       面板二：游戏管理（首页游戏图标 / 分类页游戏 Tab）
+       ============================================================ -->
+  <section class="panel" id="panel-games">
+    <div class="card">
+      <div class="section-head"><h2>游戏列表</h2><button class="btn primary sm" id="addGameBtn">＋ 新增游戏</button></div>
+      <p class="hint">「排序」数字越小越靠前，决定首页图标行与分类页顶部 Tab 的顺序。</p>
+      <div id="gameList"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       面板三：分区管理（分类页左侧「技术单局区/娱乐小时区」等）
+       ============================================================ -->
+  <section class="panel" id="panel-zones">
+    <div class="card">
+      <div class="section-head"><h2>分区列表</h2><button class="btn primary sm" id="addZoneBtn">＋ 新增分区</button></div>
+      <p class="hint">对应分类页左侧筛选栏。「排序」数字越小越靠前。每个分区还会作为商品左上角角标的默认文字。</p>
+      <div id="zoneList"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       面板四：商品（卡片）管理 —— 核心功能
+       ============================================================ -->
+  <section class="panel" id="panel-products">
+    <div class="card">
+      <div class="section-head"><h2>商品卡片</h2><button class="btn primary sm" id="addProductBtn">＋ 新增卡片</button></div>
+      <p class="hint">按「排序」数字从小到大展示；数字可任意填写（如 10、20、30），方便以后插队。每张卡片可单独设置图片、名称、简介、价格、标签、角标、是否可用优惠券。</p>
+      <div id="productList"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       面板五：数据导出 / 导入
+       ============================================================ -->
+  <section class="panel" id="panel-export">
+    <div class="card">
+      <h2>导出完整数据（JSON）</h2>
+      <p class="hint">用于备份，或发给开发这个网站的 AI／程序，让它把数据接入前台页面。</p>
+      <div class="export-actions">
+        <button class="btn primary" id="exportJsonBtn">下载 JSON 文件</button>
+        <button class="btn ghost" id="copyJsonBtn">复制到剪贴板</button>
+      </div>
+      <textarea class="code-box" id="jsonPreview" readonly style="margin-top:12px"></textarea>
+    </div>
+
+    <div class="card">
+      <h2>导出对接代码</h2>
+      <p class="hint">生成与前台页面变量结构一致的 GAMES / ZONES / PRODUCTS 代码，可直接交给负责对接的 AI 替换原网页中的对应数组。</p>
+      <div class="export-actions">
+        <button class="btn primary" id="exportCodeBtn">生成对接代码</button>
+        <button class="btn ghost" id="copyCodeBtn">复制到剪贴板</button>
+      </div>
+      <textarea class="code-box" id="codePreview" readonly style="margin-top:12px"></textarea>
+    </div>
+
+    <div class="card">
+      <h2>导入数据</h2>
+      <p class="hint">选择之前导出的 JSON 文件，将会<b>覆盖</b>当前后台的全部数据，请谨慎操作。</p>
+      <button class="btn ghost" id="importBtn">选择 JSON 文件导入</button>
+      <input type="file" id="importFile" accept="application/json,.json">
+    </div>
+
+    <div class="card">
+      <h2>同步到网站 88sss.top</h2>
+      <p class="hint">输入 GitHub Token，点击「同步到网站」，数据会立即推送到 88sss.top。Token 只保存在你本机浏览器，不会上传到任何地方。</p>
+      <div class="field" style="margin-bottom:10px">
+        <label>GitHub Token</label>
+        <input type="text" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="font-family:monospace;font-size:12px">
+      </div>
+      <div class="export-actions">
+        <button class="btn primary" id="syncPushBtn">↑ 同步到网站</button>
+        <button class="btn ghost" id="syncPullBtn">↓ 从网站拉取</button>
+      </div>
+      <p class="hint" style="margin-top:8px" id="syncStatus"></p>
+    </div>
+
+    <div class="card">
+      <h2>重置为示例数据</h2>
+      <p class="hint">恢复成与当前前台页面一致的初始示例数据（会覆盖现有修改）。</p>
+      <button class="btn danger" id="resetBtn">恢复示例数据</button>
+    </div>
+  </section>
+
+</main>
+
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<script>
+/* ================================================================
+   星柚电竞 · 后台管理系统  —— 脚本说明
+   本文件为独立的后台配置工具，不嵌入前台页面。所有数据保存在浏览器
+   本地（localStorage），可通过「数据导出」面板导出 JSON / 对接代码，
+   再交给负责接入前台页面的开发者或 AI 使用。
+   ================================================================ */
+
+/* ---------- 0. 工具函数 ---------- */
+const $  = (sel, root) => (root || document).querySelector(sel);
+const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = p => p + "_" + Math.random().toString(36).slice(2, 8);
+
+function toast(msg){
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.textContent = msg;
+  $("#toastRoot").appendChild(el);
+  setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .3s"; setTimeout(() => el.remove(), 300); }, 1800);
+}
+
+const ICONS = {
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
+  close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+};
+
+/* ---------- 1. 数据结构 & 默认示例数据 ----------
+   与当前前台页面的 GAMES / PRODUCTS 数据保持一致，方便直接对接。
+   字段说明：
+   GAMES  : {id, name, icon, servers[], sort}
+   ZONES  : {id, name, sort}                      // 分类页左侧筛选分区
+   PRODUCTS:{
+     id, game, zone, cat, name, desc, rank,
+     price, unit, img, tags[],
+     cornerMode: 'auto' | 'custom' | 'none',       // 左上角角标显示方式
+     cornerText,                                    // cornerMode='custom' 时使用
+     couponEnabled: bool,                            // 是否允许使用优惠券
+     heat, sales, sort
+   }
+   HOME   : 首页横幅/公告/快捷入口 的展示文案与图片
+--------------------------------------------------------------- */
+const IMG = {
+  banner:"https://aka.doubaocdn.com/s/oLEHCcxF6M",
+  hot:"https://aka.doubaocdn.com/s/8AozMreq3V",
+  all:"https://aka.doubaocdn.com/s/5zFlvBV0CU",
+  g1:"https://aka.doubaocdn.com/s/ctZqDYRbtQV".replace("V",""), // 兜底，下方逐一覆盖
+  g2:"https://aka.doubaocdn.com/s/9DMlHgX2Ff",
+  g3:"https://aka.doubaocdn.com/s/NbFFhyn4Ij",
+  g4:"https://aka.doubaocdn.com/s/QVmOyjpk99",
+  g5:"https://aka.doubaocdn.com/s/eKkUPDZcQ2",
+  g6:"https://aka.doubaocdn.com/s/PlinUk0Jjp"
+};
+IMG.g1 = "https://aka.doubaocdn.com/s/ctZqDYRbtQ";
+
+const TAG_POOL_DEFAULT = ["秒上号","质保一局","打完结算","三排车队","不赢补打","萌新友好","耐心教学","赋能大神","全程录屏","声优陪聊","氛围拉满","可刚可苟","包开心","保底红卡","装备全包","固定车队","连胜冲刺","高难图","稳撤离","手把手教","路线规划","轻松休闲","话多不冷场","国服打手","渡劫稳过","性价比高","秒开","甜妹御姐","可点歌","五排固定队","欢乐连麦","小国标","巅峰高分"];
+
+function defaultState(){
+  return {
+    home:{
+      bannerImg: IMG.banner,
+      bannerTitle:"星柚电竞",
+      bannerSubtitle:"瓦手 · 三角洲行动\n王者荣耀 · 技术上分娱乐陪玩",
+      noticeText:"下单立减3元，点击浏览器收藏本站，方便下次使用",
+      quickHot:{img:IMG.hot,title:"热门推荐",btn:"查看推荐"},
+      quickAll:{img:IMG.all,title:"全部商品",btn:"查看商品"}
+    },
+    games:[
+      {id:"val",name:"瓦手",icon:"https://aka.doubaocdn.com/s/0oOCkBhb9J",servers:["QQ区","微信区","全区可接"],sort:10},
+      {id:"df", name:"三角洲行动",icon:"https://aka.doubaocdn.com/s/NDn5woVxJC",servers:["QQ区","微信区","全区可接"],sort:20},
+      {id:"wz", name:"王者荣耀",icon:"https://aka.doubaocdn.com/s/y7SpdNXCiT",servers:["微信区","QQ区","全区可接"],sort:30}
+    ],
+    zones:[
+      {id:"tech",name:"技术单局区",sort:10},
+      {id:"fun", name:"娱乐小时区",sort:20}
+    ],
+    tagPool: TAG_POOL_DEFAULT.slice(),
+    products:[
+      {id:1,game:"val",zone:"tech",cat:"铂金排位",name:"神话打手",desc:"",rank:"铂金→钻石",price:0.01,unit:"局",img:IMG.g1,tags:["秒上号","质保一局","打完结算"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:4351,sales:2180,sort:10},
+      {id:2,game:"val",zone:"tech",cat:"黄金排位",name:"稳上分车队",desc:"",rank:"黄金→铂金",price:45,unit:"局",img:IMG.g2,tags:["三排车队","不赢补打"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:5606,sales:3065,sort:20},
+      {id:3,game:"val",zone:"tech",cat:"下三排位",name:"黑铁青铜白银",desc:"",rank:"黑铁→白银",price:40,unit:"局",img:IMG.g6,tags:["萌新友好","耐心教学"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:4669,sales:2540,sort:30},
+      {id:4,game:"val",zone:"tech",cat:"钻石排位",name:"顶尖赋能局",desc:"",rank:"钻石→神话",price:70,unit:"局",img:IMG.g3,tags:["赋能大神","全程录屏"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:6420,sales:1290,sort:40},
+      {id:5,game:"val",zone:"fun", cat:"娱乐开黑",name:"甜妹声优陪玩",desc:"",rank:"不限段位",price:25,unit:"小时",img:IMG.g5,tags:["声优陪聊","氛围拉满"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:3890,sales:4210,sort:50},
+      {id:6,game:"val",zone:"fun", cat:"娱乐双排",name:"技术娱乐双修",desc:"",rank:"不限段位",price:30,unit:"小时",img:IMG.g4,tags:["可刚可苟","包开心"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:5210,sales:3680,sort:60},
+      {id:7,game:"df",zone:"tech",cat:"烽火地带",name:"红卡撤离护航",desc:"",rank:"烽火地带",price:60,unit:"局",img:IMG.g3,tags:["保底红卡","装备全包"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:3320,sales:1560,sort:70},
+      {id:8,game:"df",zone:"tech",cat:"全面战场",name:"上分车队",desc:"",rank:"全面战场",price:45,unit:"局",img:IMG.g4,tags:["固定车队","连胜冲刺"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:4012,sales:2230,sort:80},
+      {id:9,game:"df",zone:"tech",cat:"机密行动",name:"哈夫克大楼代打",desc:"",rank:"机密行动",price:80,unit:"局",img:IMG.g1,tags:["高难图","稳撤离"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:2890,sales:980,sort:90},
+      {id:10,game:"df",zone:"fun",cat:"跑刀教学",name:"萌新带刷百万",desc:"",rank:"新手友好",price:35,unit:"小时",img:IMG.g6,tags:["手把手教","路线规划"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:2650,sales:1740,sort:100},
+      {id:11,game:"df",zone:"fun",cat:"娱乐摸金",name:"轻松开黑唠嗑",desc:"",rank:"不限模式",price:30,unit:"小时",img:IMG.g5,tags:["轻松休闲","话多不冷场"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:3105,sales:2010,sort:110},
+      {id:12,game:"wz",zone:"tech",cat:"钻石排位",name:"星耀冲刺局",desc:"",rank:"钻石→星耀",price:40,unit:"局",img:IMG.g2,tags:["国服打手","不赢补打"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:8920,sales:6820,sort:120},
+      {id:13,game:"wz",zone:"tech",cat:"星耀排位",name:"王者渡劫局",desc:"",rank:"星耀→王者",price:68,unit:"局",img:IMG.g1,tags:["渡劫稳过","全程录屏"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:9450,sales:4310,sort:130},
+      {id:14,game:"wz",zone:"tech",cat:"黄金铂金",name:"稳上分",desc:"",rank:"黄金→钻石",price:28,unit:"局",img:IMG.g4,tags:["性价比高","秒开"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:7230,sales:8900,sort:140},
+      {id:15,game:"wz",zone:"fun",cat:"娱乐匹配",name:"声优陪玩",desc:"",rank:"不限段位",price:20,unit:"小时",img:IMG.g5,tags:["甜妹御姐","可点歌"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:6100,sales:9200,sort:150},
+      {id:16,game:"wz",zone:"fun",cat:"五排车队",name:"差你一个上车",desc:"",rank:"不限段位",price:25,unit:"小时",img:IMG.g6,tags:["五排固定队","欢乐连麦"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:5870,sales:5600,sort:160},
+      {id:17,game:"wz",zone:"tech",cat:"巅峰赛",name:"小国标配打手",desc:"",rank:"巅峰赛",price:88,unit:"局",img:IMG.g3,tags:["小国标","巅峰高分"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:4560,sales:760,sort:170}
+    ],
+    nextProductId: 18
+  };
+}
+
+/* ---------- 2. 状态存取（localStorage 本地持久化） ---------- */
+const STORE_KEY = "xy_admin_state_v1";
+let state = loadState();
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return defaultState();
+}
+function saveState(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    flashSaved();
+  }catch(e){
+    toast("保存失败：本地存储空间不足，建议图片使用链接而非上传");
+  }
+}
+function flashSaved(){
+  const el = $("#saveState");
+  el.textContent = "已自动保存";
+}
+
+/* 排序辅助：按 sort 数字升序，相同则按 id 兜底 */
+const bySort = (a, b) => (a.sort - b.sort) || (String(a.id).localeCompare(String(b.id)));
+
+/* ---------- 3. Tab 切换 ---------- */
+$("#tabnav").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-tab]");
+  if(!btn) return;
+  $$("#tabnav button").forEach(b => b.classList.toggle("on", b === btn));
+  $$(".panel").forEach(p => p.classList.toggle("on", p.id === "panel-" + btn.dataset.tab));
+  if(btn.dataset.tab === "export") refreshExportPreview();
+});
+
+/* ================================================================
+   4. 图片选择器组件（上传 或 链接 二选一，通用于 Banner / 游戏图标 / 商品图片）
+   ================================================================ */
+function renderImgPicker(container, value, onChange){
+  container.className = "field";
+  container.innerHTML =
+    '<label>图片</label>' +
+    '<div class="img-picker">' +
+      '<button type="button" data-mode="url">图片链接</button>' +
+      '<button type="button" data-mode="upload">本地上传</button>' +
+    '</div>' +
+    '<input type="text" class="img-url-input" placeholder="粘贴图片链接 https://...">' +
+    '<input type="file" class="img-file-input" accept="image/*">' +
+    '<div class="img-preview"><span class="ph">暂无图片</span></div>';
+
+  const urlInput = $(".img-url-input", container);
+  const fileInput = $(".img-file-input", container);
+  const preview = $(".img-preview", container);
+  const modeBtns = $$(".img-picker button", container);
+  let mode = "url";
+
+  function paintPreview(src){
+    preview.innerHTML = src ? '<img src="'+esc(src)+'" alt="">' : '<span class="ph">暂无图片</span>';
+  }
+  function setMode(m){
+    mode = m;
+    modeBtns.forEach(b => b.classList.toggle("on", b.dataset.mode === m));
+    urlInput.style.display = m === "url" ? "" : "none";
+    fileInput.style.display = m === "upload" ? "block" : "none";
+  }
+  modeBtns.forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
+  urlInput.addEventListener("input", () => { onChange(urlInput.value.trim()); paintPreview(urlInput.value.trim()); });
+  fileInput.addEventListener("change", () => {
+    const f = fileInput.files[0];
+    if(!f) return;
+    if(f.size > 2*1024*1024){ toast("图片较大，建议压缩后再上传（本地存储有限）"); }
+    const reader = new FileReader();
+    reader.onload = () => { onChange(reader.result); paintPreview(reader.result); };
+    reader.readAsDataURL(f);
+  });
+
+  // 初始化：判断当前值是否为 base64（上传）还是普通链接
+  setMode(value && value.startsWith("data:") ? "upload" : "url");
+  if(value && !value.startsWith("data:")) urlInput.value = value;
+  paintPreview(value);
+}
+
+/* ================================================================
+   5. 首页设置 面板
+   ================================================================ */
+function renderHomePanel(){
+  renderImgPicker($("#bannerImgPicker"), state.home.bannerImg, v => { state.home.bannerImg = v; saveState(); });
+  $("#bannerTitle").value = state.home.bannerTitle;
+  $("#bannerSubtitle").value = state.home.bannerSubtitle;
+  $("#noticeText").value = state.home.noticeText;
+
+  renderImgPicker($("#quickHotImgPicker"), state.home.quickHot.img, v => { state.home.quickHot.img = v; saveState(); });
+  $("#quickHotTitle").value = state.home.quickHot.title;
+  $("#quickHotBtn").value = state.home.quickHot.btn;
+
+  renderImgPicker($("#quickAllImgPicker"), state.home.quickAll.img, v => { state.home.quickAll.img = v; saveState(); });
+  $("#quickAllTitle").value = state.home.quickAll.title;
+  $("#quickAllBtn").value = state.home.quickAll.btn;
+}
+["bannerTitle","bannerSubtitle","noticeText"].forEach(id => {
+  $("#"+id).addEventListener("input", () => { state.home[id] = $("#"+id).value; saveState(); });
+});
+$("#quickHotTitle").addEventListener("input", () => { state.home.quickHot.title = $("#quickHotTitle").value; saveState(); });
+$("#quickHotBtn").addEventListener("input", () => { state.home.quickHot.btn = $("#quickHotBtn").value; saveState(); });
+$("#quickAllTitle").addEventListener("input", () => { state.home.quickAll.title = $("#quickAllTitle").value; saveState(); });
+$("#quickAllBtn").addEventListener("input", () => { state.home.quickAll.btn = $("#quickAllBtn").value; saveState(); });
+
+/* ================================================================
+   6. 游戏管理 面板
+   ================================================================ */
+function renderGameList(){
+  const list = state.games.slice().sort(bySort);
+  const wrap = $("#gameList");
+  wrap.innerHTML = list.length ? "" : '<div class="empty-tip">还没有游戏，点击右上角新增</div>';
+  list.forEach(g => {
+    const row = document.createElement("div");
+    row.className = "list-item";
+    row.innerHTML =
+      '<div class="li-thumb">'+(g.icon?'<img src="'+esc(g.icon)+'">':'')+'</div>'+
+      '<div class="li-body"><div class="li-title">'+esc(g.name)+'</div><div class="li-sub">区服：'+esc((g.servers||[]).join("、")||"未设置")+'</div></div>'+
+      '<input type="number" class="li-sort" value="'+g.sort+'" data-id="'+g.id+'">'+
+      '<div class="li-actions"><button class="edit" data-act="edit" data-id="'+g.id+'">'+ICONS.edit+'</button><button class="del" data-act="del" data-id="'+g.id+'">'+ICONS.del+'</button></div>';
+    wrap.appendChild(row);
+  });
+}
+$("#gameList").addEventListener("input", e => {
+  const inp = e.target.closest(".li-sort");
+  if(!inp) return;
+  const g = state.games.find(x => x.id === inp.dataset.id);
+  if(g){ g.sort = parseInt(inp.value, 10) || 0; saveState(); }
+});
+$("#gameList").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-act]");
+  if(!btn) return;
+  const g = state.games.find(x => x.id === btn.dataset.id);
+  if(btn.dataset.act === "edit") openGameModal(g);
+  if(btn.dataset.act === "del"){
+    if(confirm('确定删除游戏「'+g.name+'」吗？该游戏下的商品需要手动改到其它游戏。')){
+      state.games = state.games.filter(x => x.id !== g.id);
+      saveState(); renderGameList();
+    }
+  }
+});
+$("#addGameBtn").addEventListener("click", () => openGameModal(null));
+
+function openGameModal(game){
+  const isNew = !game;
+  const draft = isNew ? {id:uid("game"),name:"",icon:"",servers:["QQ区","微信区","全区可接"],sort:(state.games.length+1)*10} : JSON.parse(JSON.stringify(game));
+  const root = $("#modalRoot");
+  root.innerHTML =
+    '<div class="mask" id="gameMask"><div class="sheet">'+
+      '<div class="sheet-head"><h3>'+(isNew?"新增游戏":"编辑游戏")+'</h3><button class="close" id="gameClose">'+ICONS.close+'</button></div>'+
+      '<div id="gameIconPicker"></div>'+
+      '<div class="field"><label>游戏名称</label><input type="text" id="gName" value="'+esc(draft.name)+'"></div>'+
+      '<div class="field"><label>可选区服（用「、」分隔）</label><input type="text" id="gServers" value="'+esc((draft.servers||[]).join("、"))+'"></div>'+
+      '<div class="field"><label>排序（数字越小越靠前）</label><input type="number" id="gSort" value="'+draft.sort+'"></div>'+
+      '<div class="sheet-foot"><button class="btn ghost" id="gameCancel">取消</button><button class="btn primary" id="gameSave">保存</button></div>'+
+    '</div></div>';
+  renderImgPicker($("#gameIconPicker"), draft.icon, v => draft.icon = v);
+  const close = () => root.innerHTML = "";
+  $("#gameClose").addEventListener("click", close);
+  $("#gameCancel").addEventListener("click", close);
+  $("#gameMask").addEventListener("click", e => { if(e.target.id === "gameMask") close(); });
+  $("#gameSave").addEventListener("click", () => {
+    draft.name = $("#gName").value.trim() || "未命名游戏";
+    draft.servers = $("#gServers").value.split(/[、,，]/).map(s => s.trim()).filter(Boolean);
+    draft.sort = parseInt($("#gSort").value, 10) || 0;
+    if(isNew) state.games.push(draft);
+    else Object.assign(game, draft);
+    saveState(); renderGameList(); renderProductList(); // 商品的游戏筛选下拉也可能需要刷新
+    close(); toast("游戏已保存");
+  });
+}
+
+/* ================================================================
+   7. 分区管理 面板
+   ================================================================ */
+function renderZoneList(){
+  const list = state.zones.slice().sort(bySort);
+  const wrap = $("#zoneList");
+  wrap.innerHTML = list.length ? "" : '<div class="empty-tip">还没有分区，点击右上角新增</div>';
+  list.forEach(z => {
+    const row = document.createElement("div");
+    row.className = "list-item";
+    row.innerHTML =
+      '<div class="li-body"><div class="li-title">'+esc(z.name)+'</div><div class="li-sub">ID：'+esc(z.id)+'</div></div>'+
+      '<input type="number" class="li-sort" value="'+z.sort+'" data-id="'+z.id+'">'+
+      '<div class="li-actions"><button class="edit" data-act="edit" data-id="'+z.id+'">'+ICONS.edit+'</button><button class="del" data-act="del" data-id="'+z.id+'">'+ICONS.del+'</button></div>';
+    wrap.appendChild(row);
+  });
+}
+$("#zoneList").addEventListener("input", e => {
+  const inp = e.target.closest(".li-sort");
+  if(!inp) return;
+  const z = state.zones.find(x => x.id === inp.dataset.id);
+  if(z){ z.sort = parseInt(inp.value, 10) || 0; saveState(); }
+});
+$("#zoneList").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-act]");
+  if(!btn) return;
+  const z = state.zones.find(x => x.id === btn.dataset.id);
+  if(btn.dataset.act === "edit") openZoneModal(z);
+  if(btn.dataset.act === "del"){
+    if(confirm('确定删除分区「'+z.name+'」吗？')){
+      state.zones = state.zones.filter(x => x.id !== z.id);
+      saveState(); renderZoneList();
+    }
+  }
+});
+$("#addZoneBtn").addEventListener("click", () => openZoneModal(null));
+
+function openZoneModal(zone){
+  const isNew = !zone;
+  const draft = isNew ? {id:"", name:"", sort:(state.zones.length+1)*10} : JSON.parse(JSON.stringify(zone));
+  const root = $("#modalRoot");
+  root.innerHTML =
+    '<div class="mask" id="zoneMask"><div class="sheet">'+
+      '<div class="sheet-head"><h3>'+(isNew?"新增分区":"编辑分区")+'</h3><button class="close" id="zoneClose">'+ICONS.close+'</button></div>'+
+      (isNew ? '<div class="field"><label>分区 ID（英文/拼音，如 tech）</label><input type="text" id="zId" value=""></div>' : '')+
+      '<div class="field"><label>分区名称</label><input type="text" id="zName" value="'+esc(draft.name)+'"></div>'+
+      '<div class="field"><label>排序（数字越小越靠前）</label><input type="number" id="zSort" value="'+draft.sort+'"></div>'+
+      '<div class="sheet-foot"><button class="btn ghost" id="zoneCancel">取消</button><button class="btn primary" id="zoneSave">保存</button></div>'+
+    '</div></div>';
+  const close = () => root.innerHTML = "";
+  $("#zoneClose").addEventListener("click", close);
+  $("#zoneCancel").addEventListener("click", close);
+  $("#zoneMask").addEventListener("click", e => { if(e.target.id === "zoneMask") close(); });
+  $("#zoneSave").addEventListener("click", () => {
+    if(isNew){
+      const id = ($("#zId").value.trim() || uid("zone")).toLowerCase();
+      if(state.zones.some(z => z.id === id)){ toast("该分区 ID 已存在"); return; }
+      draft.id = id;
+    }
+    draft.name = $("#zName").value.trim() || "未命名分区";
+    draft.sort = parseInt($("#zSort").value, 10) || 0;
+    if(isNew) state.zones.push(draft);
+    else Object.assign(zone, draft);
+    saveState(); renderZoneList(); renderProductList();
+    close(); toast("分区已保存");
+  });
+}
+
+/* ================================================================
+   8. 商品（卡片）管理 面板 —— 核心
+   ================================================================ */
+function gameName(id){ const g = state.games.find(x => x.id === id); return g ? g.name : "（未知游戏）"; }
+function zoneName(id){ const z = state.zones.find(x => x.id === id); return z ? z.name : ""; }
+
+function renderProductList(){
+  const wrap = $("#productList");
+  wrap.innerHTML = "";
+  const games = state.games.slice().sort(bySort);
+  const noGame = state.products.filter(p => !state.games.some(g => g.id === p.game));
+  if(!state.products.length){ wrap.innerHTML = '<div class="empty-tip">还没有商品卡片，点击右上角新增</div>'; return; }
+
+  const renderGroup = (title, list) => {
+    if(!list.length) return;
+    const h = document.createElement("div");
+    h.className = "group-title";
+    h.textContent = title + "（" + list.length + "）";
+    wrap.appendChild(h);
+    list.slice().sort(bySort).forEach(p => wrap.appendChild(productRow(p)));
+  };
+  games.forEach(g => renderGroup(g.name, state.products.filter(p => p.game === g.id)));
+  renderGroup("未分配游戏", noGame);
+}
+function productRow(p){
+  const row = document.createElement("div");
+  row.className = "list-item";
+  const corner = p.cornerMode === "none" ? "无角标" : (p.cornerMode === "custom" ? p.cornerText : zoneName(p.zone));
+  row.innerHTML =
+    '<div class="li-thumb">'+(p.img?'<img src="'+esc(p.img)+'">':'')+'</div>'+
+    '<div class="li-body"><div class="li-title">【'+esc(p.cat)+'】'+esc(p.name)+'</div>'+
+    '<div class="li-sub">¥'+p.price+'/'+esc(p.unit)+' · 角标：'+esc(corner||"无")+' · 优惠券：'+(p.couponEnabled?"可用":"不可用")+'</div></div>'+
+    '<input type="number" class="li-sort" value="'+p.sort+'" data-id="'+p.id+'">'+
+    '<div class="li-actions"><button class="edit" data-act="edit" data-id="'+p.id+'">'+ICONS.edit+'</button><button class="del" data-act="del" data-id="'+p.id+'">'+ICONS.del+'</button></div>';
+  return row;
+}
+$("#productList").addEventListener("input", e => {
+  const inp = e.target.closest(".li-sort");
+  if(!inp) return;
+  const p = state.products.find(x => String(x.id) === inp.dataset.id);
+  if(p){ p.sort = parseInt(inp.value, 10) || 0; saveState(); }
+});
+$("#productList").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-act]");
+  if(!btn) return;
+  const p = state.products.find(x => String(x.id) === btn.dataset.id);
+  if(btn.dataset.act === "edit") openProductModal(p);
+  if(btn.dataset.act === "del"){
+    if(confirm('确定删除卡片「'+p.name+'」吗？')){
+      state.products = state.products.filter(x => x.id !== p.id);
+      saveState(); renderProductList();
+    }
+  }
+});
+$("#addProductBtn").addEventListener("click", () => openProductModal(null));
+
+function openProductModal(product){
+  const isNew = !product;
+  const draft = isNew ? {
+    id: state.nextProductId++, game: (state.games[0]||{}).id || "", zone: (state.zones[0]||{}).id || "",
+    cat:"", name:"", desc:"", rank:"", price:0, unit:"局", img:"", tags:[],
+    cornerMode:"auto", cornerText:"", couponEnabled:true, heat:0, sales:0,
+    sort:(state.products.length+1)*10
+  } : JSON.parse(JSON.stringify(product));
+
+  const gameOpts = state.games.slice().sort(bySort).map(g => '<option value="'+g.id+'"'+(g.id===draft.game?" selected":"")+'>'+esc(g.name)+'</option>').join("");
+  const zoneOpts = state.zones.slice().sort(bySort).map(z => '<option value="'+z.id+'"'+(z.id===draft.zone?" selected":"")+'>'+esc(z.name)+'</option>').join("");
+
+  const root = $("#modalRoot");
+  root.innerHTML =
+    '<div class="mask" id="prodMask"><div class="sheet">'+
+      '<div class="sheet-head"><h3>'+(isNew?"新增卡片":"编辑卡片")+'</h3><button class="close" id="prodClose">'+ICONS.close+'</button></div>'+
+
+      '<div class="preview-wrap"><div class="mini-card" id="prodPreview"></div></div>'+
+
+      '<div id="prodImgPicker"></div>'+
+
+      '<div class="row2">'+
+        '<div class="field"><label>所属游戏</label><select id="pGame">'+gameOpts+'</select></div>'+
+        '<div class="field"><label>所属分区</label><select id="pZone">'+zoneOpts+'</select></div>'+
+      '</div>'+
+      '<div class="row2">'+
+        '<div class="field"><label>类目文字（如 铂金排位）</label><input type="text" id="pCat" value="'+esc(draft.cat)+'"></div>'+
+        '<div class="field"><label>商品名称</label><input type="text" id="pName" value="'+esc(draft.name)+'"></div>'+
+      '</div>'+
+      '<div class="field"><label>卡片标题预览：<b id="pTitlePreview"></b></label></div>'+
+      '<div class="field"><label>简介说明（选填，用于后台备注/详情页）</label><textarea id="pDesc">'+esc(draft.desc)+'</textarea></div>'+
+      '<div class="field"><label>适用段位/说明（如 铂金→钻石）</label><input type="text" id="pRank" value="'+esc(draft.rank)+'"></div>'+
+
+      '<div class="row3">'+
+        '<div class="field"><label>价格（元）</label><input type="number" step="0.01" id="pPrice" value="'+draft.price+'"></div>'+
+        '<div class="field"><label>计价单位</label><input type="text" id="pUnit" value="'+esc(draft.unit)+'" placeholder="局 / 小时"></div>'+
+        '<div class="field"><label>排序数字</label><input type="number" id="pSort" value="'+draft.sort+'"></div>'+
+      '</div>'+
+      '<div class="row2">'+
+        '<div class="field"><label>热度（选填，展示用）</label><input type="number" id="pHeat" value="'+draft.heat+'"></div>'+
+        '<div class="field"><label>已售数量（选填，展示用）</label><input type="number" id="pSales" value="'+draft.sales+'"></div>'+
+      '</div>'+
+
+      '<div class="field"><label>左上角角标</label>'+
+        '<select id="pCornerMode">'+
+          '<option value="auto"'+(draft.cornerMode==="auto"?" selected":"")+'>跟随分区（自动）</option>'+
+          '<option value="custom"'+(draft.cornerMode==="custom"?" selected":"")+'>自定义文字</option>'+
+          '<option value="none"'+(draft.cornerMode==="none"?" selected":"")+'>不显示角标</option>'+
+        '</select>'+
+      '</div>'+
+      '<div class="field" id="pCornerTextWrap" style="display:'+(draft.cornerMode==="custom"?"block":"none")+'">'+
+        '<label>自定义角标文字</label><input type="text" id="pCornerText" value="'+esc(draft.cornerText)+'" placeholder="如：限时特惠">'+
+      '</div>'+
+
+      '<div class="field"><label>商品标签（点击选中/取消，可自行添加新标签）</label>'+
+        '<div class="chip-pool" id="pTagPool"></div>'+
+        '<div class="chip-add"><input type="text" id="pNewTag" placeholder="输入新标签，回车添加"><button class="btn sm" id="pAddTagBtn">添加</button></div>'+
+      '</div>'+
+
+      '<div class="switch-row"><div><div class="st-label">允许使用优惠券</div><div class="st-desc">关闭后，下单该商品时不可叠加任何优惠券</div></div><div class="toggle'+(draft.couponEnabled?" on":"")+'" id="pCoupon"></div></div>'+
+
+      '<div class="sheet-foot"><button class="btn ghost" id="prodCancel">取消</button><button class="btn primary" id="prodSave">保存</button></div>'+
+    '</div></div>';
+
+  renderImgPicker($("#prodImgPicker"), draft.img, v => { draft.img = v; paintPreview(); });
+
+  // ---- 标签选择器 ----
+  function paintTagPool(){
+    const box = $("#pTagPool");
+    box.innerHTML = state.tagPool.map(t =>
+      '<button type="button" class="chip'+(draft.tags.includes(t)?" on":"")+'" data-tag="'+esc(t)+'">'+esc(t)+'</button>'
+    ).join("");
+  }
+  paintTagPool();
+  $("#pTagPool").addEventListener("click", e => {
+    const chip = e.target.closest(".chip");
+    if(!chip) return;
+    const t = chip.dataset.tag;
+    const i = draft.tags.indexOf(t);
+    if(i >= 0) draft.tags.splice(i, 1); else draft.tags.push(t);
+    paintTagPool(); paintPreview();
+  });
+  function addNewTag(){
+    const v = $("#pNewTag").value.trim();
+    if(!v) return;
+    if(!state.tagPool.includes(v)) state.tagPool.push(v);
+    if(!draft.tags.includes(v)) draft.tags.push(v);
+    $("#pNewTag").value = "";
+    paintTagPool(); paintPreview(); saveState();
+  }
+  $("#pAddTagBtn").addEventListener("click", addNewTag);
+  $("#pNewTag").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); addNewTag(); } });
+
+  // ---- 角标模式切换 ----
+  $("#pCornerMode").addEventListener("change", () => {
+    draft.cornerMode = $("#pCornerMode").value;
+    $("#pCornerTextWrap").style.display = draft.cornerMode === "custom" ? "block" : "none";
+    paintPreview();
+  });
+  $("#pCornerText").addEventListener("input", () => { draft.cornerText = $("#pCornerText").value; paintPreview(); });
+
+  // ---- 优惠券开关 ----
+  $("#pCoupon").addEventListener("click", () => {
+    draft.couponEnabled = !draft.couponEnabled;
+    $("#pCoupon").classList.toggle("on", draft.couponEnabled);
+  });
+
+  // ---- 实时预览 ----
+  function cornerLabel(){
+    if(draft.cornerMode === "none") return "";
+    if(draft.cornerMode === "custom") return draft.cornerText || "";
+    const z = state.zones.find(x => x.id === $("#pZone").value);
+    return z ? z.name : "";
+  }
+  function paintPreview(){
+    const title = "【"+($("#pCat")?$("#pCat").value:draft.cat)+"】"+($("#pName")?$("#pName").value:draft.name);
+    $("#pTitlePreview").textContent = title;
+    const cl = cornerLabel();
+    const price = $("#pPrice")?$("#pPrice").value:draft.price;
+    const unit = $("#pUnit")?$("#pUnit").value:draft.unit;
+    const heat = $("#pHeat")?$("#pHeat").value:draft.heat;
+    $("#prodPreview").innerHTML =
+      '<div class="mc-img">'+(cl?'<span class="mc-tag">'+esc(cl)+'</span>':'')+(draft.img?'<img src="'+esc(draft.img)+'">':'')+'</div>'+
+      '<div class="mc-body"><div class="mc-title">'+esc(title)+'</div>'+
+      '<div class="mc-tags">'+draft.tags.slice(0,2).map(t=>'<span>'+esc(t)+'</span>').join("")+'</div>'+
+      '<div class="mc-foot"><span class="mc-price">¥'+esc(price)+'<small style="font-size:9px">/'+esc(unit)+'</small></span><span class="mc-heat">热度'+esc(heat)+'</span></div></div>';
+  }
+  ["pCat","pName","pPrice","pUnit","pHeat","pZone"].forEach(id => $("#"+id).addEventListener("input", paintPreview));
+  $("#pZone").addEventListener("change", paintPreview);
+  paintPreview();
+
+  const close = () => root.innerHTML = "";
+  $("#prodClose").addEventListener("click", close);
+  $("#prodCancel").addEventListener("click", close);
+  $("#prodMask").addEventListener("click", e => { if(e.target.id === "prodMask") close(); });
+  $("#prodSave").addEventListener("click", () => {
+    draft.game = $("#pGame").value;
+    draft.zone = $("#pZone").value;
+    draft.cat = $("#pCat").value.trim();
+    draft.name = $("#pName").value.trim() || "未命名商品";
+    draft.desc = $("#pDesc").value.trim();
+    draft.rank = $("#pRank").value.trim();
+    draft.price = parseFloat($("#pPrice").value) || 0;
+    draft.unit = $("#pUnit").value.trim() || "局";
+    draft.sort = parseInt($("#pSort").value, 10) || 0;
+    draft.heat = parseInt($("#pHeat").value, 10) || 0;
+    draft.sales = parseInt($("#pSales").value, 10) || 0;
+    draft.cornerMode = $("#pCornerMode").value;
+    draft.cornerText = $("#pCornerText").value.trim();
+    if(isNew) state.products.push(draft);
+    else Object.assign(product, draft);
+    saveState(); renderProductList();
+    close(); toast("卡片已保存");
+  });
+}
+
+/* ================================================================
+   9. 数据导出 / 导入 面板
+   ================================================================ */
+function refreshExportPreview(){
+  $("#jsonPreview").value = JSON.stringify(state, null, 2);
+}
+$("#exportJsonBtn").addEventListener("click", () => {
+  refreshExportPreview();
+  const blob = new Blob([$("#jsonPreview").value], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "xingyou-admin-data.json";
+  a.click();
+  toast("已下载 JSON 文件");
+});
+$("#copyJsonBtn").addEventListener("click", () => {
+  refreshExportPreview();
+  navigator.clipboard.writeText($("#jsonPreview").value).then(() => toast("已复制到剪贴板")).catch(() => toast("复制失败，请手动选择文本复制"));
+});
+$("#importFile").addEventListener("change", () => {
+  const f = $("#importFile").files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const data = JSON.parse(reader.result);
+      if(!data.games || !data.products){ toast("文件格式不正确"); return; }
+      state = data;
+      saveState();
+      renderAll();
+      toast("导入成功，已覆盖当前数据");
+    }catch(e){ toast("文件解析失败：" + e.message); }
+  };
+  reader.readAsText(f);
+});
+$("#importBtn").addEventListener("click", () => $("#importFile").click());
+$("#resetBtn").addEventListener("click", () => {
+  if(!confirm("确定要恢复为示例数据吗？当前所有修改将被覆盖。")) return;
+  state = defaultState();
+  saveState(); renderAll();
+  toast("已恢复示例数据");
+});
+
+/* ---- 生成与前台页面变量结构一致的对接代码 ---- */
+function buildIntegrationCode(){
+  const games = state.games.slice().sort(bySort);
+  const zones = state.zones.slice().sort(bySort);
+  const products = state.products.slice().sort(bySort);
+
+  const gamesCode = games.map(g =>
+    '  {id:"'+g.id+'",name:"'+g.name+'",icon:"'+g.icon+'",servers:['+g.servers.map(s=>'"'+s+'"').join(",")+']}'
+  ).join(",\n");
+
+  const zonesCode = zones.map(z => '  {id:"'+z.id+'",name:"'+z.name+'"}').join(",\n");
+
+  const productsCode = products.map(p => {
+    const corner = p.cornerMode === "none" ? '""' : (p.cornerMode === "custom" ? JSON.stringify(p.cornerText||"") : "/*跟随分区*/ " + JSON.stringify(zoneName(p.zone)));
+    return '  {id:'+p.id+',game:"'+p.game+'",zone:"'+p.zone+'",cat:"'+p.cat+'",name:"'+p.name+'",desc:'+JSON.stringify(p.desc||"")+',rank:"'+p.rank+'",price:'+p.price+',unit:"'+p.unit+'",img:"'+p.img+'",tags:['+p.tags.map(t=>'"'+t+'"').join(",")+'],cornerLabel:'+corner+',couponEnabled:'+p.couponEnabled+',heat:'+p.heat+',sales:'+p.sales+'}';
+  }).join(",\n");
+
+  return (
+'/* ===== 以下代码由「星柚电竞后台管理」自动生成 ===== */\n\n'+
+'// 游戏列表（按排序已处理好顺序）\n'+
+'const GAMES = [\n'+gamesCode+'\n];\n\n'+
+'// 分区列表（分类页左侧筛选，按排序已处理好顺序）\n'+
+'const ZONES = [\n'+zonesCode+'\n];\n\n'+
+'// 商品卡片列表（按排序已处理好顺序，数组顺序即默认展示顺序）\n'+
+'// 说明：\n'+
+'//   cornerLabel   —— 卡片左上角角标文字，空字符串表示不显示\n'+
+'//   couponEnabled —— 该商品是否允许使用优惠券\n'+
+'const PRODUCTS = [\n'+productsCode+'\n];\n\n'+
+'// 首页展示文案与图片\n'+
+'const HOME_CONFIG = '+JSON.stringify(state.home, null, 2)+';\n'
+  );
+}
+$("#exportCodeBtn").addEventListener("click", () => { $("#codePreview").value = buildIntegrationCode(); toast("代码已生成"); });
+$("#copyCodeBtn").addEventListener("click", () => {
+  if(!$("#codePreview").value) $("#codePreview").value = buildIntegrationCode();
+  navigator.clipboard.writeText($("#codePreview").value).then(() => toast("已复制到剪贴板")).catch(() => toast("复制失败，请手动选择文本复制"));
+});
+
+/* ---------- 10. GitHub 同步（88sss.top） ---------- */
+const GH_REPO = "lhc8055/lv";
+const GH_FILE = "data.json";
+const GH_BRANCH = "main";
+
+function getGhToken(){ return $("#ghToken").value.trim(); }
+function setSyncStatus(msg, ok){
+  const el = $("#syncStatus");
+  el.textContent = msg;
+  el.style.color = ok === false ? "var(--red)" : (ok === true ? "var(--green)" : "var(--sub)");
+}
+
+async function ghGetFile(){
+  const token = getGhToken();
+  if(!token){ setSyncStatus("请先输入 GitHub Token", false); return null; }
+  const r = await fetch("https://api.github.com/repos/"+GH_REPO+"/contents/"+GH_FILE+"?ref="+GH_BRANCH, {
+    headers:{ Authorization:"Bearer "+token, Accept:"application/vnd.github.v3+json" }
+  });
+  if(r.status === 404) return null;
+  if(!r.ok){ setSyncStatus("拉取失败：HTTP "+r.status, false); return null; }
+  const d = await r.json();
+  return { sha: d.sha, content: JSON.parse(atob(d.content)) };
+}
+
+async function ghPutFile(content){
+  const token = getGhToken();
+  if(!token){ setSyncStatus("请先输入 GitHub Token", false); return false; }
+  const existing = await ghGetFile();
+  const body = {
+    message: "update: site data sync",
+    content: btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2)))),
+    branch: GH_BRANCH
+  };
+  if(existing && existing.sha) body.sha = existing.sha;
+  const r = await fetch("https://api.github.com/repos/"+GH_REPO+"/contents/"+GH_FILE, {
+    method:"PUT",
+    headers:{ Authorization:"Bearer "+token, "Content-Type":"application/json", Accept:"application/vnd.github.v3+json" },
+    body: JSON.stringify(body)
+  });
+  if(!r.ok){
+    const err = await r.json().catch(()=>({}));
+    setSyncStatus("推送失败："+(err.message || "HTTP "+r.status), false);
+    return false;
+  }
+  return true;
+}
+
+$("#syncPushBtn").addEventListener("click", async () => {
+  const token = getGhToken();
+  if(!token){ toast("请先输入 GitHub Token"); return; }
+  setSyncStatus("正在同步...", null);
+  $("#syncPushBtn").disabled = true;
+  try{
+    const ok = await ghPutFile(state);
+    if(ok){
+      localStorage.setItem("gh_token_xy", token);
+      setSyncStatus("✓ 同步成功！刷新 88sss.top 即可看到最新数据", true);
+      toast("已同步到网站");
+    }
+  }catch(e){
+    setSyncStatus("同步失败："+e.message, false);
+  }
+  $("#syncPushBtn").disabled = false;
+});
+
+$("#syncPullBtn").addEventListener("click", async () => {
+  const token = getGhToken();
+  if(!token){ toast("请先输入 GitHub Token"); return; }
+  if(!confirm("确定要从网站拉取数据吗？当前本地修改会被覆盖。")) return;
+  setSyncStatus("正在拉取...", null);
+  try{
+    const f = await ghGetFile();
+    if(f && f.content){
+      state = f.content;
+      if(!state.nextProductId) state.nextProductId = (state.products||[]).reduce((m,p)=>Math.max(m, Number(p.id)||0), 0)+1;
+      saveState(); renderAll();
+      localStorage.setItem("gh_token_xy", token);
+      setSyncStatus("✓ 已从网站拉取最新数据", true);
+      toast("拉取成功");
+    }else if(f === null){
+      setSyncStatus("网站上还没有数据文件，先同步一次", false);
+    }
+  }catch(e){
+    setSyncStatus("拉取失败："+e.message, false);
+  }
+});
+
+// 恢复上次输入的 token
+const savedToken = localStorage.getItem("gh_token_xy");
+if(savedToken) $("#ghToken").value = savedToken;
+
+/* ---------- 11. 首次渲染 ---------- */
+function renderAll(){
+  renderHomePanel();
+  renderGameList();
+  renderZoneList();
+  renderProductList();
+  refreshExportPreview();
+}
+renderAll();
+</script>
+</body>
+</html>

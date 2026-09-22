@@ -502,6 +502,36 @@ DEFAULT_PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
 let PRODUCTS=DEFAULT_PRODUCTS.map(p=>({...p,tags:(p.tags||[]).slice()}));
 PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
 
+/* ---- 从 data.json 加载后台配置的数据（实时同步） ---- */
+async function loadSiteData(){
+  try{
+    const r=await fetch("data.json?_t="+Date.now(),{cache:"no-store"});
+    if(!r.ok) return;
+    const d=await r.json();
+    if(!d || typeof d!=="object") return;
+    if(Array.isArray(d.games)&&d.games.length){
+      GAMES=d.games.slice().sort((a,b)=>(a.sort||0)-(b.sort||0)).map(g=>({
+        id:g.id, name:g.name, alias:(g.alias||[]).slice(), cls:g.cls||"", icon:g.icon, servers:(g.servers||[]).slice()
+      }));
+    }
+    if(Array.isArray(d.zones)&&d.zones.length){
+      const sorted=d.zones.slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
+      ZONES=[{id:"all",name:"全部"},...sorted.map(z=>({id:z.id,name:z.name}))];
+    }
+    if(Array.isArray(d.products)&&d.products.length){
+      PRODUCTS=d.products.slice().sort((a,b)=>(a.sort||0)-(b.sort||0)).map(p=>({
+        id:p.id, game:p.game, zone:p.zone, cat:p.cat, name:p.name,
+        desc:p.desc||"", rank:p.rank||"",
+        price:Number(p.price)||0, unit:p.unit||"局",
+        img:p.img, tags:(p.tags||[]).slice(),
+        heat:Number(p.heat)||0, sales:Number(p.sales)||0,
+        title:"【"+p.cat+"】"+p.name
+      }));
+    }
+    render(true);
+  }catch(e){}
+}
+
 const COUPONS=[
   {id:"c1",cls:"",minus:3,need:30,name:"新人立减券",desc:"全站通用 · 领取后7天有效 · 每个账号限领1张",validDays:7,scope:"all"},
   {id:"c2",cls:"c2",minus:10,need:100,name:"技术单局券",desc:"仅限技术单局区商品 · 满100元可用",validDays:7,scope:"tech"},
@@ -1795,6 +1825,7 @@ setInterval(()=>{
   if(store.orders.map(o=>o.status).join()!==before){saveStore();render(true);}
 },4000);
 initPromo();
+loadSiteData();
 
 </script>
 <script>
