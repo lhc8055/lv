@@ -1014,19 +1014,47 @@ async function ghGetFile(){
   if(r.status === 404) return null;
   if(!r.ok){ setSyncStatus("拉取失败：HTTP "+r.status, false); return null; }
   const d = await r.json();
-  return { sha: d.sha, content: JSON.parse(atob(d.content)) };
+  try{
+    const raw = atob(d.content.replace(/\n/g,""));
+    const decoded = decodeURIComponent(escape(raw));
+    return { sha: d.sha, content: JSON.parse(decoded) };
+  }catch(e){
+    setSyncStatus("解析数据失败，可能是文件过大或含 base64 图片", false);
+    return { sha: d.sha, content: null };
+  }
+}
+
+function sanitizeData(data){
+  const clean = JSON.parse(JSON.stringify(data));
+  if(clean.home){
+    if(clean.home.bannerImg && clean.home.bannerImg.startsWith("data:")) clean.home.bannerImg = "";
+    if(clean.home.quickHot && clean.home.quickHot.img && clean.home.quickHot.img.startsWith("data:")) clean.home.quickHot.img = "";
+    if(clean.home.quickAll && clean.home.quickAll.img && clean.home.quickAll.img.startsWith("data:")) clean.home.quickAll.img = "";
+  }
+  if(clean.products){
+    clean.products.forEach(p=>{
+      if(p.img && p.img.startsWith("data:")) p.img = "";
+    });
+  }
+  return clean;
 }
 
 async function ghPutFile(content){
   const token = getGhToken();
   if(!token){ setSyncStatus("请先输入 GitHub Token", false); return false; }
 
-  // 重试 2 次，解决 SHA 不匹配的冲突问题
+  const cleanContent = sanitizeData(content);
+  const jsonStr = JSON.stringify(cleanContent, null, 2);
+  if(jsonStr.length > 200000){
+    setSyncStatus("数据过大（"+Math.round(jsonStr.length/1024)+"KB），请检查是否包含 base64 图片", false);
+    return false;
+  }
+
   for(let attempt=0; attempt<2; attempt++){
     const existing = await ghGetFile();
     const body = {
       message: "update: site data sync",
-      content: btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2)))),
+      content: btoa(unescape(encodeURIComponent(jsonStr))),
       branch: GH_BRANCH
     };
     if(existing && existing.sha) body.sha = existing.sha;
@@ -1037,7 +1065,6 @@ async function ghPutFile(content){
     });
     if(r.ok) return true;
     const err = await r.json().catch(()=>({}));
-    // 如果是 SHA 不匹配，重试一次（重新获取最新 SHA）
     if(err.message && err.message.includes("does not match") && attempt===0){
       setSyncStatus("版本冲突，正在重试...", null);
       continue;
