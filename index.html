@@ -600,6 +600,23 @@ function dedupeCoupons(){
   const seen={};
   store.coupons=(store.coupons||[]).filter(c=>seen[c.id]?false:(seen[c.id]=true));
 }
+function migrateOrders(){
+  let changed=false;
+  store.orders.forEach(o=>{
+    if(!o.rank&&!o.cat&&!o.tags){
+      const p=productById(o.id);
+      if(p){
+        o.rank=p.rank||"";
+        o.tags=(p.tags||[]).slice();
+        o.desc=p.desc||"";
+        o.cat=p.cat||"";
+        o.game=p.game;
+        changed=true;
+      }
+    }
+  });
+  if(changed) saveStore();
+}
 loadStore();
 dedupeCoupons();
 
@@ -1620,7 +1637,8 @@ const ACTIONS={
     const order={
       no,id:p.id,title:p.title,img:p.img,gameName:gameById(p.game).name,
       price:p.price,qty:r.qty,unit:p.unit,server:$("#cfServer").value,note:($("#cfNote").value||"").trim(),
-      total:r.total,ts:Date.now(),status:"unpaid",payType,couponId:r.coupon?r.coupon.id:null
+      total:r.total,ts:Date.now(),status:"unpaid",payType,couponId:r.coupon?r.coupon.id:null,
+      rank:p.rank||"",tags:(p.tags||[]).slice(),desc:p.desc||"",cat:p.cat||"",game:p.game
     };
     if(r.coupon){
       const c=store.coupons.find(x=>x.id===r.coupon.id);
@@ -1820,6 +1838,7 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
 (async function(){
   showPageLoader();
   await loadSiteData();
+  migrateOrders();
   window._dataReady=true;
   stash=null;
   render();
