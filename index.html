@@ -422,11 +422,11 @@ function positionFab(){
   fab.style.bottom='auto';
   fab.style.transform='translateY(-50%)';
 }
-window.addEventListener('load',function(){positionFab();setTimeout(function(){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}},100)});setTimeout(function(){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}},2000);
+window.addEventListener('load',function(){positionFab();setTimeout(function(){if(window._dataReady){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}}},100)});setTimeout(function(){if(window._dataReady){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}}},2000);
 setTimeout(positionFab,300);
 setTimeout(positionFab,800);
 setTimeout(positionFab,1200);
-setTimeout(function(){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}},500);
+setTimeout(function(){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}},3000);
 window.addEventListener('resize',function(){_fabLocked=false;positionFab();});
 window.addEventListener('orientationchange',function(){_fabLocked=false;setTimeout(positionFab,300);});
 </script>
@@ -503,23 +503,21 @@ let PRODUCTS=DEFAULT_PRODUCTS.map(p=>({...p,tags:(p.tags||[]).slice()}));
 PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
 
 /* ---- 从 data.json 加载后台配置的数据（实时同步） ---- */
+let _dataReady=false;
 async function loadSiteData(){
   try{
     const r=await fetch("data.json?_t="+Date.now(),{cache:"no-store"});
-    if(!r.ok) return;
+    if(!r.ok) return false;
     const d=await r.json();
-    if(!d || typeof d!=="object") return;
-    let changed=false;
+    if(!d || typeof d!=="object") return false;
     if(Array.isArray(d.games)&&d.games.length){
       GAMES=d.games.slice().sort((a,b)=>(a.sort||0)-(b.sort||0)).map(g=>({
         id:g.id, name:g.name, alias:(g.alias||[]).slice(), cls:g.cls||"", icon:g.icon, servers:(g.servers||[]).slice()
       }));
-      changed=true;
     }
     if(Array.isArray(d.zones)&&d.zones.length){
       const sorted=d.zones.slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
       ZONES=[{id:"all",name:"全部"},...sorted.map(z=>({id:z.id,name:z.name}))];
-      changed=true;
     }
     if(Array.isArray(d.products)&&d.products.length){
       const newProds=d.products.slice().sort((a,b)=>(a.sort||0)-(b.sort||0)).map(p=>({
@@ -532,14 +530,9 @@ async function loadSiteData(){
       }));
       PRODUCTS.length=0;
       newProds.forEach(p=>PRODUCTS.push(p));
-      changed=true;
     }
-    if(changed){
-      // 清空视图缓存，强制重渲染
-      stash=null;
-      render();
-    }
-  }catch(e){}
+    return true;
+  }catch(e){ return false; }
 }
 
 const COUPONS=[
@@ -1824,18 +1817,24 @@ setTimeout(()=>{
 },1200);
 if(!location.hash) location.hash="#/home";
 if(store.noticeClosed) $("#noticeBar").classList.add("hide");
-render();
-handleUrlParams();
-try{fetch(PAY_CONFIG.queryApi+"?out_trade_no=__warm__").catch(()=>{});}catch(e){}
-setTimeout(pollUnpaidOrders,400);
-setInterval(()=>{
-  if(parseHash().name!=="orders"||$(".mask")) return;
-  const before=store.orders.map(o=>o.status).join();
-  syncOrders();
-  if(store.orders.map(o=>o.status).join()!==before){saveStore();render(true);}
-},4000);
-initPromo();
-loadSiteData();
+(async function(){
+  showPageLoader();
+  await loadSiteData();
+  window._dataReady=true;
+  stash=null;
+  render();
+  hidePageLoader();
+  handleUrlParams();
+  try{fetch(PAY_CONFIG.queryApi+"?out_trade_no=__warm__").catch(()=>{});}catch(e){}
+  setTimeout(pollUnpaidOrders,400);
+  setInterval(()=>{
+    if(parseHash().name!=="orders"||$(".mask")) return;
+    const before=store.orders.map(o=>o.status).join();
+    syncOrders();
+    if(store.orders.map(o=>o.status).join()!==before){saveStore();render(true);}
+  },4000);
+  initPromo();
+})();
 
 </script>
 <script>
