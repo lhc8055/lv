@@ -294,7 +294,7 @@ button.pf-header:active{opacity:.8}
 .tabbar.hide{display:none}
 
 .fab{position:fixed;left:0;z-index:24;
-  top:56%;transform:translateY(-50%);
+  top:45%;transform:translateY(-50%);
   padding:0;border:none;background:none;cursor:pointer;line-height:0;}
 .fab img{width:90px;height:auto;display:block;}
 @media(min-width:480px){ .fab{left:0;}}
@@ -408,33 +408,35 @@ function showPageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl
 function hidePageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.remove('show');pl.classList.add('hide');pl.style.pointerEvents='none';pl.style.opacity='0';}}
 </script>
 <script>
-var _fabLocked=false;
-var _fabPct=58;
+// 反馈按钮：仅在页面初次加载后计算一次位置，之后永久固定不动
+let _fabLocked=false;
 function positionFab(){
+  if(_fabLocked) return;
   var fab=document.getElementById('fabBtn');if(!fab)return;
   var games=document.querySelector('.home-games');
   var grid=document.querySelector('.goods-grid');
-  var section=document.querySelector('.section-title');
+  var mid;
   if(games){
     var gEnd=games.getBoundingClientRect().bottom;
-    var bottomBound=gEnd+80;
-    if(grid){bottomBound=grid.getBoundingClientRect().top;}
-    else if(section){bottomBound=section.getBoundingClientRect().top;}
-    var mid=(gEnd+bottomBound)/2;
-    var vh=window.innerHeight||document.documentElement.clientHeight;
-    if(vh>0){_fabPct=Math.round(mid/vh*100);}
+    var bottomBound=grid?grid.getBoundingClientRect().top:(window.innerHeight*0.7);
+    mid=(gEnd+bottomBound)/2;
+  }else{
+    mid=window.innerHeight*0.45;
   }
-  fab.style.top=_fabPct+'%';
+  // 转为固定像素值，之后不再随滚动/布局变化移动
+  fab.style.top=mid+'px';
   fab.style.bottom='auto';
   fab.style.transform='translateY(-50%)';
+  _fabLocked=true;
 }
-window.addEventListener('load',function(){positionFab();setTimeout(function(){if(window._dataReady){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}}},100)});setTimeout(function(){if(window._dataReady){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}}},2000);
-setTimeout(positionFab,300);
-setTimeout(positionFab,800);
-setTimeout(positionFab,1200);
+window.addEventListener('load',function(){
+  // 等图片加载完成后再计算一次，确保位置准确
+  setTimeout(positionFab,500);
+  setTimeout(positionFab,1500);
+  setTimeout(function(){if(window._dataReady){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}}},100);
+  setTimeout(function(){if(window._dataReady){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}}},2000);
+});
 setTimeout(function(){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}},3000);
-window.addEventListener('resize',function(){_fabLocked=false;positionFab();});
-window.addEventListener('orientationchange',function(){_fabLocked=false;setTimeout(positionFab,300);});
 </script>
 
 
@@ -568,19 +570,19 @@ function clearImgCache(){
     });
   });
 }
-// 智能图片加载：内存缓存→IndexedDB→网络，避免重复请求
+// 智能图片加载：内存缓存→IndexedDB→网络，避免重复请求/闪烁
 async function loadImgWithCache(imgEl,url){
-  if(!url||url.startsWith("data:")){if(url)imgEl.src=url;return;}
+  if(!url||url.startsWith("data:")){if(url&&imgEl.getAttribute("src")!==url)imgEl.src=url;return;}
   // 1. 内存缓存命中：同步秒显
   const memBlob=_imgMemCache.get(url);
-  if(memBlob){imgEl.src=memBlob;return;}
+  if(memBlob){if(imgEl.src!==memBlob)imgEl.src=memBlob;return;}
   // 2. IndexedDB 缓存
   try{
     const cached=await getCachedImg(url);
     if(cached&&cached.blob){
       const blobUrl=URL.createObjectURL(cached.blob);
       _imgMemCache.set(url,blobUrl);
-      imgEl.src=blobUrl;
+      if(imgEl.src!==blobUrl)imgEl.src=blobUrl;
       // 后台静默更新（检查图片是否变更，大小比对）
       fetch(url,{cache:"no-store"}).then(r=>r.ok?r.blob():null).then(b=>{
         if(b&&b.size!==cached.blob.size){putCachedImg(url,b);}
@@ -588,17 +590,20 @@ async function loadImgWithCache(imgEl,url){
       return;
     }
   }catch(e){}
-  // 3. 缓存未命中：网络加载并写入双缓存
-  imgEl.src=url;
-  imgEl.onload=()=>{
-    fetch(url).then(r=>r.ok?r.blob():null).then(b=>{
-      if(b){
-        const blobUrl=URL.createObjectURL(b);
-        _imgMemCache.set(url,blobUrl);
-        putCachedImg(url,b);
-      }
-    }).catch(()=>{});
-  };
+  // 3. 缓存未命中：不重置src（避免白屏闪烁），仅在加载完成后写入缓存
+  if(!imgEl.dataset.cacheBound){
+    imgEl.dataset.cacheBound="1";
+    imgEl.addEventListener("load",function onImgLoad(){
+      imgEl.removeEventListener("load",onImgLoad);
+      fetch(url).then(r=>r.ok?r.blob():null).then(b=>{
+        if(b){
+          const blobUrl=URL.createObjectURL(b);
+          _imgMemCache.set(url,blobUrl);
+          putCachedImg(url,b);
+        }
+      }).catch(()=>{});
+    });
+  }
 }
 // 遍历视图中所有图片，应用本地缓存（跳过已处理/本地/占位）
 function processCachedImages(){
@@ -1177,7 +1182,7 @@ function render(keepScroll){
   });
   if(needLogin) openLogin();
 }
-window.addEventListener("hashchange",()=>{hasInternalNav=true;render();_fabLocked=false;if(!skipFab) setTimeout(positionFab,Date.now()<fxBusyUntil?900:100);});
+window.addEventListener("hashchange",()=>{hasInternalNav=true;render();if(!skipFab) setTimeout(positionFab,Date.now()<fxBusyUntil?900:100);});
 
 function viewHome(){
   const hg=store.homeGame||"val";
