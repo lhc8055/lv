@@ -409,15 +409,33 @@ function showPageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl
 function hidePageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.remove('show');pl.classList.add('hide');pl.style.pointerEvents='none';pl.style.opacity='0';}}
 </script>
 <script>
-// 反馈按钮：动态定位（仅在首页布局稳定时计算一次，之后永久锁定）
+// 反馈按钮：每次新打开网站时，在首页布局稳定后只计算一次位置；
+// 本次站内所有页面都复用同一个坐标，不随切页和交互变动。
 let _fabLocked=false;
 let _fabTopPct=null;
-let _fabResizeTimer=null;
 
-function positionFab(force){
-  if(_fabLocked && !force) return;
+function clampFabPct(pct){
+  const num=Number(pct);
+  if(!Number.isFinite(num)) return null;
+  return Math.max(15,Math.min(80,num));
+}
+function applyFabPosition(pct){
   const fab=document.getElementById('fabBtn');
-  if(!fab) return;
+  const val=clampFabPct(pct);
+  if(!fab||val==null) return;
+  fab.style.top=val+'%';
+  fab.style.bottom='auto';
+  fab.style.transform='translateY(-50%)';
+  _fabTopPct=val;
+  _fabLocked=true;
+}
+
+function positionFab(){
+  if(_fabLocked) return;
+  if(_fabTopPct!=null){
+    applyFabPosition(_fabTopPct);
+    return;
+  }
   const games=document.querySelector('.home-games');
   const grid=document.querySelector('.goods-grid');
   const section=document.querySelector('.section-title');
@@ -433,22 +451,25 @@ function positionFab(force){
       if(vh>0) pct=Math.max(15,Math.min(80,(mid/vh)*100));
     }
   }
-  fab.style.top=pct+'%';
-  fab.style.bottom='auto';
-  fab.style.transform='translateY(-50%)';
-  _fabTopPct=pct;
-  _fabLocked=true;
+  applyFabPosition(pct);
 }
 
 // 等待首页所有图片加载完成后再定位，确保布局稳定
 function positionFabWhenReady(){
   if(_fabLocked) return;
+  if(_fabTopPct!=null){
+    applyFabPosition(_fabTopPct);
+    return;
+  }
   const view=document.getElementById('view');
-  if(!view){setTimeout(positionFabWhenReady,100);return;}
+  if(!view||!view.firstElementChild){setTimeout(positionFabWhenReady,100);return;}
   const games=view.querySelector('.home-games');
   if(!games){
-    // 非首页，用默认值
-    positionFab();
+    if(parseHash().name==="home"){
+      // 首页内容尚未稳定时继续等待，避免过早锁定。
+      setTimeout(positionFabWhenReady,120);
+      return;
+    }
     return;
   }
   const imgs=view.querySelectorAll('img');
@@ -469,18 +490,6 @@ function positionFabWhenReady(){
     check();
   }
 }
-
-// 窗口尺寸变化时重新定位（防抖）
-window.addEventListener('resize',()=>{
-  clearTimeout(_fabResizeTimer);
-  _fabLocked=false;
-  _fabResizeTimer=setTimeout(()=>positionFab(),200);
-});
-window.addEventListener('orientationchange',()=>{
-  clearTimeout(_fabResizeTimer);
-  _fabLocked=false;
-  _fabResizeTimer=setTimeout(()=>positionFab(),300);
-});
 
 window.addEventListener('load',function(){
   positionFabWhenReady();
@@ -1205,7 +1214,8 @@ function render(keepScroll){
   }
   const isDetail=r.name==="detail";
   $("#tabbar").classList.toggle("hide",isDetail);
-  // 反馈按钮始终显示（包括详情页）
+  const fabBtn=$("#fabBtn");
+  if(fabBtn) fabBtn.classList.toggle("hide",r.name==="home");
   // 立即设置滚动，并在下一帧再确认一次，确保布局完成后位置正确
   window.scrollTo(0,toY);
   requestAnimationFrame(()=>{
@@ -1223,6 +1233,7 @@ function render(keepScroll){
       }
     }catch(e){}
   });
+  if(!_fabLocked) requestAnimationFrame(positionFabWhenReady);
   skipFab=!!ret;
   fxBusyUntil=ghost?Date.now()+FX_MS+500:0;
   if(!useStash) bindViewEvents();
