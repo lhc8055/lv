@@ -294,8 +294,9 @@ button.pf-header:active{opacity:.8}
 .tabbar.hide{display:none}
 
 .fab{position:fixed;left:0;z-index:24;
-  top:45%;transform:translateY(-50%);
-  padding:0;border:none;background:none;cursor:pointer;line-height:0;}
+  top:33%;transform:translateY(-50%);
+  padding:0;border:none;background:none;cursor:pointer;line-height:0;
+  transition:none !important;will-change:auto;}
 .fab img{width:90px;height:auto;display:block;}
 @media(min-width:480px){ .fab{left:0;}}
 .fab.hide{display:none}
@@ -408,31 +409,8 @@ function showPageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl
 function hidePageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.remove('show');pl.classList.add('hide');pl.style.pointerEvents='none';pl.style.opacity='0';}}
 </script>
 <script>
-// 反馈按钮：仅在页面初次加载后计算一次位置，之后永久固定不动
-let _fabLocked=false;
-function positionFab(){
-  if(_fabLocked) return;
-  var fab=document.getElementById('fabBtn');if(!fab)return;
-  var games=document.querySelector('.home-games');
-  var grid=document.querySelector('.goods-grid');
-  var mid;
-  if(games){
-    var gEnd=games.getBoundingClientRect().bottom;
-    var bottomBound=grid?grid.getBoundingClientRect().top:(window.innerHeight*0.7);
-    mid=(gEnd+bottomBound)/2;
-  }else{
-    mid=window.innerHeight*0.45;
-  }
-  // 转为固定像素值，之后不再随滚动/布局变化移动
-  fab.style.top=mid+'px';
-  fab.style.bottom='auto';
-  fab.style.transform='translateY(-50%)';
-  _fabLocked=true;
-}
+// 反馈按钮位置由 CSS 固定（top:33%），不做任何 JS 动态定位，彻底杜绝跳动
 window.addEventListener('load',function(){
-  // 等图片加载完成后再计算一次，确保位置准确
-  setTimeout(positionFab,500);
-  setTimeout(positionFab,1500);
   setTimeout(function(){if(window._dataReady){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}}},100);
   setTimeout(function(){if(window._dataReady){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}}},2000);
 });
@@ -1182,7 +1160,7 @@ function render(keepScroll){
   });
   if(needLogin) openLogin();
 }
-window.addEventListener("hashchange",()=>{hasInternalNav=true;render();if(!skipFab) setTimeout(positionFab,Date.now()<fxBusyUntil?900:100);});
+window.addEventListener("hashchange",()=>{hasInternalNav=true;render();});
 
 function viewHome(){
   const hg=store.homeGame||"val";
