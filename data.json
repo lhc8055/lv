@@ -246,8 +246,8 @@
         "高难图",
         "稳撤离"
       ],
-      "cornerMode": "none",
-      "cornerText": "",
+      "cornerMode": "custom",
+      "cornerText": "限时活动",
       "couponEnabled": true,
       "heat": 3320,
       "sales": 1560,
