@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>星柚电竞 · 游戏陪玩开黑</title>
+<link rel="preconnect" href="https://i.imgs.ovh" crossorigin>
+<link rel="preconnect" href="https://aka.doubaocdn.com" crossorigin>
+<link rel="dns-prefetch" href="https://i.imgs.ovh">
+<link rel="dns-prefetch" href="https://aka.doubaocdn.com">
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=ZCOOL+KuaiLe&display=swap">
 <style>
 :root{
@@ -438,13 +442,13 @@ window.addEventListener('orientationchange',function(){_fabLocked=false;setTimeo
 
   <nav class="tabbar" id="tabbar">
     <button type="button" class="tab t-home" data-action="route" data-route="home">
-      <img class="ic-off" src="tab-home-off.webp" alt="首页"><img class="ic-on" src="tab-home-on.webp" alt="首页">首页
+      <img class="ic-off" src="tab-home-off.webp" alt="首页" decoding="async" fetchpriority="high"><img class="ic-on" src="tab-home-on.webp" alt="首页" decoding="async" fetchpriority="high">首页
     </button>
     <button type="button" class="tab t-cat" data-action="route" data-route="category">
-      <img class="ic-off" src="tab-cat-off.webp" alt="分类"><img class="ic-on" src="tab-cat-on.webp" alt="分类">分类
+      <img class="ic-off" src="tab-cat-off.webp" alt="分类" decoding="async" fetchpriority="high"><img class="ic-on" src="tab-cat-on.webp" alt="分类" decoding="async" fetchpriority="high">分类
     </button>
     <button type="button" class="tab t-me" data-action="route" data-route="profile">
-      <img class="ic-off" src="tab-me-off.webp" alt="我的"><img class="ic-on" src="tab-me-on.webp" alt="我的">我的
+      <img class="ic-off" src="tab-me-off.webp" alt="我的" decoding="async" fetchpriority="high"><img class="ic-on" src="tab-me-on.webp" alt="我的" decoding="async" fetchpriority="high">我的
     </button>
   </nav>
 
@@ -501,10 +505,12 @@ DEFAULT_PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
 let PRODUCTS=DEFAULT_PRODUCTS.map(p=>({...p,tags:(p.tags||[]).slice()}));
 PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
 
-/* ---- 图片本地缓存（IndexedDB） + 后台变更识别 ---- */
+/* ---- 图片本地缓存（IndexedDB + 内存缓存） + 后台变更识别 ---- */
 const IMG_CACHE_DB="xy_img_cache";
 const IMG_CACHE_STORE="images";
 let _imgCacheDb=null;
+// 内存缓存：同会话内秒级显示，避免重复读 IndexedDB
+const _imgMemCache=new Map();
 function openImgCache(){
   return new Promise((resolve)=>{
     if(_imgCacheDb){resolve(_imgCacheDb);return;}
@@ -548,6 +554,8 @@ function putCachedImg(url,blob){
   });
 }
 function clearImgCache(){
+  _imgMemCache.forEach(url=>{try{URL.revokeObjectURL(url);}catch(e){}});
+  _imgMemCache.clear();
   return openImgCache().then(db=>{
     if(!db) return;
     return new Promise((resolve)=>{
@@ -560,34 +568,35 @@ function clearImgCache(){
     });
   });
 }
-// 智能图片加载：优先用本地缓存，缓存未命中则下载并缓存
+// 智能图片加载：内存缓存→IndexedDB→网络，避免重复请求
 async function loadImgWithCache(imgEl,url){
   if(!url||url.startsWith("data:")){if(url)imgEl.src=url;return;}
+  // 1. 内存缓存命中：同步秒显
+  const memBlob=_imgMemCache.get(url);
+  if(memBlob){imgEl.src=memBlob;return;}
+  // 2. IndexedDB 缓存
   try{
     const cached=await getCachedImg(url);
     if(cached&&cached.blob){
       const blobUrl=URL.createObjectURL(cached.blob);
+      _imgMemCache.set(url,blobUrl);
       imgEl.src=blobUrl;
-      // 后台静默更新（检查图片是否变更）
-      fetch(url,{cache:"no-store"}).then(r=>{
-        if(!r.ok) return;
-        return r.blob();
-      }).then(b=>{
-        if(b){
-          // 简单比较大小作为变更识别
-          if(!cached.blob||b.size!==cached.blob.size){
-            putCachedImg(url,b);
-          }
-        }
+      // 后台静默更新（检查图片是否变更，大小比对）
+      fetch(url,{cache:"no-store"}).then(r=>r.ok?r.blob():null).then(b=>{
+        if(b&&b.size!==cached.blob.size){putCachedImg(url,b);}
       }).catch(()=>{});
       return;
     }
   }catch(e){}
-  // 缓存未命中，直接加载并缓存
+  // 3. 缓存未命中：网络加载并写入双缓存
   imgEl.src=url;
   imgEl.onload=()=>{
     fetch(url).then(r=>r.ok?r.blob():null).then(b=>{
-      if(b) putCachedImg(url,b);
+      if(b){
+        const blobUrl=URL.createObjectURL(b);
+        _imgMemCache.set(url,blobUrl);
+        putCachedImg(url,b);
+      }
     }).catch(()=>{});
   };
 }
@@ -599,10 +608,26 @@ function processCachedImages(){
   imgs.forEach(img=>{
     if(img.dataset.cached==="1") return;
     const src=img.getAttribute("src");
-    // 仅缓存 http(s) 远程图片，跳过 data:/blob:/本地文件
     if(!src||!/^https?:\/\//.test(src)) return;
     img.dataset.cached="1";
     loadImgWithCache(img,src);
+  });
+}
+// 动态预加载关键图片（横幅/快捷入口/游戏图标/首屏商品）
+const _preloaded=new Set();
+function preloadCriticalImages(){
+  const urls=[];
+  if(IMG.banner&&!_preloaded.has(IMG.banner)) urls.push(IMG.banner);
+  if(IMG.hot&&!_preloaded.has(IMG.hot)) urls.push(IMG.hot);
+  if(IMG.all&&!_preloaded.has(IMG.all)) urls.push(IMG.all);
+  GAMES.forEach(g=>{if(g.icon&&!_preloaded.has(g.icon)) urls.push(g.icon);});
+  PRODUCTS.slice(0,2).forEach(p=>{if(p.img&&!_preloaded.has(p.img)) urls.push(p.img);});
+  urls.forEach(url=>{
+    _preloaded.add(url);
+    const link=document.createElement("link");
+    link.rel="preload";link.as="image";link.href=url;
+    link.setAttribute("fetchpriority","high");
+    document.head.appendChild(link);
   });
 }
 
@@ -821,11 +846,11 @@ const searchBar=(id,val)=>'<div class="searchbar"><button type="button" class="s
   '<button type="button" class="s-clear'+(val?" show":"")+'" data-action="clear-search" aria-label="清除">'+icon("close")+'</button></div>';
 
 function gameIcon(g){
-  return '<span class="gicon '+g.cls+'">'+(g.id==="all"?icon("grid"):'<img src="'+g.icon+'" alt="'+g.name+'">')+'</span>';
+  return '<span class="gicon '+g.cls+'">'+(g.id==="all"?icon("grid"):'<img src="'+g.icon+'" alt="'+g.name+'" decoding="async">')+'</span>';
 }
 function cardHtml(p,idx){
   var imgSrc = p.img || "";
-  var loadAttr = (idx!=null&&idx<2)?' fetchpriority="high"':' loading="lazy"';
+  var loadAttr = (idx!=null&&idx<2)?' fetchpriority="high" decoding="async"':' loading="lazy" decoding="async"';
   return '<button type="button" class="gcard" data-action="detail" data-id="'+p.id+'">'+
     '<div class="g-img">'+(imgSrc?'<img src="'+imgSrc+'" alt="'+esc(p.title)+'"'+loadAttr+'>':'')+'</div>'+
     '<div class="g-body"><div class="g-title">'+esc(p.title)+'</div>'+
@@ -834,7 +859,7 @@ function cardHtml(p,idx){
 }
 function rowHtml(p,idx){
   var imgSrc = p.img || "";
-  var loadAttr = (idx!=null&&idx<2)?' fetchpriority="high"':' loading="lazy"';
+  var loadAttr = (idx!=null&&idx<2)?' fetchpriority="high" decoding="async"':' loading="lazy" decoding="async"';
   return '<button type="button" class="grow" data-action="detail" data-id="'+p.id+'">'+
     '<div class="gr-img">'+(imgSrc?'<img src="'+imgSrc+'" alt="'+esc(p.title)+'"'+loadAttr+'>':'')+'</div>'+
     '<div class="gr-body"><div><div class="gr-title">'+esc(p.title)+'</div><div class="gr-rank">'+esc(p.rank)+'</div></div>'+
@@ -1160,10 +1185,10 @@ function viewHome(){
   const games=GAMES.map(g=>'<button type="button" class="game'+(hg===g.id?" on":"")+'" data-action="home-game" data-game="'+g.id+'">'+gameIcon(g)+'<span class="gname">'+g.name+'</span></button>').join("");
   return '<section class="view">'+
     searchBar("homeSearch","")+
-    '<div class="banner"><img src="'+IMG.banner+'" alt="星柚电竞" fetchpriority="high"><div class="b-text"><div class="b-name">星柚电竞</div><div class="b-sub">瓦手 · 三角洲行动<br>王者荣耀 · 技术上分娱乐陪玩</div></div></div>'+
+    '<div class="banner"><img src="'+IMG.banner+'" alt="星柚电竞" fetchpriority="high" decoding="async"><div class="b-text"><div class="b-name">星柚电竞</div><div class="b-sub">瓦手 · 三角洲行动<br>王者荣耀 · 技术上分娱乐陪玩</div></div></div>'+
     '<div class="quick">'+
-      '<button type="button" class="quick-card hot" data-action="cat-hot"><img src="'+IMG.hot+'" alt="热门推荐" fetchpriority="high"><div class="q-center"><div class="q-title">热门推荐</div><span class="q-btn">查看推荐</span></div></button>'+
-      '<button type="button" class="quick-card all" data-action="cat-game" data-game="all"><img src="'+IMG.all+'" alt="全部商品" fetchpriority="high"><div class="q-center"><div class="q-title">全部商品</div><span class="q-btn">查看商品</span></div></button>'+
+      '<button type="button" class="quick-card hot" data-action="cat-hot"><img src="'+IMG.hot+'" alt="热门推荐" fetchpriority="high" decoding="async"><div class="q-center"><div class="q-title">热门推荐</div><span class="q-btn">查看推荐</span></div></button>'+
+      '<button type="button" class="quick-card all" data-action="cat-game" data-game="all"><img src="'+IMG.all+'" alt="全部商品" fetchpriority="high" decoding="async"><div class="q-center"><div class="q-title">全部商品</div><span class="q-btn">查看商品</span></div></button>'+
     '</div>'+
     '<div class="games home-games">'+games+'</div>'+
     '<div class="section-title" style="visibility:hidden"><span>'+gameById(hg).name+' · 热门商品</span><button class="more" data-action="cat-game" data-game="'+hg+'">查看全部'+icon("chevron")+'</button></div>'+
@@ -1233,7 +1258,7 @@ function viewProfile(){
     '<span class="pf-ico '+f.cls+'">'+icon(f.ico)+'</span>'+(f.badge?'<span class="pf-badge">'+f.badge+'</span>':'')+
     '<span class="pf-label">'+f.label+'</span></button>').join("");
   const avatar=esc(u&&u.aze&&u.aze.avatar?u.aze.avatar:IMG.avatar);
-  const inner='<div class="pf-avatar'+(u?'':' pf-avatar-off')+'"><img src="'+avatar+'" alt="头像">'+(u?'':'<div class="pf-avatar-mask"></div>')+'</div>'+
+  const inner='<div class="pf-avatar'+(u?'':' pf-avatar-off')+'"><img src="'+avatar+'" alt="头像" decoding="async" fetchpriority="high">'+(u?'':'<div class="pf-avatar-mask"></div>')+'</div>'+
     '<div class="pf-name">'+(u?esc(u.name):"未登录")+'</div>'+(u&&u.uid?'<div class="pf-id">ID:'+esc(u.uid)+'</div>':'');
   return '<section class="view">'+
     (u?'<div class="pf-header">'+inner+'</div>':'<button type="button" class="pf-header" data-action="login">'+inner+'</button>')+
@@ -1280,7 +1305,7 @@ function viewDetail(params){
   const servers=g.servers.map((s,i)=>'<option'+(i===0?" selected":"")+'>'+s+'</option>').join("");
   var imgSrc = p.img || "";
   return '<section class="view">'+pageHead(p.title)+
-    '<div class="detail-hero">'+(imgSrc?'<img src="'+imgSrc+'" alt="'+esc(p.title)+'">':'')+'</div>'+
+    '<div class="detail-hero">'+(imgSrc?'<img src="'+imgSrc+'" alt="'+esc(p.title)+'" fetchpriority="high" decoding="async">':'')+'</div>'+
     '<div class="detail-rest">'+
     '<div class="detail-price"><div class="dp-row"><span class="dp-price"><small>¥</small>'+p.price+'<small>/'+p.unit+'</small></span>'+
       '<span class="dp-heat">热度'+p.heat+' · 已售'+p.sales+'</span></div>'+
@@ -1298,7 +1323,7 @@ function viewDetail(params){
       '<div class="detail-select"><span class="k">区服</span><div class="field" style="flex:1;margin:0"><select id="serverSel">'+servers+'</select></div></div></div>'+
     '<div class="detail-block"><h3>服务说明</h3><ul class="serve">'+serveLines(p).map(l=>'<li>'+icon("check")+'<span>'+l+'</span></li>').join("")+'</ul></div>'+
     '<div class="detail-block"><h3>同类推荐</h3><div class="rel-grid">'+rel.map(r=>
-      '<button type="button" class="rel" data-action="detail" data-id="'+r.id+'"><div class="r-img"><img src="'+r.img+'" alt="'+esc(r.title)+'"></div>'+
+      '<button type="button" class="rel" data-action="detail" data-id="'+r.id+'"><div class="r-img"><img src="'+r.img+'" alt="'+esc(r.title)+'" loading="lazy" decoding="async"></div>'+
       '<div class="r-name">'+esc(r.title)+'</div><div class="r-price">¥'+r.price+'/'+r.unit+'</div></button>').join("")+'</div></div>'+
     '<div class="detail-pad"></div></div>'+
     '<div class="detail-bar">'+
@@ -1334,7 +1359,7 @@ function viewOrders(params){
       const st=STATUS[o.status]||{text:o.status,cls:""};
       const rate=o.rating?'<div class="oc-rate">我的评价 <span class="stars-mini">'+"★".repeat(o.rating.star)+"☆".repeat(5-o.rating.star)+'</span> '+esc(o.rating.text||"")+'</div>':"";
       return '<div class="order-card"><div class="oc-top"><span>订单号 '+esc(o.no)+'</span><span class="oc-status '+st.cls+'">'+st.text+'</span></div>'+
-        '<div class="oc-body"><div class="oc-img"><img src="'+esc(o.img)+'" alt=""></div>'+
+        '<div class="oc-body"><div class="oc-img"><img src="'+esc(o.img)+'" alt="" loading="lazy" decoding="async"></div>'+
         '<div class="oc-info"><div class="oc-name">'+esc(o.title)+'</div>'+
         '<div class="oc-meta">'+esc(o.gameName)+' · '+esc(o.server)+' · ×'+o.qty+o.unit+(o.note?'<br>备注：'+esc(o.note):"")+'<br>'+fmtTime(o.ts)+'</div></div>'+
         '<div class="oc-right">¥'+o.price+'/'+o.unit+'</div></div>'+rate+
@@ -1559,7 +1584,17 @@ const ACTIONS={
   "close-sheet"(){closeSheet();},
   "cat-game"(el){openCategory(el.dataset.game);},
   "cat-hot"(){openCategory("all","heat_desc");},
-  "home-game"(el){store.homeGame=el.dataset.game;saveStore();render(true);},
+  "home-game"(el){store.homeGame=el.dataset.game;saveStore();render(true);
+    // 切换游戏后预加载该游戏的前2个商品图
+    const g=el.dataset.game;
+    PRODUCTS.filter(p=>p.game===g).slice(0,2).forEach(p=>{
+      if(p.img&&!_preloaded.has(p.img)){
+        _preloaded.add(p.img);
+        const lk=document.createElement("link");lk.rel="preload";lk.as="image";lk.href=p.img;
+        document.head.appendChild(lk);
+      }
+    });
+  },
   "filter-game"(el){catState.game=el.dataset.game;catState.q="";render(true);},
   "filter-zone"(el){catState.zone=el.dataset.zone;render(true);},
   sort(el){
@@ -1905,24 +1940,29 @@ function initPromo(){
 }
 
 try{history.scrollRestoration="manual";}catch(e){}
-setTimeout(()=>{
-  const seen={};
-  window._warmImgs=[];
-  // 只预热前几个商品图片，其余按需懒加载
-  PRODUCTS.slice(0,4).forEach(p=>{
-    if(!p.img||seen[p.img]) return;
-    seen[p.img]=1;
-    const im=new Image();
-    im.src=p.img;
-    if(im.decode) im.decode().catch(()=>{});
-    window._warmImgs.push(im);
-  });
-},1200);
+// 空闲期预热后续商品图：并发上限2，避免抢占首屏带宽
+const _warmQueue=[];let _warmActive=0;const WARM_MAX=2;
+function warmNext(){
+  if(_warmActive>=WARM_MAX||!_warmQueue.length) return;
+  const url=_warmQueue.shift();_warmActive++;
+  const im=new Image();
+  im.onload=im.onerror=()=>{_warmActive--;warmNext();};
+  im.src=url;
+  if(im.decode) im.decode().catch(()=>{});
+}
+function startWarmup(){
+  const seen=new Set(_preloaded);
+  PRODUCTS.slice(0,8).forEach(p=>{if(p.img&&!seen.has(p.img)){seen.add(p.img);_warmQueue.push(p.img);}});
+  warmNext();warmNext();
+}
+if(window.requestIdleCallback){requestIdleCallback(startWarmup,{timeout:3000});}
+else{setTimeout(startWarmup,800);}
 if(!location.hash) location.hash="#/home";
 if(store.noticeClosed) $("#noticeBar").classList.add("hide");
 (async function(){
   showPageLoader();
   await loadSiteData();
+  preloadCriticalImages();
   migrateOrders();
   window._dataReady=true;
   stash=null;
