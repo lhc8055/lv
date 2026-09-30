@@ -294,7 +294,7 @@ button.pf-header:active{opacity:.8}
 .tabbar.hide{display:none}
 
 .fab{position:fixed;left:0;z-index:24;
-  top:33%;transform:translateY(-50%);
+  top:30%;transform:translateY(-50%);
   padding:0;border:none;background:none;cursor:pointer;line-height:0;
   transition:none !important;will-change:auto;}
 .fab img{width:90px;height:auto;display:block;}
@@ -409,8 +409,81 @@ function showPageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl
 function hidePageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.remove('show');pl.classList.add('hide');pl.style.pointerEvents='none';pl.style.opacity='0';}}
 </script>
 <script>
-// 反馈按钮位置由 CSS 固定（top:33%），不做任何 JS 动态定位，彻底杜绝跳动
+// 反馈按钮：动态定位（仅在首页布局稳定时计算一次，之后永久锁定）
+let _fabLocked=false;
+let _fabTopPct=null;
+let _fabResizeTimer=null;
+
+function positionFab(force){
+  if(_fabLocked && !force) return;
+  const fab=document.getElementById('fabBtn');
+  if(!fab) return;
+  const games=document.querySelector('.home-games');
+  const grid=document.querySelector('.goods-grid');
+  const section=document.querySelector('.section-title');
+  let pct=30; // 默认值
+  if(games){
+    const gBottom=games.getBoundingClientRect().bottom;
+    let topRef=null;
+    if(grid) topRef=grid.getBoundingClientRect().top;
+    else if(section) topRef=section.getBoundingClientRect().top;
+    if(topRef!==null){
+      const mid=(gBottom+topRef)/2;
+      const vh=window.innerHeight||document.documentElement.clientHeight;
+      if(vh>0) pct=Math.max(15,Math.min(80,(mid/vh)*100));
+    }
+  }
+  fab.style.top=pct+'%';
+  fab.style.bottom='auto';
+  fab.style.transform='translateY(-50%)';
+  _fabTopPct=pct;
+  _fabLocked=true;
+}
+
+// 等待首页所有图片加载完成后再定位，确保布局稳定
+function positionFabWhenReady(){
+  if(_fabLocked) return;
+  const view=document.getElementById('view');
+  if(!view){setTimeout(positionFabWhenReady,100);return;}
+  const games=view.querySelector('.home-games');
+  if(!games){
+    // 非首页，用默认值
+    positionFab();
+    return;
+  }
+  const imgs=view.querySelectorAll('img');
+  let allLoaded=true;
+  imgs.forEach(img=>{if(!img.complete) allLoaded=false;});
+  if(allLoaded){
+    positionFab();
+  }else{
+    // 等待图片加载，最多等 3 秒
+    let waited=0;
+    const check=()=>{
+      if(_fabLocked) return;
+      let ok=true;
+      view.querySelectorAll('img').forEach(img=>{if(!img.complete) ok=false;});
+      if(ok||waited>=3000){positionFab();}
+      else{waited+=150;setTimeout(check,150);}
+    };
+    check();
+  }
+}
+
+// 窗口尺寸变化时重新定位（防抖）
+window.addEventListener('resize',()=>{
+  clearTimeout(_fabResizeTimer);
+  _fabLocked=false;
+  _fabResizeTimer=setTimeout(()=>positionFab(),200);
+});
+window.addEventListener('orientationchange',()=>{
+  clearTimeout(_fabResizeTimer);
+  _fabLocked=false;
+  _fabResizeTimer=setTimeout(()=>positionFab(),300);
+});
+
 window.addEventListener('load',function(){
+  positionFabWhenReady();
   setTimeout(function(){if(window._dataReady){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}}},100);
   setTimeout(function(){if(window._dataReady){try{hidePageLoader()}catch(e){var p=document.getElementById('pageLoader');if(p)p.classList.remove('show')}}},2000);
 });
@@ -688,14 +761,14 @@ const UNPAID_RATE_LIMIT=3;
 const UNPAID_RATE_WINDOW=60*1000;
 const MAX_CANCELLED=3;
 const CANCEL_CLEAR_HOUR=0;
-const AUTH_ROUTES=["orders","coupons","favs"];
+const AUTH_ROUTES=["orders","coupons","favs","feedbacks"];
 
 /* 密钥直接写在前端只适合演示，正式环境应移到服务端 */
 const AZE_CONFIG={appid:"1055",appkey:"8a71675d91f617c2fed7fd911391defe",proxy:"https://aze-login-proxy.pages.dev/"};
 const PAY_CONFIG={pid:"1312",key:"w5bxw5eJb5jbNTtoj8jtj3OlknHjB6Eb",gateway:"https://pay1987.com/submit.php",notifyUrl:"https://pay1987.pages.dev/api/notify",queryApi:"https://pay1987.pages.dev/api/query"};
 
 const STORE_KEY="xingyou_esports_v1";
-const store={user:null,orders:[],coupons:[],favs:[],noticeClosed:false,homeGame:"val",cancelClearedAt:0};
+const store={user:null,orders:[],coupons:[],favs:[],feedbacks:[],noticeClosed:false,homeGame:"val",cancelClearedAt:0};
 const catState={game:"val",zone:"all",sort:"default",q:""};
 let orderFilter="all";
 let currentBuy=null;
@@ -720,7 +793,7 @@ function loadStore(){
   try{Object.assign(store,JSON.parse(localStorage.getItem(STORE_KEY)||"null")||{});}catch(e){}
 }
 function saveUserData(uid){
-  try{localStorage.setItem("xy_user_"+uid,JSON.stringify({orders:store.orders,coupons:store.coupons,favs:store.favs}));}catch(e){}
+  try{localStorage.setItem("xy_user_"+uid,JSON.stringify({orders:store.orders,coupons:store.coupons,favs:store.favs,feedbacks:store.feedbacks}));}catch(e){}
 }
 function loadUserData(uid){
   try{return JSON.parse(localStorage.getItem("xy_user_"+uid)||"null");}catch(e){return null;}
@@ -781,7 +854,8 @@ const ICONS={
   logout:'<path d="M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5"/><path d="M9 17l5-5-5-5"/><path d="M14 12H3"/>',
   user:'<circle cx="12" cy="8" r="4"/><path d="M4 20c0-3.5 3.6-6 8-6s8 2.5 8 6"/>',
   order:'<rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h5M8 16h6"/>',
-  grid:'<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>'
+  grid:'<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
+  message:'<path d="M4 4h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2z"/><path d="M8 9h8M8 12h5"/>'
 };
 function icon(name,fill){
   return '<svg viewBox="0 0 24 24" fill="'+(fill||"none")+'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+ICONS[name]+'</svg>';
@@ -874,9 +948,9 @@ function openCategory(game,sort){
 
 const VIEWS={
   home:()=>viewHome(),category:()=>viewCategory(),profile:()=>viewProfile(),
-  detail:p=>viewDetail(p),orders:p=>viewOrders(p),coupons:()=>viewCoupons(),favs:()=>viewFavs()
+  detail:p=>viewDetail(p),orders:p=>viewOrders(p),coupons:()=>viewCoupons(),favs:()=>viewFavs(),feedbacks:()=>viewFeedbacks()
 };
-const TAB_OF={home:"home",category:"category",profile:"profile",orders:"profile",coupons:"profile",favs:"profile"};
+const TAB_OF={home:"home",category:"category",profile:"profile",orders:"profile",coupons:"profile",favs:"profile",feedbacks:"profile"};
 
 const FX_EASE="cubic-bezier(.32,.72,0,1)";
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
@@ -1131,7 +1205,7 @@ function render(keepScroll){
   }
   const isDetail=r.name==="detail";
   $("#tabbar").classList.toggle("hide",isDetail);
-  $("#fabBtn").classList.toggle("hide",isDetail);
+  // 反馈按钮始终显示（包括详情页）
   // 立即设置滚动，并在下一帧再确认一次，确保布局完成后位置正确
   window.scrollTo(0,toY);
   requestAnimationFrame(()=>{
@@ -1235,6 +1309,7 @@ function viewProfile(){
     {ico:"ticket",cls:"f-yellow",label:"优惠券",action:"go-coupons",badge:active},
     {ico:"heart",cls:"f-pink",label:"我的收藏",action:"go-favs"},
     {ico:"gift",cls:"f-orange",label:"邀请有礼",action:"invite"},
+    {ico:"message",cls:"f-purple",label:"反馈记录",action:"go-feedbacks",badge:store.feedbacks.length||null},
     {ico:"headset",cls:"f-purple",label:"联系客服",action:"contact-service"},
     {ico:u?"logout":"user",cls:u?"f-gray":"f-blue",label:u?"退出登录":"登录",action:u?"logout":"login"}
   ].map(f=>'<button type="button" class="pf-item" data-action="'+f.action+'"'+(f.f?' data-f="'+f.f+'"':'')+'>'+
@@ -1395,6 +1470,23 @@ function viewFavs(){
   return '<section class="view">'+pageHead("我的收藏","#/profile")+body+'</section>';
 }
 
+function viewFeedbacks(){
+  const list=store.feedbacks||[];
+  const statusMap={pending:{text:"待处理",cls:"pending"},processing:{text:"处理中",cls:"ongoing"},done:{text:"已处理",cls:"done"}};
+  const body=list.length
+    ? '<div class="order-list">'+list.map(f=>{
+        const st=statusMap[f.status]||{text:f.status,cls:""};
+        return '<div class="order-card"><div class="oc-top"><span>反馈编号 '+esc(f.id)+'</span><span class="oc-status '+st.cls+'">'+st.text+'</span></div>'+
+          '<div class="oc-body" style="display:block"><div style="font-size:13px;font-weight:700;margin-bottom:6px">'+esc(f.type)+'</div>'+
+          '<div class="oc-meta">'+esc(f.content)+'</div>'+
+          (f.orderNo?'<div class="oc-meta" style="margin-top:4px">关联订单：'+esc(f.orderNo)+'</div>':"")+
+          (f.contact?'<div class="oc-meta" style="margin-top:4px">联系方式：'+esc(f.contact)+'</div>':"")+
+          '<div class="oc-meta" style="margin-top:4px">'+fmtTime(f.ts)+'</div></div></div>';
+      }).join("")+'<div class="no-more">没有更多了</div></div>'
+    : emptyHtml({ico:"message",title:"暂无反馈记录",desc:"遇到问题可点击左侧「反馈与投诉」按钮提交",btn:HOME_BTN});
+  return '<section class="view">'+pageHead("反馈记录","#/profile")+body+'<div style="height:20px"></div></section>';
+}
+
 function openLogin(){
   const providers=[{type:"qq",name:"QQ登录",c:"#12B7F5",svg:QQ_SVG},{type:"wx",name:"微信登录",c:"#07C160",svg:WX_SVG}];
   openSheet('<div style="text-align:center;padding:20px 0 26px"><h3 style="margin:0;font-size:19px">登录星柚电竞</h3></div>'+
@@ -1402,11 +1494,30 @@ function openLogin(){
     '<div class="qs-tip" style="margin-top:4px">未注册账号将自动创建，登录即同意用户协议与隐私政策</div>');
 }
 function openFeedback(){
+  // 获取当前所在商品（若在详情页）
+  let curProductName="";
+  const detailTitle=document.querySelector(".page-head h1");
+  if(detailTitle) curProductName=detailTitle.textContent||"";
+  const orderOpts=store.orders.length
+    ? store.orders.slice().reverse().slice(0,10).map(o=>'<option value="'+esc(o.no)+'">'+esc(o.no)+' · '+esc(o.title)+'</option>').join("")
+    : "";
   openSheet('<h3>反馈与投诉</h3>'+
-    '<div class="field"><label>问题类型</label><select id="fbType"><option>服务态度问题</option><option>未按约定时间上号</option><option>申请退款 / 售后</option><option>商品信息有误</option><option>其他建议</option></select></div>'+
-    '<div class="field"><label>详细描述</label><textarea id="fbContent" maxlength="200" placeholder="请描述你遇到的问题，客服会在10分钟内处理"></textarea></div>'+
+    '<div class="field"><label>反馈类型</label><select id="fbType">'+
+      '<option value="service">服务态度问题</option>'+
+      '<option value="ontime">未按约定时间上号</option>'+
+      '<option value="refund">申请退款 / 售后</option>'+
+      '<option value="cheat">陪玩使用外挂 / 违规</option>'+
+      '<option value="quality">技术未达承诺 / 服务不符</option>'+
+      '<option value="info">商品信息有误</option>'+
+      '<option value="harass">骚扰 / 辱骂 / 不当言行</option>'+
+      '<option value="suggest">功能建议 / 其他</option>'+
+    '</select></div>'+
+    (curProductName?'<div class="field"><label>当前商品</label><div style="font-size:13px;color:#555b85;background:#f3f5ff;border-radius:var(--r-sm);padding:10px 12px">'+esc(curProductName)+'</div></div>':'')+
+    (orderOpts?'<div class="field"><label>关联订单（选填）</label><select id="fbOrder"><option value="">不关联订单</option>'+orderOpts+'</select></div>':'')+
+    '<div class="field"><label>详细描述</label><textarea id="fbContent" maxlength="300" placeholder="请详细描述你遇到的问题，包括时间、经过等，客服会在10分钟内处理"></textarea></div>'+
     '<div class="field"><label>联系方式（选填）</label><input id="fbContact" maxlength="30" placeholder="QQ / 微信号，方便客服联系你"></div>'+
-    '<button class="m-btn" data-action="do-feedback">提交反馈</button>');
+    '<button class="m-btn" data-action="do-feedback">提交反馈</button>'+
+    '<div class="qs-tip">提交后可在「我的-反馈记录」中查看处理进度</div>');
 }
 function openInvite(){
   const code=store.user.uid||"XY886688";
@@ -1640,11 +1751,28 @@ const ACTIONS={
   "go-orders"(el){if(!requireLogin()) go("#/orders?f="+(el.dataset.f||"all"));},
   "go-coupons"(){if(!requireLogin()) go("#/coupons");},
   "go-favs"(){if(!requireLogin()) go("#/favs");},
+  "go-feedbacks"(){if(!requireLogin()) go("#/feedbacks");},
   feedback(){if(!requireLogin()) openFeedback();},
   "do-feedback"(){
-    if(!($("#fbContent").value||"").trim()){toast("请填写问题描述",false);return;}
+    const content=($("#fbContent").value||"").trim();
+    if(!content){toast("请填写问题描述",false);return;}
+    const typeSel=$("#fbType");
+    const typeText=typeSel?typeSel.options[typeSel.selectedIndex].text:"";
+    const orderSel=$("#fbOrder");
+    const orderNo=orderSel?orderSel.value:"";
+    const feedback={
+      id:"FB"+Date.now(),
+      type:typeText,
+      content:content,
+      contact:($("#fbContact").value||"").trim(),
+      orderNo:orderNo,
+      status:"pending",
+      ts:Date.now()
+    };
+    store.feedbacks.unshift(feedback);
+    saveStore();
     closeSheet();
-    toast("反馈已提交，客服会尽快处理");
+    toast("反馈已提交，客服会在10分钟内处理");
   },
   "contact-service"(){openService();},
   "contact-player"(){toast("已通知陪玩，请在游戏内留意好友申请");},
@@ -1872,6 +2000,7 @@ function processAzeLogin(d){
   store.orders=saved.orders||[];
   store.coupons=saved.coupons||[];
   store.favs=saved.favs||[];
+  store.feedbacks=saved.feedbacks||[];
   dedupeCoupons();
   store.user={name:nick,contact:label,uid,aze:{uid:d.social_uid,avatar,type:d.type},loginAt:Date.now()};
   saveStore();
