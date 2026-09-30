@@ -812,7 +812,7 @@ function openProductModal(product){
         '<div class="field"><label>商品名称</label><input type="text" id="pName" value="'+esc(draft.name)+'"></div>'+
       '</div>'+
       '<div class="field"><label>卡片标题预览：<b id="pTitlePreview"></b></label></div>'+
-      '<div class="field"><label>简介说明（选填，用于后台备注/详情页）</label><textarea id="pDesc">'+esc(draft.desc)+'</textarea></div>'+
+      '<div class="field"><label>服务说明 · 第一条内容（详情页「服务说明」首条，留空则用默认分区说明）</label><textarea id="pDesc" placeholder="如：99绝密保1999万，初始保底1999万...">'+esc(draft.desc)+'</textarea></div>'+
       '<div class="field"><label>适用段位/说明（如 铂金→钻石）</label><input type="text" id="pRank" value="'+esc(draft.rank)+'"></div>'+
 
       '<div class="row3">'+
@@ -1071,6 +1071,8 @@ async function ghPutFile(content){
   if(!token){ setSyncStatus("请先输入 GitHub Token", false); return false; }
 
   const cleanContent = sanitizeData(content);
+  // 更新数据版本号，用于前台识别后台变更并刷新图片缓存
+  cleanContent.dataVersion = Date.now();
   const jsonStr = JSON.stringify(cleanContent, null, 2);
   if(jsonStr.length > 200000){
     setSyncStatus("数据过大（"+Math.round(jsonStr.length/1024)+"KB），请检查是否包含 base64 图片", false);

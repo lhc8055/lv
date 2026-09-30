@@ -397,7 +397,7 @@ html.fx-run .tabbar,html.fx-run .page-head{backdrop-filter:none;-webkit-backdrop
 
   <main id="view"></main>
 
-  <button type="button" class="fab" id="fabBtn" data-action="feedback" aria-label="反馈与投诉"><img src="feedback-btn.png" alt="反馈与投诉"></button>
+  <button type="button" class="fab" id="fabBtn" data-action="feedback" aria-label="反馈与投诉"><img src="feedback-btn.webp" alt="反馈与投诉"></button>
 
 <script>
 function showPageLoader(){var pl=document.getElementById('pageLoader');if(pl){pl.classList.remove('hide');pl.classList.add('show');}}
@@ -438,13 +438,13 @@ window.addEventListener('orientationchange',function(){_fabLocked=false;setTimeo
 
   <nav class="tabbar" id="tabbar">
     <button type="button" class="tab t-home" data-action="route" data-route="home">
-      <img class="ic-off" src="https://aka.doubaocdn.com/s/elNc3OrUAV" alt="首页"><img class="ic-on" src="https://aka.doubaocdn.com/s/2iOdbKTlYP" alt="首页">首页
+      <img class="ic-off" src="tab-home-off.webp" alt="首页"><img class="ic-on" src="tab-home-on.webp" alt="首页">首页
     </button>
     <button type="button" class="tab t-cat" data-action="route" data-route="category">
-      <img class="ic-off" src="https://aka.doubaocdn.com/s/aURD240X65" alt="分类"><img class="ic-on" src="https://aka.doubaocdn.com/s/elUINzvx0Z" alt="分类">分类
+      <img class="ic-off" src="tab-cat-off.webp" alt="分类"><img class="ic-on" src="tab-cat-on.webp" alt="分类">分类
     </button>
     <button type="button" class="tab t-me" data-action="route" data-route="profile">
-      <img class="ic-off" src="https://aka.doubaocdn.com/s/e9I7Mn8TKK" alt="我的"><img class="ic-on" src="https://aka.doubaocdn.com/s/6PZvnZcu7x" alt="我的">我的
+      <img class="ic-off" src="tab-me-off.webp" alt="我的"><img class="ic-on" src="tab-me-on.webp" alt="我的">我的
     </button>
   </nav>
 
@@ -465,13 +465,7 @@ const IMG={
   banner:"https://i.imgs.ovh/2026/10/01/e100ddff9d1a91150e7e0349b2a8f32d.webp",
   hot:"https://i.imgs.ovh/2026/10/01/54aa2dabaaabffa274d93957098136f0.webp",
   all:"https://i.imgs.ovh/2026/10/01/51603db2de8800f5f0bd5becc62a08ff.webp",
-  avatar:"https://aka.doubaocdn.com/s/ctZqDYRbtQ",
-  g1:"https://aka.doubaocdn.com/s/ctZqDYRbtQ",
-  g2:"https://aka.doubaocdn.com/s/9DMlHgX2Ff",
-  g3:"https://aka.doubaocdn.com/s/NbFFhyn4Ij",
-  g4:"https://aka.doubaocdn.com/s/QVmOyjpk99",
-  g5:"https://aka.doubaocdn.com/s/eKkUPDZcQ2",
-  g6:"https://aka.doubaocdn.com/s/PlinUk0Jjp"
+  avatar:"https://aka.doubaocdn.com/s/ctZqDYRbtQ"
 };
 
 const DEFAULT_GAMES=[
@@ -484,37 +478,158 @@ let GAMES=DEFAULT_GAMES.map(g=>({...g,alias:(g.alias||[]).slice(),servers:(g.ser
 let ZONES=[{id:"all",name:"全部"},{id:"tech",name:"技术单局区"},{id:"fun",name:"娱乐小时区"}];
 
 const DEFAULT_PRODUCTS=[
-  {id:1,game:"val",zone:"tech",cat:"铂金排位",name:"神话打手",price:0.01,unit:"局",heat:4351,sales:2180,img:IMG.g1,tags:["秒上号","质保一局","打完结算"],rank:"铂金→钻石"},
-  {id:2,game:"val",zone:"tech",cat:"黄金排位",name:"稳上分车队",price:45,unit:"局",heat:5606,sales:3065,img:IMG.g2,tags:["三排车队","不赢补打"],rank:"黄金→铂金"},
-  {id:3,game:"val",zone:"tech",cat:"下三排位",name:"黑铁青铜白银",price:40,unit:"局",heat:4669,sales:2540,img:IMG.g6,tags:["萌新友好","耐心教学"],rank:"黑铁→白银"},
-  {id:4,game:"val",zone:"tech",cat:"钻石排位",name:"顶尖赋能局",price:70,unit:"局",heat:6420,sales:1290,img:IMG.g3,tags:["赋能大神","全程录屏"],rank:"钻石→神话"},
-  {id:5,game:"val",zone:"fun",cat:"娱乐开黑",name:"甜妹声优陪玩",price:25,unit:"小时",heat:3890,sales:4210,img:IMG.g5,tags:["声优陪聊","氛围拉满"],rank:"不限段位"},
-  {id:6,game:"val",zone:"fun",cat:"娱乐双排",name:"技术娱乐双修",price:30,unit:"小时",heat:5210,sales:3680,img:IMG.g4,tags:["可刚可苟","包开心"],rank:"不限段位"},
-  {id:7,game:"df",zone:"tech",cat:"烽火地带",name:"红卡撤离护航",price:60,unit:"局",heat:3320,sales:1560,img:IMG.g3,tags:["保底红卡","装备全包"],rank:"烽火地带"},
-  {id:8,game:"df",zone:"tech",cat:"全面战场",name:"上分车队",price:45,unit:"局",heat:4012,sales:2230,img:IMG.g4,tags:["固定车队","连胜冲刺"],rank:"全面战场"},
-  {id:9,game:"df",zone:"tech",cat:"机密行动",name:"哈夫克大楼代打",price:80,unit:"局",heat:2890,sales:980,img:IMG.g1,tags:["高难图","稳撤离"],rank:"机密行动"},
-  {id:10,game:"df",zone:"fun",cat:"跑刀教学",name:"萌新带刷百万",price:35,unit:"小时",heat:2650,sales:1740,img:IMG.g6,tags:["手把手教","路线规划"],rank:"新手友好"},
-  {id:11,game:"df",zone:"fun",cat:"娱乐摸金",name:"轻松开黑唠嗑",price:30,unit:"小时",heat:3105,sales:2010,img:IMG.g5,tags:["轻松休闲","话多不冷场"],rank:"不限模式"},
-  {id:12,game:"wz",zone:"tech",cat:"钻石排位",name:"星耀冲刺局",price:40,unit:"局",heat:8920,sales:6820,img:IMG.g2,tags:["国服打手","不赢补打"],rank:"钻石→星耀"},
-  {id:13,game:"wz",zone:"tech",cat:"星耀排位",name:"王者渡劫局",price:68,unit:"局",heat:9450,sales:4310,img:IMG.g1,tags:["渡劫稳过","全程录屏"],rank:"星耀→王者"},
-  {id:14,game:"wz",zone:"tech",cat:"黄金铂金",name:"稳上分",price:28,unit:"局",heat:7230,sales:8900,img:IMG.g4,tags:["性价比高","秒开"],rank:"黄金→钻石"},
-  {id:15,game:"wz",zone:"fun",cat:"娱乐匹配",name:"声优陪玩",price:20,unit:"小时",heat:6100,sales:9200,img:IMG.g5,tags:["甜妹御姐","可点歌"],rank:"不限段位"},
-  {id:16,game:"wz",zone:"fun",cat:"五排车队",name:"差你一个上车",price:25,unit:"小时",heat:5870,sales:5600,img:IMG.g6,tags:["五排固定队","欢乐连麦"],rank:"不限段位"},
-  {id:17,game:"wz",zone:"tech",cat:"巅峰赛",name:"小国标配打手",price:88,unit:"局",heat:4560,sales:760,img:IMG.g3,tags:["小国标","巅峰高分"],rank:"巅峰赛"}
+  {id:1,game:"val",zone:"tech",cat:"铂金排位",name:"神话打手",price:0.01,unit:"局",heat:4351,sales:2180,img:"",tags:["秒上号","质保一局","打完结算"],rank:"铂金→钻石"},
+  {id:2,game:"val",zone:"tech",cat:"黄金排位",name:"稳上分车队",price:45,unit:"局",heat:5606,sales:3065,img:"",tags:["三排车队","不赢补打"],rank:"黄金→铂金"},
+  {id:3,game:"val",zone:"tech",cat:"下三排位",name:"黑铁青铜白银",price:40,unit:"局",heat:4669,sales:2540,img:"",tags:["萌新友好","耐心教学"],rank:"黑铁→白银"},
+  {id:4,game:"val",zone:"tech",cat:"钻石排位",name:"顶尖赋能局",price:70,unit:"局",heat:6420,sales:1290,img:"",tags:["赋能大神","全程录屏"],rank:"钻石→神话"},
+  {id:5,game:"val",zone:"fun",cat:"娱乐开黑",name:"甜妹声优陪玩",price:25,unit:"小时",heat:3890,sales:4210,img:"",tags:["声优陪聊","氛围拉满"],rank:"不限段位"},
+  {id:6,game:"val",zone:"fun",cat:"娱乐双排",name:"技术娱乐双修",price:30,unit:"小时",heat:5210,sales:3680,img:"",tags:["可刚可苟","包开心"],rank:"不限段位"},
+  {id:7,game:"df",zone:"tech",cat:"烽火地带",name:"红卡撤离护航",price:60,unit:"局",heat:3320,sales:1560,img:"",tags:["保底红卡","装备全包"],rank:"烽火地带"},
+  {id:8,game:"df",zone:"tech",cat:"全面战场",name:"上分车队",price:45,unit:"局",heat:4012,sales:2230,img:"",tags:["固定车队","连胜冲刺"],rank:"全面战场"},
+  {id:9,game:"df",zone:"tech",cat:"机密行动",name:"哈夫克大楼代打",price:80,unit:"局",heat:2890,sales:980,img:"",tags:["高难图","稳撤离"],rank:"机密行动"},
+  {id:10,game:"df",zone:"fun",cat:"跑刀教学",name:"萌新带刷百万",price:35,unit:"小时",heat:2650,sales:1740,img:"",tags:["手把手教","路线规划"],rank:"新手友好"},
+  {id:11,game:"df",zone:"fun",cat:"娱乐摸金",name:"轻松开黑唠嗑",price:30,unit:"小时",heat:3105,sales:2010,img:"",tags:["轻松休闲","话多不冷场"],rank:"不限模式"},
+  {id:12,game:"wz",zone:"tech",cat:"钻石排位",name:"星耀冲刺局",price:40,unit:"局",heat:8920,sales:6820,img:"",tags:["国服打手","不赢补打"],rank:"钻石→星耀"},
+  {id:13,game:"wz",zone:"tech",cat:"星耀排位",name:"王者渡劫局",price:68,unit:"局",heat:9450,sales:4310,img:"",tags:["渡劫稳过","全程录屏"],rank:"星耀→王者"},
+  {id:14,game:"wz",zone:"tech",cat:"黄金铂金",name:"稳上分",price:28,unit:"局",heat:7230,sales:8900,img:"",tags:["性价比高","秒开"],rank:"黄金→钻石"},
+  {id:15,game:"wz",zone:"fun",cat:"娱乐匹配",name:"声优陪玩",price:20,unit:"小时",heat:6100,sales:9200,img:"",tags:["甜妹御姐","可点歌"],rank:"不限段位"},
+  {id:16,game:"wz",zone:"fun",cat:"五排车队",name:"差你一个上车",price:25,unit:"小时",heat:5870,sales:5600,img:"",tags:["五排固定队","欢乐连麦"],rank:"不限段位"},
+  {id:17,game:"wz",zone:"tech",cat:"巅峰赛",name:"小国标配打手",price:88,unit:"局",heat:4560,sales:760,img:"",tags:["小国标","巅峰高分"],rank:"巅峰赛"}
 ];
 DEFAULT_PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
 
 let PRODUCTS=DEFAULT_PRODUCTS.map(p=>({...p,tags:(p.tags||[]).slice()}));
 PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
 
+/* ---- 图片本地缓存（IndexedDB） + 后台变更识别 ---- */
+const IMG_CACHE_DB="xy_img_cache";
+const IMG_CACHE_STORE="images";
+let _imgCacheDb=null;
+function openImgCache(){
+  return new Promise((resolve)=>{
+    if(_imgCacheDb){resolve(_imgCacheDb);return;}
+    try{
+      const req=indexedDB.open(IMG_CACHE_DB,1);
+      req.onupgradeneeded=()=>{
+        const db=req.result;
+        if(!db.objectStoreNames.contains(IMG_CACHE_STORE)){
+          db.createObjectStore(IMG_CACHE_STORE,{keyPath:"url"});
+        }
+      };
+      req.onsuccess=()=>{_imgCacheDb=req.result;resolve(_imgCacheDb);};
+      req.onerror=()=>{resolve(null);};
+    }catch(e){resolve(null);}
+  });
+}
+function getCachedImg(url){
+  return openImgCache().then(db=>{
+    if(!db) return null;
+    return new Promise((resolve)=>{
+      try{
+        const tx=db.transaction(IMG_CACHE_STORE,"readonly");
+        const req=tx.objectStore(IMG_CACHE_STORE).get(url);
+        req.onsuccess=()=>resolve(req.result||null);
+        req.onerror=()=>resolve(null);
+      }catch(e){resolve(null);}
+    });
+  });
+}
+function putCachedImg(url,blob){
+  return openImgCache().then(db=>{
+    if(!db) return;
+    return new Promise((resolve)=>{
+      try{
+        const tx=db.transaction(IMG_CACHE_STORE,"readwrite");
+        tx.objectStore(IMG_CACHE_STORE).put({url,blob,ts:Date.now()});
+        tx.oncomplete=()=>resolve();
+        tx.onerror=()=>resolve();
+      }catch(e){resolve();}
+    });
+  });
+}
+function clearImgCache(){
+  return openImgCache().then(db=>{
+    if(!db) return;
+    return new Promise((resolve)=>{
+      try{
+        const tx=db.transaction(IMG_CACHE_STORE,"readwrite");
+        tx.objectStore(IMG_CACHE_STORE).clear();
+        tx.oncomplete=()=>resolve();
+        tx.onerror=()=>resolve();
+      }catch(e){resolve();}
+    });
+  });
+}
+// 智能图片加载：优先用本地缓存，缓存未命中则下载并缓存
+async function loadImgWithCache(imgEl,url){
+  if(!url||url.startsWith("data:")){if(url)imgEl.src=url;return;}
+  try{
+    const cached=await getCachedImg(url);
+    if(cached&&cached.blob){
+      const blobUrl=URL.createObjectURL(cached.blob);
+      imgEl.src=blobUrl;
+      // 后台静默更新（检查图片是否变更）
+      fetch(url,{cache:"no-store"}).then(r=>{
+        if(!r.ok) return;
+        return r.blob();
+      }).then(b=>{
+        if(b){
+          // 简单比较大小作为变更识别
+          if(!cached.blob||b.size!==cached.blob.size){
+            putCachedImg(url,b);
+          }
+        }
+      }).catch(()=>{});
+      return;
+    }
+  }catch(e){}
+  // 缓存未命中，直接加载并缓存
+  imgEl.src=url;
+  imgEl.onload=()=>{
+    fetch(url).then(r=>r.ok?r.blob():null).then(b=>{
+      if(b) putCachedImg(url,b);
+    }).catch(()=>{});
+  };
+}
+// 遍历视图中所有图片，应用本地缓存（跳过已处理/本地/占位）
+function processCachedImages(){
+  const view=document.getElementById("view");
+  if(!view) return;
+  const imgs=view.querySelectorAll("img");
+  imgs.forEach(img=>{
+    if(img.dataset.cached==="1") return;
+    const src=img.getAttribute("src");
+    // 仅缓存 http(s) 远程图片，跳过 data:/blob:/本地文件
+    if(!src||!/^https?:\/\//.test(src)) return;
+    img.dataset.cached="1";
+    loadImgWithCache(img,src);
+  });
+}
+
 /* ---- 从 data.json 加载后台配置的数据（实时同步） ---- */
 let _dataReady=false;
+let DATA_VERSION=0;
 async function loadSiteData(){
   try{
     const r=await fetch("data.json?_t="+Date.now(),{cache:"no-store"});
     if(!r.ok) return false;
     const d=await r.json();
     if(!d || typeof d!=="object") return false;
+    // 数据版本变更识别：若版本号变化，清空图片缓存以重新拉取最新图片
+    const newVersion=d.dataVersion||0;
+    if(newVersion&&newVersion!==DATA_VERSION){
+      DATA_VERSION=newVersion;
+      try{localStorage.setItem("xy_data_version",String(newVersion));}catch(e){}
+      clearImgCache();
+    }else if(!DATA_VERSION){
+      try{DATA_VERSION=parseInt(localStorage.getItem("xy_data_version")||"0",10)||0;}catch(e){}
+    }
+    // 首页配置（横幅 / 快捷入口）
+    if(d.home){
+      if(d.home.bannerImg) IMG.banner=d.home.bannerImg;
+      if(d.home.quickHot&&d.home.quickHot.img) IMG.hot=d.home.quickHot.img;
+      if(d.home.quickAll&&d.home.quickAll.img) IMG.all=d.home.quickAll.img;
+    }
     if(Array.isArray(d.games)&&d.games.length){
       GAMES=d.games.slice().sort((a,b)=>(a.sort||0)-(b.sort||0)).map(g=>({
         id:g.id, name:g.name, alias:(g.alias||[]).slice(), cls:g.cls||"", icon:g.icon, servers:(g.servers||[]).slice()
@@ -529,7 +644,7 @@ async function loadSiteData(){
         id:p.id, game:p.game, zone:p.zone, cat:p.cat, name:p.name,
         desc:p.desc||"", rank:p.rank||"",
         price:Number(p.price)||0, unit:p.unit||"局",
-        img:p.img, tags:(p.tags||[]).slice(),
+        img:p.img||"", tags:(p.tags||[]).slice(),
         heat:Number(p.heat)||0, sales:Number(p.sales)||0,
         title:"【"+p.cat+"】"+p.name
       }));
@@ -585,6 +700,7 @@ let curDetailId=0;
 let fxBusyUntil=0;
 let skipFab=false;
 let stash=null;
+const scrollCache={};
 
 function saveStore(){
   try{
@@ -707,18 +823,20 @@ const searchBar=(id,val)=>'<div class="searchbar"><button type="button" class="s
 function gameIcon(g){
   return '<span class="gicon '+g.cls+'">'+(g.id==="all"?icon("grid"):'<img src="'+g.icon+'" alt="'+g.name+'">')+'</span>';
 }
-function cardHtml(p){
-  var imgSrc = p.img || "https://aka.doubaocdn.com/s/ctZqDYRbtQ";
+function cardHtml(p,idx){
+  var imgSrc = p.img || "";
+  var loadAttr = (idx!=null&&idx<2)?' fetchpriority="high"':' loading="lazy"';
   return '<button type="button" class="gcard" data-action="detail" data-id="'+p.id+'">'+
-    '<div class="g-img"><span class="g-tag">'+(p.zone==="tech"?"技术单局":"娱乐陪玩")+'</span><img src="'+imgSrc+'" alt="'+esc(p.title)+'" loading="lazy" onerror="this.onerror=null;this.src=\'https://aka.doubaocdn.com/s/ctZqDYRbtQ\'"></div>'+
+    '<div class="g-img">'+(imgSrc?'<img src="'+imgSrc+'" alt="'+esc(p.title)+'"'+loadAttr+'>':'')+'</div>'+
     '<div class="g-body"><div class="g-title">'+esc(p.title)+'</div>'+
     '<div class="g-tags">'+p.tags.slice(0,2).map(t=>'<span>'+esc(t)+'</span>').join("")+'</div>'+
     '<div class="g-foot"><span class="g-price">¥'+p.price+'<small>/'+p.unit+'</small></span><span class="g-heat">热度'+p.heat+'</span></div></div></button>';
 }
-function rowHtml(p){
-  var imgSrc = p.img || "https://aka.doubaocdn.com/s/ctZqDYRbtQ";
+function rowHtml(p,idx){
+  var imgSrc = p.img || "";
+  var loadAttr = (idx!=null&&idx<2)?' fetchpriority="high"':' loading="lazy"';
   return '<button type="button" class="grow" data-action="detail" data-id="'+p.id+'">'+
-    '<div class="gr-img"><img src="'+imgSrc+'" alt="'+esc(p.title)+'" loading="lazy" onerror="this.onerror=null;this.src=\'https://aka.doubaocdn.com/s/ctZqDYRbtQ\'"></div>'+
+    '<div class="gr-img">'+(imgSrc?'<img src="'+imgSrc+'" alt="'+esc(p.title)+'"'+loadAttr+'>':'')+'</div>'+
     '<div class="gr-body"><div><div class="gr-title">'+esc(p.title)+'</div><div class="gr-rank">'+esc(p.rank)+'</div></div>'+
     '<div class="gr-foot"><span class="gr-price"><small>¥</small>'+p.price+'<small>/'+p.unit+'</small></span><span class="gr-heat">热度'+p.heat+'</span></div></div></button>';
 }
@@ -955,6 +1073,10 @@ function render(keepScroll){
   document.querySelectorAll(".tabbar .tab").forEach(t=>t.classList.toggle("on",t.dataset.route===TAB_OF[r.name]));
   const y=window.scrollY;
   const prev=lastRoute,leftId=curDetailId;
+  // 保存上一个页面的滚动位置（detail页不保存，因为它是临时页）
+  if(prev&&prev!=="detail"&&prev!==r.name){
+    scrollCache[prev]=y;
+  }
   lastRoute=r.name;
   if(r.name==="detail") curDetailId=parseInt(r.params.id,10)||0;
   let ret=null;
@@ -983,7 +1105,12 @@ function render(keepScroll){
       }
     }
   }
-  const toY=ret?ret.y:(keepScroll===true?y:0);
+  // 计算目标滚动位置：从detail返回用ret.y；否则用缓存的该页面滚动位置；都没有则0
+  let toY;
+  if(ret) toY=ret.y;
+  else if(keepScroll===true) toY=y;
+  else if(scrollCache[r.name]!=null) toY=scrollCache[r.name];
+  else toY=0;
   const ghost=fx&&!FX_LITE&&(heroIn||ret)&&oldNode?makeGhost(oldNode,y,toY):null;
   if(ghost){fxOn();setTimeout(fxOff,FX_MS+900);}
   if(useStash){
@@ -997,10 +1124,28 @@ function render(keepScroll){
   const isDetail=r.name==="detail";
   $("#tabbar").classList.toggle("hide",isDetail);
   $("#fabBtn").classList.toggle("hide",isDetail);
+  // 立即设置滚动，并在下一帧再确认一次，确保布局完成后位置正确
   window.scrollTo(0,toY);
+  requestAnimationFrame(()=>{
+    window.scrollTo(0,toY);
+    // 同步视差效果
+    try{
+      var hf=document.getElementById("homeFollow");
+      var hg=document.querySelector(".home-games");
+      if(hf&&hg){
+        var v=50*Math.min(1,Math.max(0,toY/160));
+        var up=v*0.6,down=v-up;
+        hf.style.transform="translate3d(0,"+(-up).toFixed(2)+"px,0)";
+        hf.style.marginBottom=(-up).toFixed(2)+"px";
+        hg.style.transform="translate3d(0,"+down.toFixed(2)+"px,0)";
+      }
+    }catch(e){}
+  });
   skipFab=!!ret;
   fxBusyUntil=ghost?Date.now()+FX_MS+500:0;
   if(!useStash) bindViewEvents();
+  // 对视图中的图片应用本地缓存（带变更识别）
+  setTimeout(processCachedImages,0);
   if(!FX_LITE&&(heroIn||ghost)) requestAnimationFrame(()=>{
     if(heroIn) playHero(heroIn,ghost);
     else if(ghost) playBack(back,leftId,ghost);
@@ -1015,14 +1160,14 @@ function viewHome(){
   const games=GAMES.map(g=>'<button type="button" class="game'+(hg===g.id?" on":"")+'" data-action="home-game" data-game="'+g.id+'">'+gameIcon(g)+'<span class="gname">'+g.name+'</span></button>').join("");
   return '<section class="view">'+
     searchBar("homeSearch","")+
-    '<div class="banner"><img src="'+IMG.banner+'" alt="星柚电竞"><div class="b-text"><div class="b-name">星柚电竞</div><div class="b-sub">瓦手 · 三角洲行动<br>王者荣耀 · 技术上分娱乐陪玩</div></div></div>'+
+    '<div class="banner"><img src="'+IMG.banner+'" alt="星柚电竞" fetchpriority="high"><div class="b-text"><div class="b-name">星柚电竞</div><div class="b-sub">瓦手 · 三角洲行动<br>王者荣耀 · 技术上分娱乐陪玩</div></div></div>'+
     '<div class="quick">'+
-      '<button type="button" class="quick-card hot" data-action="cat-hot"><img src="'+IMG.hot+'" alt="热门推荐"><div class="q-center"><div class="q-title">热门推荐</div><span class="q-btn">查看推荐</span></div></button>'+
-      '<button type="button" class="quick-card all" data-action="cat-game" data-game="all"><img src="'+IMG.all+'" alt="全部商品"><div class="q-center"><div class="q-title">全部商品</div><span class="q-btn">查看商品</span></div></button>'+
+      '<button type="button" class="quick-card hot" data-action="cat-hot"><img src="'+IMG.hot+'" alt="热门推荐" fetchpriority="high"><div class="q-center"><div class="q-title">热门推荐</div><span class="q-btn">查看推荐</span></div></button>'+
+      '<button type="button" class="quick-card all" data-action="cat-game" data-game="all"><img src="'+IMG.all+'" alt="全部商品" fetchpriority="high"><div class="q-center"><div class="q-title">全部商品</div><span class="q-btn">查看商品</span></div></button>'+
     '</div>'+
     '<div class="games home-games">'+games+'</div>'+
     '<div class="section-title" style="visibility:hidden"><span>'+gameById(hg).name+' · 热门商品</span><button class="more" data-action="cat-game" data-game="'+hg+'">查看全部'+icon("chevron")+'</button></div>'+
-    '<div id="homeFollow" class="home-follow"><div class="goods-grid">'+hot.map(cardHtml).join("")+'</div>'+
+    '<div id="homeFollow" class="home-follow"><div class="goods-grid">'+hot.map((p,i)=>cardHtml(p,i)).join("")+'</div>'+
     '<div class="no-more">没有更多了</div><div style="height:40px"></div></div></section>';
 }
 
@@ -1035,7 +1180,7 @@ function listHtml(list){
     return emptyHtml({ico:"search",title:"没有找到相关商品",desc:catState.q?"换个关键词试试":"该分区暂时没有商品",
       btn:catState.q?{text:"清除搜索",attrs:'data-action="clear-search"'}:null});
   }
-  return list.map(rowHtml).join("")+'<div class="no-more">没有更多了</div>';
+  return list.map((p,i)=>rowHtml(p,i)).join("")+'<div class="no-more">没有更多了</div>';
 }
 function filterProducts(){
   const q=catState.q.trim().toLowerCase();
@@ -1098,12 +1243,20 @@ function viewProfile(){
 
 function serveLines(p){
   const g=gameById(p.game);
-  const lines=["下单后请保持联系方式畅通，客服会在5分钟内为你安排陪玩并发送开黑房间号","全程平台担保，陪玩接单后开始计费，服务完成确认后款项才会结算给陪玩"];
+  const lines=[];
+  // 第一条：优先使用后台设置的商品说明（desc），没有则用默认分区说明
+  if(p.desc&&p.desc.trim()){
+    lines.push(p.desc.trim());
+  }else if(p.zone==="tech"){
+    lines.push("本商品为技术单局："+p.rank+"，按局计费，未达承诺段位免费补打");
+  }else{
+    lines.push("本商品为娱乐陪玩，按小时计费，可在备注中指定陪玩风格（甜妹 / 御姐 / 技术流）");
+  }
+  lines.push("下单后请保持联系方式畅通，客服会在5分钟内为你安排陪玩并发送开黑房间号");
+  lines.push("全程平台担保，陪玩接单后开始计费，服务完成确认后款项才会结算给陪玩");
   if(p.zone==="tech"){
-    lines.unshift("本商品为技术单局："+p.rank+"，按局计费，未达承诺段位免费补打");
     lines.push("打手均为实名认证，支持全程录屏，发现使用外挂全额退款并封号");
   }else{
-    lines.unshift("本商品为娱乐陪玩，按小时计费，可在备注中指定陪玩风格（甜妹 / 御姐 / 技术流）");
     lines.push("支持连麦聊天、点歌互动；超时15分钟内按半小时计，超出按1小时计");
   }
   lines.push("区服："+g.servers.join("、")+"，下单时请选择对应区服并填写游戏昵称");
@@ -1125,9 +1278,9 @@ function viewDetail(params){
   const fav=store.favs.includes(p.id);
   const rel=PRODUCTS.filter(x=>x.game===p.game&&x.id!==p.id).slice(0,3);
   const servers=g.servers.map((s,i)=>'<option'+(i===0?" selected":"")+'>'+s+'</option>').join("");
-  var imgSrc = p.img || "https://aka.doubaocdn.com/s/ctZqDYRbtQ";
+  var imgSrc = p.img || "";
   return '<section class="view">'+pageHead(p.title)+
-    '<div class="detail-hero"><img src="'+imgSrc+'" alt="'+esc(p.title)+'" onerror="this.onerror=null;this.src=\'https://aka.doubaocdn.com/s/ctZqDYRbtQ\'"></div>'+
+    '<div class="detail-hero">'+(imgSrc?'<img src="'+imgSrc+'" alt="'+esc(p.title)+'">':'')+'</div>'+
     '<div class="detail-rest">'+
     '<div class="detail-price"><div class="dp-row"><span class="dp-price"><small>¥</small>'+p.price+'<small>/'+p.unit+'</small></span>'+
       '<span class="dp-heat">热度'+p.heat+' · 已售'+p.sales+'</span></div>'+
@@ -1229,7 +1382,7 @@ function viewCoupons(){
 function viewFavs(){
   const list=PRODUCTS.filter(p=>store.favs.includes(p.id));
   const body=list.length
-    ? '<div class="goods-grid" style="padding-top:8px">'+list.map(cardHtml).join("")+'</div><div class="no-more">没有更多了</div><div style="height:20px"></div>'
+    ? '<div class="goods-grid" style="padding-top:8px">'+list.map((p,i)=>cardHtml(p,i)).join("")+'</div><div class="no-more">没有更多了</div><div style="height:20px"></div>'
     : emptyHtml({ico:"heart",title:"还没有收藏",desc:"在商品详情页点击爱心，就能收藏到这里",btn:HOME_BTN});
   return '<section class="view">'+pageHead("我的收藏","#/profile")+body+'</section>';
 }
@@ -1755,8 +1908,9 @@ try{history.scrollRestoration="manual";}catch(e){}
 setTimeout(()=>{
   const seen={};
   window._warmImgs=[];
-  PRODUCTS.forEach(p=>{
-    if(seen[p.img]) return;
+  // 只预热前几个商品图片，其余按需懒加载
+  PRODUCTS.slice(0,4).forEach(p=>{
+    if(!p.img||seen[p.img]) return;
     seen[p.img]=1;
     const im=new Image();
     im.src=p.img;
