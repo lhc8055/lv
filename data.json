@@ -235,13 +235,13 @@
       "id": 8,
       "game": "df",
       "zone": "tech",
-      "cat": "全面战场",
-      "name": "上分车队",
+      "cat": "",
+      "name": "未命名商品",
       "desc": "",
       "rank": "全面战场",
       "price": 45,
       "unit": "局",
-      "img": "https://aka.doubaocdn.com/s/QVmOyjpk99",
+      "img": "https://i.imgs.ovh/2026/10/01/46b8843a613dd5b7eb1606da088de59f.webp",
       "tags": [
         "固定车队",
         "连胜冲刺"
@@ -515,5 +515,5 @@
     }
   ],
   "nextProductId": 22,
-  "dataVersion": 1790820717819
+  "dataVersion": 1790822492098
 }
