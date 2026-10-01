@@ -861,7 +861,7 @@ function loadStore(){
   try{Object.assign(store,JSON.parse(localStorage.getItem(STORE_KEY)||"null")||{});}catch(e){}
 }
 function saveUserData(uid){
-  try{localStorage.setItem("xy_user_"+uid,JSON.stringify({orders:store.orders,coupons:store.coupons,favs:store.favs,feedbacks:store.feedbacks,invitedBy:store.invitedBy||"",inviteFirstOrderDone:!!store.inviteFirstOrderDone}));}catch(e){}
+  try{localStorage.setItem("xy_user_"+uid,JSON.stringify({orders:store.orders,coupons:store.coupons,favs:store.favs,feedbacks:store.feedbacks,invitedBy:store.invitedBy||"",inviteFirstOrderDone:!!store.inviteFirstOrderDone,registeredAt:store.registeredAt||null}));}catch(e){}
 }
 function loadUserData(uid){
   try{return JSON.parse(localStorage.getItem("xy_user_"+uid)||"null");}catch(e){return null;}
@@ -2227,8 +2227,10 @@ function processAzeLogin(d){
   store.invitedBy=saved.invitedBy||"";
   store.inviteFirstOrderDone=!!saved.inviteFirstOrderDone;
   dedupeCoupons();
-  const isNew=!saved.orders&&!saved.coupons&&!saved.favs;
+  const isNew=!saved.registeredAt;
   store.user={name:nick,contact:label,uid,aze:{uid:d.social_uid,avatar,type:d.type},loginAt:Date.now()};
+  if(isNew) store.registeredAt=Date.now();
+  else store.registeredAt=saved.registeredAt;
   saveStore();
   const inviteCode=window._pendingInvite||"";
   window._pendingInvite="";
