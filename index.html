@@ -1326,7 +1326,7 @@ function render(keepScroll){
   }
   const isDetail=r.name==="detail";
   $("#tabbar").classList.toggle("hide",isDetail);
-  setFab(r.name==="home",!prev);
+  setFab(r.name==="home"||r.name==="category",!prev);
   window.scrollTo(0,toY);
   requestAnimationFrame(()=>{
     window.scrollTo(0,toY);
