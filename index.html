@@ -844,7 +844,7 @@ const STORE_KEY="xingyou_esports_v1";
 // 部署 sb-proxy-worker.js 后，把下面的地址改成你的 Worker 地址，例如:
 //   const SB_PROXY = "https://sb-proxy.你的用户名.workers.dev";
 // 留空则直连 Supabase（国内可能失败）。
-const SB_PROXY = "";
+const SB_PROXY = "https://sb-proxy.3552453862.workers.dev";
 const SB_URL = SB_PROXY || "https://jsrxbpysgaywdhnntqnl.supabase.co";
 const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
 const sb=window.supabase?window.supabase.createClient(SB_URL,SB_ANON):null;
