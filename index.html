@@ -983,7 +983,7 @@ function cardHtml(p,idx){
 function rowHtml(p,idx){
   return '<button type="button" class="grow" data-action="detail" data-id="'+p.id+'">'+
     '<div class="gr-img">'+imgTag(p.img,p.title,(idx!=null&&idx<2)?' fetchpriority="high"':'')+'</div>'+
-    '<div class="gr-body"><div><div class="gr-title">'+titleHtml(splitTitle(p.title).name)+'</div><div class="gr-meta">'+(splitTitle(p.title).pre?'<span class="gr-pre">'+esc(splitTitle(p.title).pre)+'</span>':'')+'<span class="gr-rank">'+esc(p.rank)+'</span></div></div>'+
+    '<div class="gr-body"><div><div class="gr-title">'+titleHtml(splitTitle(p.title).name)+'</div><div class="gr-meta"><span class="gr-rank">'+esc(p.rank)+'</span></div></div>'+
     '<div class="gr-foot"><span class="gr-price"><small>¥</small>'+p.price+'<small>/'+p.unit+'</small></span><span class="gr-heat">热度'+p.heat+'</span></div></div></button>';
 }
 
