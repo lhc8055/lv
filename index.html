@@ -2431,11 +2431,12 @@ function handleUrlParams(){
   const isPay=q.out_trade_no;
   const isCallback=q.code&&q.type;
   const isReturn=q.aze_login==="1"&&q.u;
-  if(!(isPay||isCallback||isReturn)) return;
+  if(!(isPay||isCallback||isReturn)) return false;
   history.replaceState(null,"",location.pathname+location.hash);
   if(isPay) verifyPayReturn(q.out_trade_no,q.trade_status==="TRADE_SUCCESS");
   else if(isCallback) azeCallback(q.code,q.type);
   else azeReturn(q.u);
+  return true;
 }
 
 function initPromo(){
@@ -2462,12 +2463,22 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
   showPageLoader();
   await loadSiteData();
   migrateOrders();
-  await Promise.race([primeMany(criticalImgs(),6),new Promise(r=>setTimeout(r,1600))]);
-  window._dataReady=true;
-  stash=null;
-  render();
-  hidePageLoader();
-  handleUrlParams();
+  // 优化登录/支付回调体验：URL 含回调参数时优先处理，跳过图片预加载等待
+  // 登录回调的 fetch 与 render 并行，避免从QQ授权回来后还要等图片预加载
+  const hasUrlCallback=handleUrlParams();
+  if(hasUrlCallback){
+    // 登录/支付回调场景：跳过图片预加载等待，直接渲染（登录后跳转个人页，首页图片不重要）
+    window._dataReady=true;
+    stash=null;
+    render();
+    hidePageLoader();
+  }else{
+    await Promise.race([primeMany(criticalImgs(),6),new Promise(r=>setTimeout(r,1600))]);
+    window._dataReady=true;
+    stash=null;
+    render();
+    hidePageLoader();
+  }
   try{fetch(PAY_CONFIG.queryApi+"?out_trade_no=__warm__").catch(()=>{});}catch(e){}
   setTimeout(pollUnpaidOrders,400);
   // 跨浏览器实时同步：在订单/优惠券/收藏/个人页每 3 秒从云端拉取
