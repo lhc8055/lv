@@ -95,7 +95,8 @@
     "五排固定队",
     "欢乐连麦",
     "小国标",
-    "巅峰高分"
+    "巅峰高分",
+    "限量"
   ],
   "products": [
     {
@@ -222,7 +223,8 @@
       "img": "https://i.imgs.ovh/2026/09/30/4569eb44e8b48c030bd4a3eb85ddc3b9.webp",
       "tags": [
         "打完结算",
-        "高难图"
+        "高难图",
+        "限量"
       ],
       "cornerMode": "none",
       "cornerText": "限时优惠",
@@ -515,5 +517,5 @@
     }
   ],
   "nextProductId": 22,
-  "dataVersion": 1790823925662
+  "dataVersion": 1790825497999
 }
