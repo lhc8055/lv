@@ -1944,7 +1944,6 @@ function viewFeedbacks(){
 function openLogin(){
   const providers=[{type:"qq",name:"QQ登录",c:"#12B7F5",svg:QQ_SVG},{type:"wx",name:"微信登录",c:"#07C160",svg:WX_SVG}];
   openSheet('<div style="text-align:center;padding:20px 0 18px"><h3 style="margin:0;font-size:19px">登录星柚电竞</h3></div>'+
-    '<div class="field"><label>邀请码（选填）</label><input id="loginInvite" maxlength="12" placeholder="填写好友邀请码，双方各得2元无门槛券"></div>'+
     providers.map(p=>'<button class="login-btn" data-action="aze-login" data-type="'+p.type+'" style="--c:'+p.c+';--cs:'+p.c+'44">'+p.svg+p.name+'</button>').join("")+
     '<div class="qs-tip" style="margin-top:4px">未注册账号将自动创建，登录即同意用户协议与隐私政策</div>');
 }
