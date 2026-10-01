@@ -838,6 +838,11 @@ const AZE_CONFIG={appid:"1055",appkey:"8a71675d91f617c2fed7fd911391defe",proxy:"
 const PAY_CONFIG={pid:"1312",key:"w5bxw5eJb5jbNTtoj8jtj3OlknHjB6Eb",gateway:"https://pay1987.com/submit.php",notifyUrl:"https://pay1987.pages.dev/api/notify",queryApi:"https://pay1987.pages.dev/api/query"};
 
 const STORE_KEY="xingyou_esports_v1";
+// === 账号 ID 手动指定 ===
+// 部分账号需要把自动生成的 ID 换成自定义短号（对应 Supabase user_data 主键 uid）。
+// 格式：{"原自动ID":"自定义ID"}。登录/读取本地缓存时统一走 normUid 归一化。
+const UID_OVERRIDE={"XY636028":"XY888888"};
+const normUid=u=>(u&&UID_OVERRIDE[u])||u;
 // === Supabase 直连客户端（fetch 实现，不依赖 supabase-js / jsdelivr CDN）===
 // 之前用 <script src="jsdelivr/supabase-js"> 加载，国内 jsdelivr 常被墙/超时，
 // 一旦加载失败 window.supabase 为 undefined，所有云端读写会静默失效，
@@ -919,6 +924,14 @@ function saveStore(){
 function loadStore(){
   // 从本地缓存读取所有数据（含订单/优惠券/收藏/反馈），保证页面立即可用
   try{Object.assign(store,JSON.parse(localStorage.getItem(STORE_KEY)||"null")||{});}catch(e){}
+  // 账号 ID 归一化：老会话里的旧 ID 直接映射为新 ID，无需重新登录
+  if(store.user&&store.user.uid){
+    const n=normUid(store.user.uid);
+    if(n!==store.user.uid){
+      store.user.uid=n;
+      try{localStorage.setItem(STORE_KEY,JSON.stringify(store));}catch(e){}
+    }
+  }
 }
 // 云端写入串行化队列：避免并发 read-modify-write 互相覆盖导致数据丢失
 let _saveQueue=Promise.resolve();
@@ -2468,7 +2481,7 @@ function verifyPayReturn(no,successFlag){
 const genUserId=uid=>{
   let h=0;
   for(let i=0;i<uid.length;i++) h=((h<<5)-h+uid.charCodeAt(i))|0;
-  return "XY"+String(Math.abs(h)%900000+100000);
+  return normUid("XY"+String(Math.abs(h)%900000+100000));
 };
 async function processAzeLogin(d){
   if(!(d.code===0&&d.social_uid)){toast("登录失败："+(d.msg||"未知错误"),false);return;}
