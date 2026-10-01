@@ -842,6 +842,7 @@ const STORE_KEY="xingyou_esports_v1";
 const SB_URL="https://jsrxbpysgaywdhnntqnl.supabase.co";
 const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
 const sb=window.supabase?window.supabase.createClient(SB_URL,SB_ANON):null;
+console.log("[Supabase] 客户端初始化:",sb?"成功":"失败(window.supabase不存在)");
 const store={user:null,orders:[],coupons:[],favs:[],feedbacks:[],noticeClosed:false,homeGame:"val",cancelClearedAt:0};
 const catState={game:"val",zone:"all",sort:"default",q:""};
 let orderFilter="all";
@@ -867,29 +868,43 @@ function loadStore(){
 function saveUserData(uid){
   const data={orders:store.orders,coupons:store.coupons,favs:store.favs,feedbacks:store.feedbacks,invitedBy:store.invitedBy||"",inviteFirstOrderDone:!!store.inviteFirstOrderDone,registeredAt:store.registeredAt||null};
   try{localStorage.setItem("xy_user_"+uid,JSON.stringify(data));}catch(e){}
-  if(sb){
-    return sb.from("user_data").upsert({
-      uid,
-      orders:data.orders,
-      coupons:data.coupons,
-      favs:data.favs,
-      feedbacks:data.feedbacks,
-      invited_by:data.invitedBy,
-      invite_first_order_done:data.inviteFirstOrderDone,
-      registered_at:data.registeredAt
-    }).catch(()=>{});
+  if(!sb){
+    console.error("[Supabase] 客户端未初始化(sb=null)，数据仅保存到本地");
+    return Promise.resolve();
   }
+  return sb.from("user_data").upsert({
+    uid,
+    orders:data.orders,
+    coupons:data.coupons,
+    favs:data.favs,
+    feedbacks:data.feedbacks,
+    invited_by:data.invitedBy,
+    invite_first_order_done:data.inviteFirstOrderDone,
+    registered_at:data.registeredAt
+  }).then(res=>{
+    if(res.error){
+      console.error("[Supabase] 同步失败:",res.error);
+      toast("数据同步失败:"+(res.error.message||res.error.code),false);
+    }
+    return res;
+  }).catch(e=>{
+    console.error("[Supabase] 同步异常:",e);
+    toast("数据同步异常:"+(e&&e.message?e.message:String(e)),false);
+  });
 }
 async function loadUserData(uid){
   if(sb){
     try{
       const{data,error}=await sb.from("user_data").select("*").eq("uid",uid).single();
+      if(error){console.error("[Supabase] 读取失败:",error);}
       if(!error&&data){
         const parsed={orders:data.orders||[],coupons:data.coupons||[],favs:data.favs||[],feedbacks:data.feedbacks||[],invitedBy:data.invited_by||"",inviteFirstOrderDone:!!data.invite_first_order_done,registeredAt:data.registered_at||null};
         try{localStorage.setItem("xy_user_"+uid,JSON.stringify(parsed));}catch(e){}
         return parsed;
       }
-    }catch(e){}
+    }catch(e){console.error("[Supabase] 读取异常:",e);}
+  }else{
+    console.warn("[Supabase] 客户端未初始化，从本地读取用户数据");
   }
   try{return JSON.parse(localStorage.getItem("xy_user_"+uid)||"null");}catch(e){return null;}
 }
@@ -928,7 +943,8 @@ if(store.user&&store.user.uid){
       store.registeredAt=saved.registeredAt||store.registeredAt;
       dedupeCoupons();
     }
-  }).catch(()=>{});
+    saveStore();
+  }).catch(()=>{ saveStore(); });
 }
 
 const $=(sel,root)=>(root||document).querySelector(sel);
