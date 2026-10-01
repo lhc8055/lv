@@ -858,7 +858,7 @@ const scrollCache={};
 function saveStore(){
   try{
     localStorage.setItem(STORE_KEY,JSON.stringify(store));
-    if(store.user&&store.user.uid) saveUserData(store.user.uid);
+    if(store.user&&store.user.uid) return saveUserData(store.user.uid);
   }catch(e){}
 }
 function loadStore(){
@@ -868,7 +868,7 @@ function saveUserData(uid){
   const data={orders:store.orders,coupons:store.coupons,favs:store.favs,feedbacks:store.feedbacks,invitedBy:store.invitedBy||"",inviteFirstOrderDone:!!store.inviteFirstOrderDone,registeredAt:store.registeredAt||null};
   try{localStorage.setItem("xy_user_"+uid,JSON.stringify(data));}catch(e){}
   if(sb){
-    sb.from("user_data").upsert({
+    return sb.from("user_data").upsert({
       uid,
       orders:data.orders,
       coupons:data.coupons,
@@ -2120,7 +2120,7 @@ const ACTIONS={
   },
   "cf-plus"(){stepCfQty(1);},
   "cf-minus"(){stepCfQty(-1);},
-  "do-buy"(){
+  "do-buy":async function(){
     const p=currentBuy;
     if(!p) return;
     syncOrders();
@@ -2139,7 +2139,8 @@ const ACTIONS={
       c.status="used";c.usedAt=Date.now();c.orderNo=no;
     }
     store.orders.push(order);
-    saveStore();closeSheet();
+    await saveStore();
+    closeSheet();
     startPayment(no,p.title,r.total,payType);
   }
 };
