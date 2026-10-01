@@ -898,25 +898,55 @@ function saveUserData(uid){
     if(Date.now()-window._sbErrAt>15000){window._sbErrAt=Date.now();toast("数据同步异常:"+(e&&e.message?e.message:String(e)),false);}
   });
 }
+let _cloudReachable=false;
 async function loadUserData(uid){
   if(sb){
     try{
       const{data,error}=await sb.from("user_data").select("*").eq("uid",uid).single();
-      if(error){console.error("[Supabase] 读取失败:",error);}
+      if(error){
+        // PGRST116 = 无匹配记录（正常，新用户）
+        if(error.code==="PGRST116"){ _cloudReachable=true; }
+        else{ console.error("[Supabase] 读取失败:",error); _cloudReachable=false; }
+      }
       if(!error&&data){
+        _cloudReachable=true;
         const parsed={orders:data.orders||[],coupons:data.coupons||[],favs:data.favs||[],feedbacks:data.feedbacks||[],invitedBy:data.invited_by||"",inviteFirstOrderDone:!!data.invite_first_order_done,registeredAt:data.registered_at||null};
         try{localStorage.setItem("xy_user_"+uid,JSON.stringify(parsed));}catch(e){}
         return parsed;
       }
-    }catch(e){console.error("[Supabase] 读取异常:",e);}
+    }catch(e){ console.error("[Supabase] 读取异常:",e); _cloudReachable=false; }
   }else{
     console.warn("[Supabase] 客户端未初始化，从本地读取用户数据");
+    _cloudReachable=false;
   }
+  // 云端不可达或无记录时，返回本地备份（但标记为非云端来源）
   try{return JSON.parse(localStorage.getItem("xy_user_"+uid)||"null");}catch(e){return null;}
 }
 function dedupeCoupons(){
   const seen={};
   store.coupons=(store.coupons||[]).filter(c=>seen[c.id]?false:(seen[c.id]=true));
+}
+// 合并本地与云端订单：按订单号去重，同一订单取状态更靠后的（已完成>进行中>待接单>待支付）
+const STATUS_RANK={unpaid:0,pending:1,ongoing:2,processing:2,in_progress:2,completed:3,done:3,cancelled:4,refunded:4,refunding:4};
+function mergeOrders(cloud,local){
+  const map={};
+  (cloud||[]).forEach(o=>{ map[o.no]={...o,_src:"cloud"}; });
+  (local||[]).forEach(o=>{
+    const ex=map[o.no];
+    if(!ex){ map[o.no]={...o,_src:"local"}; }
+    else{
+      // 同订单号：取状态等级高的；状态相同取时间戳新的
+      const er=STATUS_RANK[ex.status]||0, lr=STATUS_RANK[o.status]||0;
+      if(lr>er||(lr===er&&(o.ts||0)>(ex.ts||0))){ map[o.no]={...o,_src:"local"}; }
+    }
+  });
+  return Object.values(map).map(({_src,...rest})=>rest);
+}
+function mergeSimple(cloud,local,keyFn){
+  const map={};
+  (cloud||[]).forEach(x=>{ map[keyFn(x)]=x; });
+  (local||[]).forEach(x=>{ const k=keyFn(x); if(!map[k]) map[k]=x; });
+  return Object.values(map);
 }
 function migrateOrders(){
   let changed=false;
@@ -938,19 +968,36 @@ function migrateOrders(){
 loadStore();
 dedupeCoupons();
 if(store.user&&store.user.uid){
+  const _localOrders=JSON.parse(JSON.stringify(store.orders||[]));
+  const _localCoupons=JSON.parse(JSON.stringify(store.coupons||[]));
+  const _localFavs=JSON.parse(JSON.stringify(store.favs||[]));
+  const _localFbs=JSON.parse(JSON.stringify(store.feedbacks||[]));
   loadUserData(store.user.uid).then(saved=>{
-    if(saved){
-      store.orders=saved.orders||store.orders;
-      store.coupons=saved.coupons||store.coupons;
-      store.favs=saved.favs||store.favs;
-      store.feedbacks=saved.feedbacks||store.feedbacks;
-      store.invitedBy=saved.invitedBy||"";
-      store.inviteFirstOrderDone=!!saved.inviteFirstOrderDone;
-      store.registeredAt=saved.registeredAt||store.registeredAt;
+    if(_cloudReachable){
+      // 云端可达：以云端为主，合并本地新增项
+      if(saved){
+        store.orders=mergeOrders(saved.orders,_localOrders);
+        store.coupons=mergeSimple(saved.coupons,_localCoupons,c=>c.id);
+        store.favs=mergeSimple(saved.favs,_localFavs,x=>x);
+        store.feedbacks=mergeSimple(saved.feedbacks,_localFbs,x=>x.ts);
+        store.invitedBy=saved.invitedBy||store.invitedBy||"";
+        store.inviteFirstOrderDone=!!saved.inviteFirstOrderDone||store.inviteFirstOrderDone;
+        store.registeredAt=saved.registeredAt||store.registeredAt;
+      }else{
+        // 云端无记录：保留本地数据，稍后推送
+        store.orders=_localOrders;
+      }
       dedupeCoupons();
+      saveStore(); // 合并后推送到云端
+    }else{
+      // 云端不可达：仅使用本地数据，不推送（避免覆盖云端）
+      store.orders=_localOrders;
+      console.warn("[Supabase] 云端不可达，使用本地数据，未同步到云端");
     }
-    saveStore();
-  }).catch(()=>{ saveStore(); });
+  }).catch(()=>{
+    // 异常时也不推送，保护云端数据
+    store.orders=_localOrders;
+  });
 }
 
 const $=(sel,root)=>(root||document).querySelector(sel);
@@ -2283,11 +2330,16 @@ async function processAzeLogin(d){
   const labels={qq:"QQ",wx:"微信",alipay:"支付宝",sina:"微博",baidu:"百度",douyin:"抖音",huawei:"华为",xiaomi:"小米",google:"Google",microsoft:"微软",dingtalk:"钉钉",feishu:"飞书",gitee:"Gitee",github:"GitHub"};
   const label=labels[d.type]||"账号";
   const uid=genUserId(String(d.social_uid));
+  const _preOrders=JSON.parse(JSON.stringify(store.orders||[]));
+  const _preCoupons=JSON.parse(JSON.stringify(store.coupons||[]));
+  const _preFavs=JSON.parse(JSON.stringify(store.favs||[]));
+  const _preFbs=JSON.parse(JSON.stringify(store.feedbacks||[]));
   const saved=(await loadUserData(uid))||{};
-  store.orders=saved.orders||[];
-  store.coupons=saved.coupons||[];
-  store.favs=saved.favs||[];
-  store.feedbacks=saved.feedbacks||[];
+  // 登录时：云端为主，合并本地未同步的订单/优惠券等
+  store.orders=mergeOrders(saved.orders,_preOrders);
+  store.coupons=mergeSimple(saved.coupons,_preCoupons,c=>c.id);
+  store.favs=mergeSimple(saved.favs,_preFavs,x=>x);
+  store.feedbacks=mergeSimple(saved.feedbacks,_preFbs,x=>x.ts);
   store.invitedBy=saved.invitedBy||"";
   store.inviteFirstOrderDone=!!saved.inviteFirstOrderDone;
   dedupeCoupons();
