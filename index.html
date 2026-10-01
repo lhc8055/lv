@@ -2317,7 +2317,9 @@ document.addEventListener("visibilitychange",()=>{
     pollUnpaidOrders();
     // 页面重新可见时立即从云端同步，保证跨浏览器数据一致
     if(store.user&&store.user.uid){
-      refreshUserDataFromCloud().then(changed=>{if(changed) render(true);});
+      refreshUserDataFromCloud().then(changed=>{
+        if(changed){ saveStore(); render(true); }
+      });
     }
   }
 });
@@ -2474,8 +2476,9 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
     if(!store.user||!store.user.uid) return;
     if(!SYNC_PAGES.includes(parseHash().name)||$(".mask")) return;
     syncOrders();
+    // 从云端拉取并合并；若本地有云端没有的数据（如未同步的订单），回写云端
     const changed=await refreshUserDataFromCloud();
-    if(changed) render(true);
+    if(changed){ saveStore(); render(true); }
   },3000);
   initPromo();
   if(window.requestIdleCallback) requestIdleCallback(()=>primeMany(restImgs(),3),{timeout:2500});
