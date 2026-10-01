@@ -914,11 +914,13 @@ function saveUserData(uid){
     if(res&&res.error){
       console.error("[Supabase] 同步失败:",res.error);
       if(Date.now()-window._sbErrAt>15000){window._sbErrAt=Date.now();toast("数据同步失败:"+(res.error.message||res.error.code),false);}
+      return false;
     }
-    return res;
+    return true;
   }).catch(e=>{
     console.error("[Supabase] 同步异常:",e);
     if(Date.now()-window._sbErrAt>15000){window._sbErrAt=Date.now();toast("数据同步异常:"+(e&&e.message?e.message:String(e)),false);}
+    return false;
   });
 }
 let _cloudReachable=false;
@@ -2248,7 +2250,13 @@ const ACTIONS={
       c.status="used";c.usedAt=Date.now();c.orderNo=no;
     }
     store.orders.push(order);
-    await saveStore();
+    const saved=await saveStore();
+    if(saved===false){
+      // 订单未成功保存到云端，不跳转支付，避免用户付款后订单丢失
+      store.orders.pop();
+      toast("订单提交失败，请检查网络后重试",false);
+      return;
+    }
     closeSheet();
     startPayment(no,p.title,r.total,payType);
   }
