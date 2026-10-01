@@ -250,6 +250,9 @@ button.pf-header:active{opacity:.8}
 .kv .v{flex:1;font-weight:500}
 .serve li{display:flex;gap:9px;font-size:12.8px;color:#555b85;line-height:1.65;padding:5px 0}
 .serve li svg{flex:none;width:16px;height:16px;margin-top:2px;color:var(--pri)}
+.serve li.serve-h{font-weight:800;color:var(--ink);font-size:13.5px;padding-top:12px;padding-bottom:2px}
+.serve li.serve-h:first-child{padding-top:0}
+.serve li.serve-sub{font-weight:700;color:var(--ink);padding-top:8px}
 .qty-row{display:flex;align-items:center}
 .qty-row .k{flex:none;width:64px;color:var(--sub);font-size:13px}
 .qty-row .hint{margin-left:10px;font-size:12px;color:var(--weak)}
@@ -1446,7 +1449,10 @@ function serveLines(p){
   const g=gameById(p.game);
   const lines=[];
   if(p.desc&&p.desc.trim()){
-    lines.push(p.desc.trim());
+    p.desc.split("\n").forEach(l=>{
+      const t=l.replace(/\u200b/g,"").trim();
+      if(t) lines.push(t);
+    });
   }else if(p.zone==="tech"){
     lines.push("本商品为技术单局："+p.rank+"，按局计费，未达承诺段位免费补打");
   }else{
@@ -1461,6 +1467,22 @@ function serveLines(p){
   }
   lines.push("区服："+g.servers.join("、")+"，下单时请选择对应区服并填写游戏昵称");
   return lines;
+}
+function isServeHeader(l){
+  if(/^[一二三四五六七八九十]+[、.．]/.test(l)) return true;
+  if(l.length<=16&&/(规则|说明|须知|权益|事项)$/.test(l)) return true;
+  return false;
+}
+function isServeSub(l){
+  if(l.length<=14&&/[：:]$/.test(l)) return true;
+  return false;
+}
+function serveLineHtml(l){
+  if(isServeHeader(l)) return '<li class="serve-h">'+esc(l)+'</li>';
+  if(isServeSub(l)) return '<li class="serve-sub">'+esc(l)+'</li>';
+  const marked=/^(\d+[、.．]|[-•·])/.test(l);
+  const ico=marked?'':icon("check");
+  return '<li>'+ico+'<span>'+esc(l)+'</span></li>';
 }
 const couponFits=(c,p)=>c.scope==="all"||c.scope===p.zone;
 function couponBlock(p){
@@ -1495,7 +1517,7 @@ function viewDetail(params){
         '<div class="stepper"><button data-action="qty-minus" id="qtyMinus" disabled>−</button><span class="q-num" id="qtyNum">1</span><button data-action="qty-plus">+</button></div>'+
         '<span class="hint">'+(p.unit==="局"?"建议按段位差下单":"可先下1小时体验")+'</span></div>'+
       '<div class="detail-select"><span class="k">区服</span><div class="field" style="flex:1;margin:0"><select id="serverSel">'+servers+'</select></div></div></div>'+
-    '<div class="detail-block"><h3>服务说明</h3><ul class="serve">'+serveLines(p).map(l=>'<li>'+icon("check")+'<span>'+l+'</span></li>').join("")+'</ul></div>'+
+    '<div class="detail-block"><h3>服务说明</h3><ul class="serve">'+serveLines(p).map(serveLineHtml).join("")+'</ul></div>'+
     '<div class="detail-block"><h3>同类推荐</h3><div class="rel-grid">'+rel.map(r=>
       '<button type="button" class="rel" data-action="detail" data-id="'+r.id+'"><div class="r-img">'+imgPlain(r.img,r.title)+'</div>'+
       '<div class="r-name">'+esc(r.title)+'</div><div class="r-price">¥'+r.price+'/'+r.unit+'</div></button>').join("")+'</div></div>'+
