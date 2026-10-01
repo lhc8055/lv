@@ -844,7 +844,9 @@ const STORE_KEY="xingyou_esports_v1";
 // 部署 sb-proxy-worker.js 后，把下面的地址改成你的 Worker 地址，例如:
 //   const SB_PROXY = "https://sb-proxy.你的用户名.workers.dev";
 // 留空则直连 Supabase（国内可能失败）。
-const SB_PROXY = "https://sb-proxy.3552453862.workers.dev";
+// 注意：原 Worker sb-proxy.3552453862.workers.dev 已下线（SSL握手失败5秒超时），
+// 实测直连 supabase.co 可达且更快（~1秒），故改为直连。
+const SB_PROXY = "";
 const SB_URL = SB_PROXY || "https://jsrxbpysgaywdhnntqnl.supabase.co";
 const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
 const sb=window.supabase?window.supabase.createClient(SB_URL,SB_ANON):null;
@@ -873,6 +875,10 @@ function loadStore(){
   // 从本地缓存读取所有数据（含订单/优惠券/收藏/反馈），保证页面立即可用
   try{Object.assign(store,JSON.parse(localStorage.getItem(STORE_KEY)||"null")||{});}catch(e){}
 }
+// Supabase 单次请求超时上限（ms）：超时后走本地 fallback，避免登录/同步被单个慢请求拖死
+function sbRace(p,ms,fb){
+  return Promise.race([p.catch(()=>fb),new Promise(r=>setTimeout(()=>r(fb),ms))]);
+}
 async function saveUserData(uid){
   const data={orders:store.orders,coupons:store.coupons,favs:store.favs,feedbacks:store.feedbacks,invitedBy:store.invitedBy||"",inviteFirstOrderDone:!!store.inviteFirstOrderDone,registeredAt:store.registeredAt||null};
   // 全量写入本地备份（含订单），保证刷新/支付返回后数据不丢
@@ -881,11 +887,15 @@ async function saveUserData(uid){
     console.error("[Supabase] 客户端未初始化(sb=null)，数据仅保存到本地");
     return true;
   }
-  // 读-改-写：最多重试 2 次，确保数据写入云端
+  // 读-改-写：最多重试 2 次，确保数据写入云端。每次请求 4s 超时，避免登录被拖慢
   for(let attempt=0;attempt<2;attempt++){
     try{
       // 先读取云端最新数据，合并后再写入 —— 避免本地旧数据覆盖云端
-      const {data:cloudData,error:readErr}=await sb.from("user_data").select("*").eq("uid",uid).single();
+      const {data:cloudData,error:readErr}=await sbRace(
+        sb.from("user_data").select("*").eq("uid",uid).single(),
+        4000,
+        {data:null,error:{code:"TIMEOUT"}}
+      );
       let toSave={...data};
       if(!readErr&&cloudData){
         toSave.orders=mergeOrders(cloudData.orders||[],store.orders);
@@ -896,10 +906,14 @@ async function saveUserData(uid){
         toSave.inviteFirstOrderDone=!!cloudData.invite_first_order_done||data.inviteFirstOrderDone;
         toSave.registeredAt=cloudData.registered_at||data.registeredAt;
       }
-      const res=await sb.from("user_data").upsert({
-        uid,orders:toSave.orders,coupons:toSave.coupons,favs:toSave.favs,feedbacks:toSave.feedbacks,
-        invited_by:toSave.invitedBy,invite_first_order_done:toSave.inviteFirstOrderDone,registered_at:toSave.registeredAt
-      });
+      const res=await sbRace(
+        sb.from("user_data").upsert({
+          uid,orders:toSave.orders,coupons:toSave.coupons,favs:toSave.favs,feedbacks:toSave.feedbacks,
+          invited_by:toSave.invitedBy,invite_first_order_done:toSave.inviteFirstOrderDone,registered_at:toSave.registeredAt
+        }),
+        4000,
+        {error:{code:"TIMEOUT"}}
+      );
       if(res&&res.error){
         console.error("[Supabase] 写入失败:",res.error);
         if(attempt===0) continue; // 重试一次
@@ -918,7 +932,11 @@ let _cloudReachable=false;
 async function loadUserData(uid){
   if(sb){
     try{
-      const{data,error}=await sb.from("user_data").select("*").eq("uid",uid).single();
+      const{data,error}=await sbRace(
+        sb.from("user_data").select("*").eq("uid",uid).single(),
+        4000,
+        {data:null,error:{code:"TIMEOUT"}}
+      );
       if(error){
         // PGRST116 = 无匹配记录（正常，新用户）
         if(error.code==="PGRST116"){ _cloudReachable=true; }
