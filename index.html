@@ -438,7 +438,6 @@ html.fx-run .tabbar,html.fx-run .page-head{backdrop-filter:none;-webkit-backdrop
 .detail-rest.fx-in{animation:restIn .52s cubic-bezier(.22,1,.36,1) .12s backwards}
 @keyframes restIn{from{opacity:0;transform:translate3d(0,18px,0)}to{opacity:1;transform:none}}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div class="page-loader show" id="pageLoader"><div class="pl-spin"></div><div class="pl-msg">加载中…</div></div>
@@ -839,18 +838,64 @@ const AZE_CONFIG={appid:"1055",appkey:"8a71675d91f617c2fed7fd911391defe",proxy:"
 const PAY_CONFIG={pid:"1312",key:"w5bxw5eJb5jbNTtoj8jtj3OlknHjB6Eb",gateway:"https://pay1987.com/submit.php",notifyUrl:"https://pay1987.pages.dev/api/notify",queryApi:"https://pay1987.pages.dev/api/query"};
 
 const STORE_KEY="xingyou_esports_v1";
-// === Supabase 代理配置 ===
-// 国内访问 supabase.co 常被墙，需用 Cloudflare Worker 做反向代理。
-// 部署 sb-proxy-worker.js 后，把下面的地址改成你的 Worker 地址，例如:
-//   const SB_PROXY = "https://sb-proxy.你的用户名.workers.dev";
-// 留空则直连 Supabase（国内可能失败）。
-// 注意：原 Worker sb-proxy.3552453862.workers.dev 已下线（SSL握手失败5秒超时），
-// 实测直连 supabase.co 可达且更快（~1秒），故改为直连。
-const SB_PROXY = "";
-const SB_URL = SB_PROXY || "https://jsrxbpysgaywdhnntqnl.supabase.co";
+// === Supabase 直连客户端（fetch 实现，不依赖 supabase-js / jsdelivr CDN）===
+// 之前用 <script src="jsdelivr/supabase-js"> 加载，国内 jsdelivr 常被墙/超时，
+// 一旦加载失败 window.supabase 为 undefined，所有云端读写会静默失效，
+// 导致订单/收藏/优惠券只在本地、跨浏览器完全不互通。这里改为用 fetch 直接
+// 调用 Supabase REST(PostgREST)，去掉对外部 CDN 的依赖，根治同步断链。
+// 若直连 supabase.co 在部分网络不可达，可在 SB_BASE_URLS 里追加一个
+// Cloudflare Worker 反代地址（见 sb-proxy-worker.js）作为自动降级。
+// sbRequest 会优先用直连，直连失败时自动切换到下一个端点。
+const SB_BASE_URLS=[
+  "https://jsrxbpysgaywdhnntqnl.supabase.co",
+  "https://sb-proxy.3552453862.workers.dev"
+];
 const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
-const sb=window.supabase?window.supabase.createClient(SB_URL,SB_ANON):null;
-console.log("[Supabase] 客户端初始化:",sb?"成功":"失败(window.supabase不存在)");
+const SB_TABLE="user_data";
+const SB_TIMEOUT=5000;
+
+let _sbActiveUrl=SB_BASE_URLS[0]; // 缓存当前可用端点，避免每次都从第一个重试
+async function sbRequest(path,opts){
+  const method=(opts&&opts.method)||"GET";
+  const body=opts&&opts.body;
+  const ms=(opts&&opts.ms)||SB_TIMEOUT;
+  const headers={"apikey":SB_ANON,"Authorization":"Bearer "+SB_ANON};
+  if(body!==undefined){ headers["Content-Type"]="application/json"; headers["Prefer"]="resolution=merge-duplicates,return=representation"; }
+  const urls=[_sbActiveUrl].concat(SB_BASE_URLS.filter(u=>u!==_sbActiveUrl));
+  let lastErr=null;
+  for(const base of urls){
+    const ctrl=("AbortController" in window)?new AbortController():null;
+    const timer=ctrl?setTimeout(()=>ctrl.abort(),ms):null;
+    try{
+      const res=await fetch(base+path,{method,headers,body:body!==undefined?JSON.stringify(body):undefined,signal:ctrl?ctrl.signal:undefined});
+      if(timer) clearTimeout(timer);
+      _sbActiveUrl=base;
+      const text=await res.text();
+      let json=null; try{json=text?JSON.parse(text):null;}catch(e){}
+      if(!res.ok){
+        const err=new Error((json&&json.message)||("HTTP "+res.status));
+        err.code=json&&json.code; err.status=res.status;
+        throw err;
+      }
+      return json;
+    }catch(e){
+      if(timer) clearTimeout(timer);
+      lastErr=e;
+      if(e&&e.name==="AbortError"){ lastErr=new Error("云端请求超时"); lastErr.code="TIMEOUT"; }
+    }
+  }
+  throw (lastErr||new Error("云端请求失败"));
+}
+// 读取单个用户的云端数据（返回对象或 null）
+async function sbSelect(uid,ms){
+  const rows=await sbRequest("/rest/v1/"+SB_TABLE+"?uid=eq."+encodeURIComponent(uid)+"&select=*",{method:"GET",ms});
+  return (Array.isArray(rows)&&rows[0])||null;
+}
+// 写入/更新单用户数据（按 uid 合并）
+async function sbUpsert(row,ms){
+  return await sbRequest("/rest/v1/"+SB_TABLE,{method:"POST",body:row,ms});
+}
+console.log("[Supabase] 直连客户端已就绪，端点:",SB_BASE_URLS.join(", "));
 const store={user:null,orders:[],coupons:[],favs:[],feedbacks:[],noticeClosed:false,homeGame:"val",cancelClearedAt:0};
 const catState={game:"val",zone:"all",sort:"default",q:""};
 let orderFilter="all";
@@ -875,10 +920,6 @@ function loadStore(){
   // 从本地缓存读取所有数据（含订单/优惠券/收藏/反馈），保证页面立即可用
   try{Object.assign(store,JSON.parse(localStorage.getItem(STORE_KEY)||"null")||{});}catch(e){}
 }
-// Supabase 单次请求超时上限（ms）：超时后走本地 fallback，避免登录/同步被单个慢请求拖死
-function sbRace(p,ms,fb){
-  return Promise.race([p.catch(()=>fb),new Promise(r=>setTimeout(()=>r(fb),ms))]);
-}
 // 云端写入串行化队列：避免并发 read-modify-write 互相覆盖导致数据丢失
 let _saveQueue=Promise.resolve();
 let _savePending=false;
@@ -893,23 +934,14 @@ async function saveUserData(uid){
     const data={orders:store.orders,coupons:store.coupons,favs:store.favs,feedbacks:store.feedbacks,invitedBy:store.invitedBy||"",inviteFirstOrderDone:!!store.inviteFirstOrderDone,registeredAt:store.registeredAt||null};
     // 全量写入本地备份（含订单），保证刷新/支付返回后数据不丢
     try{localStorage.setItem("xy_user_"+uid,JSON.stringify(data));}catch(e){}
-    if(!sb){
-      console.error("[Supabase] 客户端未初始化(sb=null)，数据仅保存到本地");
-      return true;
-    }
     const snap=getCloudSnap(uid);
-    // 读-改-写：最多重试 2 次，确保数据写入云端。每次请求 4s 超时，避免登录被拖慢
+    // 读-改-写：最多重试 2 次，确保数据写入云端
     for(let attempt=0;attempt<2;attempt++){
       try{
         // 先读取云端最新数据，合并后再写入 —— 避免本地旧数据覆盖云端
-        const {data:cloudData,error:readErr}=await sbRace(
-          sb.from("user_data").select("*").eq("uid",uid),
-          4000,
-          {data:null,error:{code:"TIMEOUT"}}
-        );
+        const cloudRow=await sbSelect(uid,4000);
         let toSave={...data};
-        if(!readErr&&cloudData){
-          const cloudRow=Array.isArray(cloudData)?cloudData[0]:cloudData;
+        if(cloudRow){
           toSave.orders=mergeOrders(cloudRow.orders||[],store.orders);
           toSave.coupons=mergeSetPush(cloudRow.coupons||[],store.coupons,snap.coupons,c=>c.id);
           toSave.favs=mergeSetPush(cloudRow.favs||[],store.favs,snap.favs,x=>x);
@@ -918,20 +950,10 @@ async function saveUserData(uid){
           toSave.inviteFirstOrderDone=!!cloudRow.invite_first_order_done||data.inviteFirstOrderDone;
           toSave.registeredAt=cloudRow.registered_at||data.registeredAt;
         }
-        const res=await sbRace(
-          sb.from("user_data").upsert({
-            uid,orders:toSave.orders,coupons:toSave.coupons,favs:toSave.favs,feedbacks:toSave.feedbacks,
-            invited_by:toSave.invitedBy,invite_first_order_done:toSave.inviteFirstOrderDone,registered_at:toSave.registeredAt
-          }),
-          4000,
-          {error:{code:"TIMEOUT"}}
-        );
-        if(res&&res.error){
-          console.error("[Supabase] 写入失败:",res.error);
-          if(attempt===0) continue; // 重试一次
-          if(Date.now()-window._sbErrAt>15000){window._sbErrAt=Date.now();toast("云端同步失败，本地数据已保留",false);}
-          return false;
-        }
+        await sbUpsert({
+          uid,orders:toSave.orders,coupons:toSave.coupons,favs:toSave.favs,feedbacks:toSave.feedbacks,
+          invited_by:toSave.invitedBy,invite_first_order_done:toSave.inviteFirstOrderDone,registered_at:toSave.registeredAt
+        },4000);
         // 写入成功后：把合并结果回写到 store，避免本地与云端不一致
         store.orders=toSave.orders;
         store.coupons=toSave.coupons;
@@ -945,8 +967,9 @@ async function saveUserData(uid){
         try{localStorage.setItem(STORE_KEY,JSON.stringify(store));}catch(e){}
         return true;
       }catch(e){
-        console.error("[Supabase] 同步异常(尝试"+(attempt+1)+"/2):",e);
-        if(attempt===0) continue;
+        console.error("[Supabase] 同步异常(尝试"+(attempt+1)+"/2):",e.code||"",e.message||e);
+        if(attempt===0) continue; // 重试一次
+        if(!window._sbErrAt||Date.now()-window._sbErrAt>15000){window._sbErrAt=Date.now();toast("云端同步失败，本地数据已保留",false);}
       }
     }
     return false;
@@ -954,31 +977,21 @@ async function saveUserData(uid){
 }
 let _cloudReachable=false;
 async function loadUserData(uid){
-  if(sb){
-    try{
-      const{data,error}=await sbRace(
-        sb.from("user_data").select("*").eq("uid",uid),
-        4000,
-        {data:null,error:{code:"TIMEOUT"}}
-      );
-      if(error){
-        console.error("[Supabase] 读取失败:",error); _cloudReachable=false;
-      }
-      const row=Array.isArray(data)?data[0]:data;
-      if(!error&&row){
-        _cloudReachable=true;
-        const parsed={orders:row.orders||[],coupons:row.coupons||[],favs:row.favs||[],feedbacks:row.feedbacks||[],invitedBy:row.invited_by||"",inviteFirstOrderDone:!!row.invite_first_order_done,registeredAt:row.registered_at||null};
-        // 保存云端快照，用于集合合并时区分「本地新增」与「云端已删除」
-        setCloudSnap(uid,{orders:parsed.orders,coupons:parsed.coupons,favs:parsed.favs,feedbacks:parsed.feedbacks});
-        // 云端数据全量缓存到本地（含订单），作为离线/快速加载备份
-        try{localStorage.setItem("xy_user_"+uid,JSON.stringify(parsed));}catch(e){}
-        return parsed;
-      }
-      // 无记录（新用户）也算云端可达
-      if(!error){ _cloudReachable=true; }
-    }catch(e){ console.error("[Supabase] 读取异常:",e); _cloudReachable=false; }
-  }else{
-    console.warn("[Supabase] 客户端未初始化，从本地读取用户数据");
+  try{
+    const row=await sbSelect(uid,4000);
+    if(row){
+      _cloudReachable=true;
+      const parsed={orders:row.orders||[],coupons:row.coupons||[],favs:row.favs||[],feedbacks:row.feedbacks||[],invitedBy:row.invited_by||"",inviteFirstOrderDone:!!row.invite_first_order_done,registeredAt:row.registered_at||null};
+      // 保存云端快照，用于集合合并时区分「本地新增」与「云端已删除」
+      setCloudSnap(uid,{orders:parsed.orders,coupons:parsed.coupons,favs:parsed.favs,feedbacks:parsed.feedbacks});
+      // 云端数据全量缓存到本地（含订单），作为离线/快速加载备份
+      try{localStorage.setItem("xy_user_"+uid,JSON.stringify(parsed));}catch(e){}
+      return parsed;
+    }
+    // 无记录（新用户）也算云端可达
+    _cloudReachable=true;
+  }catch(e){
+    console.error("[Supabase] 读取失败:",e.code||"",e.message||e);
     _cloudReachable=false;
   }
   // 云端不可达或无记录时，返回本地备份（含订单等全部数据）
@@ -986,12 +999,10 @@ async function loadUserData(uid){
 }
 // 从云端重新拉取当前用户的全部数据并合并到内存（用于跨浏览器实时同步）
 async function refreshUserDataFromCloud(){
-  if(!sb||!store.user||!store.user.uid) return false;
+  if(!store.user||!store.user.uid) return false;
   const uid=store.user.uid;
   try{
-    const{data,error}=await sb.from("user_data").select("*").eq("uid",uid);
-    if(error) return false;
-    const row=Array.isArray(data)?data[0]:data;
+    const row=await sbSelect(uid,4000);
     if(!row) return false;
     const cloudOrders=row.orders||[];
     const cloudCoupons=row.coupons||[];
