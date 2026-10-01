@@ -839,7 +839,13 @@ const AZE_CONFIG={appid:"1055",appkey:"8a71675d91f617c2fed7fd911391defe",proxy:"
 const PAY_CONFIG={pid:"1312",key:"w5bxw5eJb5jbNTtoj8jtj3OlknHjB6Eb",gateway:"https://pay1987.com/submit.php",notifyUrl:"https://pay1987.pages.dev/api/notify",queryApi:"https://pay1987.pages.dev/api/query"};
 
 const STORE_KEY="xingyou_esports_v1";
-const SB_URL="https://jsrxbpysgaywdhnntqnl.supabase.co";
+// === Supabase 代理配置 ===
+// 国内访问 supabase.co 常被墙，需用 Cloudflare Worker 做反向代理。
+// 部署 sb-proxy-worker.js 后，把下面的地址改成你的 Worker 地址，例如:
+//   const SB_PROXY = "https://sb-proxy.你的用户名.workers.dev";
+// 留空则直连 Supabase（国内可能失败）。
+const SB_PROXY = "";
+const SB_URL = SB_PROXY || "https://jsrxbpysgaywdhnntqnl.supabase.co";
 const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
 const sb=window.supabase?window.supabase.createClient(SB_URL,SB_ANON):null;
 console.log("[Supabase] 客户端初始化:",sb?"成功":"失败(window.supabase不存在)");
@@ -884,12 +890,12 @@ function saveUserData(uid){
   }).then(res=>{
     if(res.error){
       console.error("[Supabase] 同步失败:",res.error);
-      toast("数据同步失败:"+(res.error.message||res.error.code),false);
+      if(Date.now()-window._sbErrAt>15000){window._sbErrAt=Date.now();toast("数据同步失败:"+(res.error.message||res.error.code),false);}
     }
     return res;
   }).catch(e=>{
     console.error("[Supabase] 同步异常:",e);
-    toast("数据同步异常:"+(e&&e.message?e.message:String(e)),false);
+    if(Date.now()-window._sbErrAt>15000){window._sbErrAt=Date.now();toast("数据同步异常:"+(e&&e.message?e.message:String(e)),false);}
   });
 }
 async function loadUserData(uid){
