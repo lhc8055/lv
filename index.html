@@ -879,76 +879,103 @@ function loadStore(){
 function sbRace(p,ms,fb){
   return Promise.race([p.catch(()=>fb),new Promise(r=>setTimeout(()=>r(fb),ms))]);
 }
+// 云端写入串行化队列：避免并发 read-modify-write 互相覆盖导致数据丢失
+let _saveQueue=Promise.resolve();
+let _savePending=false;
+function enqueueSave(fn){
+  _savePending=true;
+  _saveQueue=_saveQueue.then(fn).catch(()=>{}).then(()=>{_savePending=false;});
+  return _saveQueue;
+}
 async function saveUserData(uid){
-  const data={orders:store.orders,coupons:store.coupons,favs:store.favs,feedbacks:store.feedbacks,invitedBy:store.invitedBy||"",inviteFirstOrderDone:!!store.inviteFirstOrderDone,registeredAt:store.registeredAt||null};
-  // 全量写入本地备份（含订单），保证刷新/支付返回后数据不丢
-  try{localStorage.setItem("xy_user_"+uid,JSON.stringify(data));}catch(e){}
-  if(!sb){
-    console.error("[Supabase] 客户端未初始化(sb=null)，数据仅保存到本地");
-    return true;
-  }
-  // 读-改-写：最多重试 2 次，确保数据写入云端。每次请求 4s 超时，避免登录被拖慢
-  for(let attempt=0;attempt<2;attempt++){
-    try{
-      // 先读取云端最新数据，合并后再写入 —— 避免本地旧数据覆盖云端
-      const {data:cloudData,error:readErr}=await sbRace(
-        sb.from("user_data").select("*").eq("uid",uid).single(),
-        4000,
-        {data:null,error:{code:"TIMEOUT"}}
-      );
-      let toSave={...data};
-      if(!readErr&&cloudData){
-        toSave.orders=mergeOrders(cloudData.orders||[],store.orders);
-        toSave.coupons=mergeSimple(cloudData.coupons||[],store.coupons,c=>c.id);
-        toSave.favs=mergeSimple(cloudData.favs||[],store.favs,x=>x);
-        toSave.feedbacks=mergeSimple(cloudData.feedbacks||[],store.feedbacks,x=>x.ts);
-        toSave.invitedBy=cloudData.invited_by||data.invitedBy;
-        toSave.inviteFirstOrderDone=!!cloudData.invite_first_order_done||data.inviteFirstOrderDone;
-        toSave.registeredAt=cloudData.registered_at||data.registeredAt;
-      }
-      const res=await sbRace(
-        sb.from("user_data").upsert({
-          uid,orders:toSave.orders,coupons:toSave.coupons,favs:toSave.favs,feedbacks:toSave.feedbacks,
-          invited_by:toSave.invitedBy,invite_first_order_done:toSave.inviteFirstOrderDone,registered_at:toSave.registeredAt
-        }),
-        4000,
-        {error:{code:"TIMEOUT"}}
-      );
-      if(res&&res.error){
-        console.error("[Supabase] 写入失败:",res.error);
-        if(attempt===0) continue; // 重试一次
-        if(Date.now()-window._sbErrAt>15000){window._sbErrAt=Date.now();toast("云端同步失败，本地数据已保留",false);}
-        return false;
-      }
+  // 串行执行，避免并发写覆盖
+  return enqueueSave(async ()=>{
+    const data={orders:store.orders,coupons:store.coupons,favs:store.favs,feedbacks:store.feedbacks,invitedBy:store.invitedBy||"",inviteFirstOrderDone:!!store.inviteFirstOrderDone,registeredAt:store.registeredAt||null};
+    // 全量写入本地备份（含订单），保证刷新/支付返回后数据不丢
+    try{localStorage.setItem("xy_user_"+uid,JSON.stringify(data));}catch(e){}
+    if(!sb){
+      console.error("[Supabase] 客户端未初始化(sb=null)，数据仅保存到本地");
       return true;
-    }catch(e){
-      console.error("[Supabase] 同步异常(尝试"+(attempt+1)+"/2):",e);
-      if(attempt===0) continue;
     }
-  }
-  return false;
+    const snap=getCloudSnap(uid);
+    // 读-改-写：最多重试 2 次，确保数据写入云端。每次请求 4s 超时，避免登录被拖慢
+    for(let attempt=0;attempt<2;attempt++){
+      try{
+        // 先读取云端最新数据，合并后再写入 —— 避免本地旧数据覆盖云端
+        const {data:cloudData,error:readErr}=await sbRace(
+          sb.from("user_data").select("*").eq("uid",uid),
+          4000,
+          {data:null,error:{code:"TIMEOUT"}}
+        );
+        let toSave={...data};
+        if(!readErr&&cloudData){
+          const cloudRow=Array.isArray(cloudData)?cloudData[0]:cloudData;
+          toSave.orders=mergeOrders(cloudRow.orders||[],store.orders);
+          toSave.coupons=mergeSetPush(cloudRow.coupons||[],store.coupons,snap.coupons,c=>c.id);
+          toSave.favs=mergeSetPush(cloudRow.favs||[],store.favs,snap.favs,x=>x);
+          toSave.feedbacks=mergeSetPush(cloudRow.feedbacks||[],store.feedbacks,snap.feedbacks,x=>x.ts);
+          toSave.invitedBy=cloudRow.invited_by||data.invitedBy;
+          toSave.inviteFirstOrderDone=!!cloudRow.invite_first_order_done||data.inviteFirstOrderDone;
+          toSave.registeredAt=cloudRow.registered_at||data.registeredAt;
+        }
+        const res=await sbRace(
+          sb.from("user_data").upsert({
+            uid,orders:toSave.orders,coupons:toSave.coupons,favs:toSave.favs,feedbacks:toSave.feedbacks,
+            invited_by:toSave.invitedBy,invite_first_order_done:toSave.inviteFirstOrderDone,registered_at:toSave.registeredAt
+          }),
+          4000,
+          {error:{code:"TIMEOUT"}}
+        );
+        if(res&&res.error){
+          console.error("[Supabase] 写入失败:",res.error);
+          if(attempt===0) continue; // 重试一次
+          if(Date.now()-window._sbErrAt>15000){window._sbErrAt=Date.now();toast("云端同步失败，本地数据已保留",false);}
+          return false;
+        }
+        // 写入成功后：把合并结果回写到 store，避免本地与云端不一致
+        store.orders=toSave.orders;
+        store.coupons=toSave.coupons;
+        store.favs=toSave.favs;
+        store.feedbacks=toSave.feedbacks;
+        store.invitedBy=toSave.invitedBy;
+        store.inviteFirstOrderDone=toSave.inviteFirstOrderDone;
+        store.registeredAt=toSave.registeredAt;
+        // 同步更新云端快照，确保后续合并的基准正确
+        setCloudSnap(uid,{orders:toSave.orders,coupons:toSave.coupons,favs:toSave.favs,feedbacks:toSave.feedbacks});
+        try{localStorage.setItem(STORE_KEY,JSON.stringify(store));}catch(e){}
+        return true;
+      }catch(e){
+        console.error("[Supabase] 同步异常(尝试"+(attempt+1)+"/2):",e);
+        if(attempt===0) continue;
+      }
+    }
+    return false;
+  });
 }
 let _cloudReachable=false;
 async function loadUserData(uid){
   if(sb){
     try{
       const{data,error}=await sbRace(
-        sb.from("user_data").select("*").eq("uid",uid).single(),
+        sb.from("user_data").select("*").eq("uid",uid),
         4000,
         {data:null,error:{code:"TIMEOUT"}}
       );
       if(error){
-        // PGRST116 = 无匹配记录（正常，新用户）
-        if(error.code==="PGRST116"){ _cloudReachable=true; }
-        else{ console.error("[Supabase] 读取失败:",error); _cloudReachable=false; }
+        console.error("[Supabase] 读取失败:",error); _cloudReachable=false;
       }
-      if(!error&&data){
+      const row=Array.isArray(data)?data[0]:data;
+      if(!error&&row){
         _cloudReachable=true;
-        const parsed={orders:data.orders||[],coupons:data.coupons||[],favs:data.favs||[],feedbacks:data.feedbacks||[],invitedBy:data.invited_by||"",inviteFirstOrderDone:!!data.invite_first_order_done,registeredAt:data.registered_at||null};
+        const parsed={orders:row.orders||[],coupons:row.coupons||[],favs:row.favs||[],feedbacks:row.feedbacks||[],invitedBy:row.invited_by||"",inviteFirstOrderDone:!!row.invite_first_order_done,registeredAt:row.registered_at||null};
+        // 保存云端快照，用于集合合并时区分「本地新增」与「云端已删除」
+        setCloudSnap(uid,{orders:parsed.orders,coupons:parsed.coupons,favs:parsed.favs,feedbacks:parsed.feedbacks});
         // 云端数据全量缓存到本地（含订单），作为离线/快速加载备份
         try{localStorage.setItem("xy_user_"+uid,JSON.stringify(parsed));}catch(e){}
         return parsed;
       }
+      // 无记录（新用户）也算云端可达
+      if(!error){ _cloudReachable=true; }
     }catch(e){ console.error("[Supabase] 读取异常:",e); _cloudReachable=false; }
   }else{
     console.warn("[Supabase] 客户端未初始化，从本地读取用户数据");
@@ -960,20 +987,25 @@ async function loadUserData(uid){
 // 从云端重新拉取当前用户的全部数据并合并到内存（用于跨浏览器实时同步）
 async function refreshUserDataFromCloud(){
   if(!sb||!store.user||!store.user.uid) return false;
+  const uid=store.user.uid;
   try{
-    const{data,error}=await sb.from("user_data").select("*").eq("uid",store.user.uid).single();
+    const{data,error}=await sb.from("user_data").select("*").eq("uid",uid);
     if(error) return false;
-    if(!data) return false;
-    const cloudOrders=data.orders||[];
-    const cloudCoupons=data.coupons||[];
-    const cloudFavs=data.favs||[];
-    const cloudFbs=data.feedbacks||[];
-    // 合并：云端为主，本会话未同步的修改保留
+    const row=Array.isArray(data)?data[0]:data;
+    if(!row) return false;
+    const cloudOrders=row.orders||[];
+    const cloudCoupons=row.coupons||[];
+    const cloudFavs=row.favs||[];
+    const cloudFbs=row.feedbacks||[];
+    const snap=getCloudSnap(uid);
+    // 合并：云端为主，仅保留本地「新增」项（云端已删除的不再回写）
     const beforeOrders=JSON.stringify(store.orders.map(o=>o.no+":"+o.status));
     store.orders=mergeOrders(cloudOrders,store.orders);
-    store.coupons=mergeSimple(cloudCoupons,store.coupons,c=>c.id);
-    store.favs=mergeSimple(cloudFavs,store.favs,x=>x);
-    store.feedbacks=mergeSimple(cloudFbs,store.feedbacks,x=>x.ts);
+    store.coupons=mergeSetPull(cloudCoupons,store.coupons,snap.coupons,c=>c.id);
+    store.favs=mergeSetPull(cloudFavs,store.favs,snap.favs,x=>x);
+    store.feedbacks=mergeSetPull(cloudFbs,store.feedbacks,snap.feedbacks,x=>x.ts);
+    // 更新云端快照
+    setCloudSnap(uid,{orders:cloudOrders,coupons:cloudCoupons,favs:cloudFavs,feedbacks:cloudFbs});
     // 同步到本地缓存
     try{localStorage.setItem(STORE_KEY,JSON.stringify(store));}catch(e){}
     // 返回订单是否有变化
@@ -1000,10 +1032,50 @@ function mergeOrders(cloud,local){
   });
   return Object.values(map).map(({_src,...rest})=>rest);
 }
+// 旧的简单并集合并（仅用于不需要处理删除的场景，已被 mergeSet 替代）
 function mergeSimple(cloud,local,keyFn){
   const map={};
   (cloud||[]).forEach(x=>{ map[keyFn(x)]=x; });
   (local||[]).forEach(x=>{ const k=keyFn(x); if(!map[k]) map[k]=x; });
+  return Object.values(map);
+}
+// === 收藏/优惠券/反馈 集合的快照式合并（解决删除不同步问题） ===
+// 维护一份「上次从云端读到的集合快照」，区分「本地新增」与「云端已删除」：
+//   - 云端有、本地也有 → 保留（云端版本优先）
+//   - 云端有、本地没有 → 保留（云端版本）
+//   - 云端没有、本地有、且上次云端快照里也没有 → 本地新增，保留
+//   - 云端没有、本地有、但上次云端快照里有 → 云端已删除，移除（不再回写）
+function getCloudSnap(uid){
+  try{return JSON.parse(localStorage.getItem("xy_cloudsnap_"+uid)||"{}");}catch(e){return {};}
+}
+function setCloudSnap(uid,snap){
+  try{localStorage.setItem("xy_cloudsnap_"+uid,JSON.stringify(snap));}catch(e){}
+}
+function toKeySet(arr,keyFn){
+  const s=new Set();
+  (arr||[]).forEach(x=>{try{s.add(keyFn(x));}catch(e){}});
+  return s;
+}
+// 拉取方向（cloud → local）：云端为主，仅保留本地「新增」项
+function mergeSetPull(cloud,local,lastCloud,keyFn){
+  const map={};
+  const lastSet=toKeySet(lastCloud,keyFn);
+  (cloud||[]).forEach(x=>{map[keyFn(x)]=x;});
+  (local||[]).forEach(x=>{
+    const k=keyFn(x);
+    if(!map[k]&&!lastSet.has(k)) map[k]=x;
+  });
+  return Object.values(map);
+}
+// 推送方向（local → cloud）：本地为主，仅保留云端「新增」项
+function mergeSetPush(cloud,local,lastCloud,keyFn){
+  const map={};
+  const lastSet=toKeySet(lastCloud,keyFn);
+  (local||[]).forEach(x=>{map[keyFn(x)]=x;});
+  (cloud||[]).forEach(x=>{
+    const k=keyFn(x);
+    if(!map[k]&&!lastSet.has(k)) map[k]=x;
+  });
   return Object.values(map);
 }
 function migrateOrders(){
@@ -1034,10 +1106,12 @@ if(store.user&&store.user.uid){
   loadUserData(store.user.uid).then(saved=>{
     if(_cloudReachable&&saved){
       // 云端可达：合并云端与本地（订单/优惠券/收藏/反馈全部合并）
+      // loadUserData 已写入云端快照，此处用拉取方向合并，云端删除不会被本地回写
+      const snap=getCloudSnap(store.user.uid);
       store.orders=mergeOrders(saved.orders,_localOrders);
-      store.coupons=mergeSimple(saved.coupons,_localCoupons,c=>c.id);
-      store.favs=mergeSimple(saved.favs,_localFavs,x=>x);
-      store.feedbacks=mergeSimple(saved.feedbacks,_localFbs,x=>x.ts);
+      store.coupons=mergeSetPull(saved.coupons,_localCoupons,snap.coupons,c=>c.id);
+      store.favs=mergeSetPull(saved.favs,_localFavs,snap.favs,x=>x);
+      store.feedbacks=mergeSetPull(saved.feedbacks,_localFbs,snap.feedbacks,x=>x.ts);
       store.invitedBy=saved.invitedBy||store.invitedBy||"";
       store.inviteFirstOrderDone=!!saved.inviteFirstOrderDone||store.inviteFirstOrderDone;
       store.registeredAt=saved.registeredAt||store.registeredAt;
@@ -2401,10 +2475,12 @@ async function processAzeLogin(d){
   const _preFbs=JSON.parse(JSON.stringify(store.feedbacks||[]));
   const saved=(await loadUserData(uid))||{};
   // 登录时：云端与本地合并（订单/优惠券/收藏/反馈全部合并）
+  // loadUserData 已写入云端快照，用拉取方向合并避免本地回写云端已删除项
+  const _loginSnap=getCloudSnap(uid);
   store.orders=mergeOrders(saved.orders,_preOrders);
-  store.coupons=mergeSimple(saved.coupons,_preCoupons,c=>c.id);
-  store.favs=mergeSimple(saved.favs,_preFavs,x=>x);
-  store.feedbacks=mergeSimple(saved.feedbacks,_preFbs,x=>x.ts);
+  store.coupons=mergeSetPull(saved.coupons,_preCoupons,_loginSnap.coupons,c=>c.id);
+  store.favs=mergeSetPull(saved.favs,_preFavs,_loginSnap.favs,x=>x);
+  store.feedbacks=mergeSetPull(saved.feedbacks,_preFbs,_loginSnap.feedbacks,x=>x.ts);
   store.invitedBy=saved.invitedBy||"";
   store.inviteFirstOrderDone=!!saved.inviteFirstOrderDone;
   dedupeCoupons();
