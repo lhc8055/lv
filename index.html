@@ -438,6 +438,7 @@ html.fx-run .tabbar,html.fx-run .page-head{backdrop-filter:none;-webkit-backdrop
 .detail-rest.fx-in{animation:restIn .52s cubic-bezier(.22,1,.36,1) .12s backwards}
 @keyframes restIn{from{opacity:0;transform:translate3d(0,18px,0)}to{opacity:1;transform:none}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div class="page-loader show" id="pageLoader"><div class="pl-spin"></div><div class="pl-msg">加载中…</div></div>
@@ -838,6 +839,9 @@ const AZE_CONFIG={appid:"1055",appkey:"8a71675d91f617c2fed7fd911391defe",proxy:"
 const PAY_CONFIG={pid:"1312",key:"w5bxw5eJb5jbNTtoj8jtj3OlknHjB6Eb",gateway:"https://pay1987.com/submit.php",notifyUrl:"https://pay1987.pages.dev/api/notify",queryApi:"https://pay1987.pages.dev/api/query"};
 
 const STORE_KEY="xingyou_esports_v1";
+const SB_URL="https://jsrxbpysgaywdhnntqnl.supabase.co";
+const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
+const sb=window.supabase?window.supabase.createClient(SB_URL,SB_ANON):null;
 const store={user:null,orders:[],coupons:[],favs:[],feedbacks:[],noticeClosed:false,homeGame:"val",cancelClearedAt:0};
 const catState={game:"val",zone:"all",sort:"default",q:""};
 let orderFilter="all";
@@ -861,9 +865,32 @@ function loadStore(){
   try{Object.assign(store,JSON.parse(localStorage.getItem(STORE_KEY)||"null")||{});}catch(e){}
 }
 function saveUserData(uid){
-  try{localStorage.setItem("xy_user_"+uid,JSON.stringify({orders:store.orders,coupons:store.coupons,favs:store.favs,feedbacks:store.feedbacks,invitedBy:store.invitedBy||"",inviteFirstOrderDone:!!store.inviteFirstOrderDone,registeredAt:store.registeredAt||null}));}catch(e){}
+  const data={orders:store.orders,coupons:store.coupons,favs:store.favs,feedbacks:store.feedbacks,invitedBy:store.invitedBy||"",inviteFirstOrderDone:!!store.inviteFirstOrderDone,registeredAt:store.registeredAt||null};
+  try{localStorage.setItem("xy_user_"+uid,JSON.stringify(data));}catch(e){}
+  if(sb){
+    sb.from("user_data").upsert({
+      uid,
+      orders:data.orders,
+      coupons:data.coupons,
+      favs:data.favs,
+      feedbacks:data.feedbacks,
+      invited_by:data.invitedBy,
+      invite_first_order_done:data.inviteFirstOrderDone,
+      registered_at:data.registeredAt
+    }).catch(()=>{});
+  }
 }
-function loadUserData(uid){
+async function loadUserData(uid){
+  if(sb){
+    try{
+      const{data,error}=await sb.from("user_data").select("*").eq("uid",uid).single();
+      if(!error&&data){
+        const parsed={orders:data.orders||[],coupons:data.coupons||[],favs:data.favs||[],feedbacks:data.feedbacks||[],invitedBy:data.invited_by||"",inviteFirstOrderDone:!!data.invite_first_order_done,registeredAt:data.registered_at||null};
+        try{localStorage.setItem("xy_user_"+uid,JSON.stringify(parsed));}catch(e){}
+        return parsed;
+      }
+    }catch(e){}
+  }
   try{return JSON.parse(localStorage.getItem("xy_user_"+uid)||"null");}catch(e){return null;}
 }
 function dedupeCoupons(){
@@ -889,6 +916,20 @@ function migrateOrders(){
 }
 loadStore();
 dedupeCoupons();
+if(store.user&&store.user.uid){
+  loadUserData(store.user.uid).then(saved=>{
+    if(saved){
+      store.orders=saved.orders||store.orders;
+      store.coupons=saved.coupons||store.coupons;
+      store.favs=saved.favs||store.favs;
+      store.feedbacks=saved.feedbacks||store.feedbacks;
+      store.invitedBy=saved.invitedBy||"";
+      store.inviteFirstOrderDone=!!saved.inviteFirstOrderDone;
+      store.registeredAt=saved.registeredAt||store.registeredAt;
+      dedupeCoupons();
+    }
+  }).catch(()=>{});
+}
 
 const $=(sel,root)=>(root||document).querySelector(sel);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -2211,7 +2252,7 @@ const genUserId=uid=>{
   for(let i=0;i<uid.length;i++) h=((h<<5)-h+uid.charCodeAt(i))|0;
   return "XY"+String(Math.abs(h)%900000+100000);
 };
-function processAzeLogin(d){
+async function processAzeLogin(d){
   if(!(d.code===0&&d.social_uid)){toast("登录失败："+(d.msg||"未知错误"),false);return;}
   const nick=(d.nickname||"用户"+String(d.social_uid).slice(-4)).slice(0,12);
   let avatar=String(d.faceimg||"").replace(/^http:/,"https:");
@@ -2219,7 +2260,7 @@ function processAzeLogin(d){
   const labels={qq:"QQ",wx:"微信",alipay:"支付宝",sina:"微博",baidu:"百度",douyin:"抖音",huawei:"华为",xiaomi:"小米",google:"Google",microsoft:"微软",dingtalk:"钉钉",feishu:"飞书",gitee:"Gitee",github:"GitHub"};
   const label=labels[d.type]||"账号";
   const uid=genUserId(String(d.social_uid));
-  const saved=loadUserData(uid)||{};
+  const saved=(await loadUserData(uid))||{};
   store.orders=saved.orders||[];
   store.coupons=saved.coupons||[];
   store.favs=saved.favs||[];
