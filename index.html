@@ -957,7 +957,7 @@ async function saveUserData(uid){
         const cloudRow=await sbSelect(uid,4000);
         let toSave={...data};
         if(cloudRow){
-          toSave.orders=mergeOrders(cloudRow.orders||[],store.orders);
+          toSave.orders=mergeOrdersPush(cloudRow.orders||[],store.orders,snap.orders);
           toSave.coupons=mergeCouponsPush(cloudRow.coupons||[],store.coupons,snap.coupons);
           toSave.favs=mergeSetPush(cloudRow.favs||[],store.favs,snap.favs,x=>x);
           toSave.feedbacks=mergeSetPush(cloudRow.feedbacks||[],store.feedbacks,snap.feedbacks,x=>x.ts);
@@ -984,7 +984,7 @@ async function saveUserData(uid){
       }catch(e){
         console.error("[Supabase] 同步异常(尝试"+(attempt+1)+"/2):",e.code||"",e.message||e);
         if(attempt===0) continue; // 重试一次
-        if(!window._sbErrAt||Date.now()-window._sbErrAt>15000){window._sbErrAt=Date.now();toast("云端同步失败，本地数据已保留",false);}
+        if(!window._sbErrAt||Date.now()-window._sbErrAt>600000){window._sbErrAt=Date.now();toast("云端同步失败，本地数据已保留",false);}
       }
     }
     return false;
@@ -1026,7 +1026,7 @@ async function refreshUserDataFromCloud(){
     const snap=getCloudSnap(uid);
     // 合并：云端为主，仅保留本地「新增」项（云端已删除的不再回写）
     const beforeOrders=JSON.stringify(store.orders.map(o=>o.no+":"+o.status));
-    store.orders=mergeOrders(cloudOrders,store.orders);
+    store.orders=mergeOrdersPull(cloudOrders,store.orders,snap.orders);
     store.coupons=mergeCouponsPull(cloudCoupons,store.coupons,snap.coupons);
     store.favs=mergeSetPull(cloudFavs,store.favs,snap.favs,x=>x);
     store.feedbacks=mergeSetPull(cloudFbs,store.feedbacks,snap.feedbacks,x=>x.ts);
@@ -1044,19 +1044,37 @@ function dedupeCoupons(){
 }
 // 合并本地与云端订单：按订单号去重，同一订单取状态更靠后的（已完成>进行中>待接单>待支付）
 const STATUS_RANK={unpaid:0,pending:1,ongoing:2,processing:2,in_progress:2,completed:3,done:3,cancelled:4,refunded:4,refunding:4};
-function mergeOrders(cloud,local){
+function pickOrder(a,b){
+  const ar=STATUS_RANK[a&&a.status]||0, br=STATUS_RANK[b&&b.status]||0;
+  if(br>ar) return b;
+  if(ar>br) return a;
+  return ((b&&b.ts||0)>(a&&a.ts||0))?b:a;
+}
+// 拉取方向（cloud → local）：云端为主，但保留本地状态更靠后/时间更新的订单与本地新增订单；
+// 云端已删除的订单不再回写（用上次云端快照判定），避免已取消/过期的订单被反复复活。
+function mergeOrdersPull(cloud,local,lastCloud){
   const map={};
-  (cloud||[]).forEach(o=>{ map[o.no]={...o,_src:"cloud"}; });
+  const lastSet=toKeySet(lastCloud,o=>o.no);
+  (cloud||[]).forEach(o=>{ map[o.no]=o; });
   (local||[]).forEach(o=>{
     const ex=map[o.no];
-    if(!ex){ map[o.no]={...o,_src:"local"}; }
-    else{
-      // 同订单号：取状态等级高的；状态相同取时间戳新的
-      const er=STATUS_RANK[ex.status]||0, lr=STATUS_RANK[o.status]||0;
-      if(lr>er||(lr===er&&(o.ts||0)>(ex.ts||0))){ map[o.no]={...o,_src:"local"}; }
-    }
+    if(!ex){ if(!lastSet.has(o.no)) map[o.no]=o; }
+    else map[o.no]=pickOrder(ex,o);
   });
-  return Object.values(map).map(({_src,...rest})=>rest);
+  return Object.values(map);
+}
+// 推送方向（local → cloud）：本地为主，但保留云端状态更靠后/时间更新的订单与云端新增订单；
+// 本地已删除的订单会在合并结果中移除，从而真正同步删除到云端。
+function mergeOrdersPush(cloud,local,lastCloud){
+  const map={};
+  const lastSet=toKeySet(lastCloud,o=>o.no);
+  (local||[]).forEach(o=>{ map[o.no]=o; });
+  (cloud||[]).forEach(o=>{
+    const ex=map[o.no];
+    if(!ex){ if(!lastSet.has(o.no)) map[o.no]=o; }
+    else map[o.no]=pickOrder(ex,o);
+  });
+  return Object.values(map);
 }
 // 旧的简单并集合并（仅用于不需要处理删除的场景，已被 mergeSet 替代）
 function mergeSimple(cloud,local,keyFn){
@@ -1157,7 +1175,7 @@ if(store.user&&store.user.uid){
       // 云端可达：合并云端与本地（订单/优惠券/收藏/反馈全部合并）
       // loadUserData 已写入云端快照，此处用拉取方向合并，云端删除不会被本地回写
       const snap=getCloudSnap(store.user.uid);
-      store.orders=mergeOrders(saved.orders,_localOrders);
+      store.orders=mergeOrdersPull(saved.orders,_localOrders,snap.orders);
       store.coupons=mergeCouponsPull(saved.coupons,_localCoupons,snap.coupons);
       store.favs=mergeSetPull(saved.favs,_localFavs,snap.favs,x=>x);
       store.feedbacks=mergeSetPull(saved.feedbacks,_localFbs,snap.feedbacks,x=>x.ts);
@@ -2135,26 +2153,30 @@ function releaseCoupon(o){
 }
 function syncOrders(){
   const now=Date.now();
-  clearCancelledDaily(now);
+  let changed=false;
+  if(clearCancelledDaily(now)) changed=true;
   const unpaid=store.orders.filter(o=>o.status==="unpaid").sort((a,b)=>b.ts-a.ts);
   unpaid.forEach((o,idx)=>{
     const expired=now-o.ts>UNPAID_TTL;
     const overflow=idx>=MAX_UNPAID;
-    if(expired||overflow) confirmUnpaidThenRemove(o);
+    if(expired||overflow) changed=removeUnpaidOrder(o)||changed;
   });
   const cancelled=store.orders.filter(o=>o.status==="cancelled").sort((a,b)=>(b.cancelAt||b.ts)-(a.cancelAt||a.ts));
   if(cancelled.length>MAX_CANCELLED){
+    const before=store.orders.length;
     const keepC=new Set(cancelled.slice(0,MAX_CANCELLED).map(o=>o.no));
     store.orders=store.orders.filter(o=>{
       if(o.status==="cancelled"&&!keepC.has(o.no)) return false;
       return true;
     });
+    if(store.orders.length!==before) changed=true;
   }
   store.orders.forEach(o=>{
-    if(o.status==="待接单") o.status="pending";
-    if(o.status==="pending"&&now-(o.paidAt||o.ts)>15000) o.status="ongoing";
-    if(o.status==="refunding"&&o.refundTs&&now-o.refundTs>8000) o.status="refunded";
+    if(o.status==="待接单"){ o.status="pending"; changed=true; }
+    if(o.status==="pending"&&now-(o.paidAt||o.ts)>15000){ o.status="ongoing"; changed=true; }
+    if(o.status==="refunding"&&o.refundTs&&now-o.refundTs>8000){ o.status="refunded"; changed=true; }
   });
+  return changed;
 }
 function clearCancelledDaily(now){
   const d=new Date(now);
@@ -2166,13 +2188,13 @@ function clearCancelledDaily(now){
   }
   return false;
 }
-function confirmUnpaidThenRemove(o){
-  if(o.status!=="unpaid") return;
-  queryPaid(o.no).then(paid=>{
-    if(paid){ if(o.status==="unpaid") markPaid(o); return; }
-    const i=store.orders.findIndex(x=>x.no===o.no);
-    if(i>=0){ store.orders.splice(i,1); releaseCoupon(o); saveStore(); if(parseHash().name==="orders") render(true); }
-  }).catch(()=>{});
+function removeUnpaidOrder(o){
+  if(o.status!=="unpaid") return false;
+  const i=store.orders.findIndex(x=>x.no===o.no);
+  if(i<0) return false;
+  store.orders.splice(i,1);
+  releaseCoupon(o);
+  return true;
 }
 function unpaidRateLimited(){
   const now=Date.now();
@@ -2572,7 +2594,7 @@ async function processAzeLogin(d){
   // 登录时：云端与本地合并（订单/优惠券/收藏/反馈全部合并）
   // loadUserData 已写入云端快照，用拉取方向合并避免本地回写云端已删除项
   const _loginSnap=getCloudSnap(uid);
-  store.orders=mergeOrders(saved.orders,_preOrders);
+  store.orders=mergeOrdersPull(saved.orders,_preOrders,_loginSnap.orders);
   store.coupons=mergeSetPull(saved.coupons,_preCoupons,_loginSnap.coupons,c=>c.id);
   store.favs=mergeSetPull(saved.favs,_preFavs,_loginSnap.favs,x=>x);
   store.feedbacks=mergeSetPull(saved.feedbacks,_preFbs,_loginSnap.feedbacks,x=>x.ts);
@@ -2672,13 +2694,19 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
   setTimeout(pollUnpaidOrders,400);
   // 跨浏览器实时同步：在订单/优惠券/收藏/个人页每 3 秒从云端拉取
   const SYNC_PAGES=["orders","coupons","favs","profile"];
+  let _bgSync=false;
   setInterval(async ()=>{
+    if(_bgSync) return;
     if(!store.user||!store.user.uid) return;
     if(!SYNC_PAGES.includes(parseHash().name)||$(".mask")) return;
-    syncOrders();
-    // 从云端拉取并合并；若本地有云端没有的数据（如未同步的订单），回写云端
-    const changed=await refreshUserDataFromCloud();
-    if(changed){ saveStore(); render(true); }
+    _bgSync=true;
+    try{
+      // 先清理过期/超额未支付订单：删除需先落库，再拉取，避免把刚删除的订单又拉回来
+      if(syncOrders()){ await saveStore(); render(true); }
+      // 从云端拉取并合并；若本地有云端没有的数据（如未同步的订单），回写云端
+      const changed=await refreshUserDataFromCloud();
+      if(changed){ saveStore(); render(true); }
+    }finally{ _bgSync=false; }
   },3000);
   initPromo();
   if(window.requestIdleCallback) requestIdleCallback(()=>primeMany(restImgs(),3),{timeout:2500});
