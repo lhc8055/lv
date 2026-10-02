@@ -1889,7 +1889,7 @@ function serveLineHtml(l){
 }
 const couponFits=(c,p)=>p&&p.couponEnabled!==false&&(c.scope==="all"||c.scope===p.zone);
 function couponBlock(p){
-  const rows=COUPONS.filter(c=>couponFits(c,p)&&c.claimable!==false).map(c=>({c,st:getCouponStatus(c.id)})).filter(x=>x.st==="none"||x.st==="active");
+  const rows=COUPONS.filter(c=>couponFits(c,p)&&c.claimable===true).map(c=>({c,st:getCouponStatus(c.id)})).filter(x=>x.st==="none"||x.st==="active");
   if(!rows.length) return "";
   return '<div class="detail-block"><h3>优惠券</h3>'+rows.map(x=>
     '<div class="cp-row"><span class="cp-val">¥'+x.c.minus+'</span>'+
@@ -1983,7 +1983,7 @@ function getCouponStatus(id){
   const def=COUPONS.find(x=>x.id===id);
   if(!c||!def) return "none";
   if(c.status==="used"||c.status==="expired") return c.status;
-  if(Date.now()-c.claimedAt>def.validDays*86400000){
+  if(c.claimedAt&&Date.now()-c.claimedAt>def.validDays*86400000){
     c.status="expired";c.expiredAt=Date.now();c.updatedAt=Date.now();saveStore();
     return "expired";
   }
@@ -2023,7 +2023,7 @@ function applyCloudCouponVerdict(couponId,status){
 }
 function viewCoupons(){
   const now=Date.now();
-  const body=COUPONS.filter(c=>c.claimable!==false||store.coupons.some(x=>x.id===c.id)).map(c=>{
+  const body=COUPONS.filter(c=>c.claimable===true||store.coupons.some(x=>x.id===c.id)).map(c=>{
     const st=getCouponStatus(c.id);
     const rec=store.coupons.find(x=>x.id===c.id);
     if(rec&&(st==="used"||st==="expired")){
@@ -2098,6 +2098,7 @@ function openFeedback(){
     '<div class="qs-tip">提交后可在「我的-反馈记录」中查看处理进度</div>');
 }
 function grantCoupon(id){
+  if(!COUPONS.some(c=>c.id===id)) return false;
   if(store.coupons.some(x=>x.id===id)) return false;
   const now=Date.now();
   store.coupons.push({id,claimedAt:now,status:"active",usedAt:null,expiredAt:null,updatedAt:now});
@@ -2178,7 +2179,8 @@ function recalcBuy(p){
   const qty=parseInt(($("#cfQty")&&$("#cfQty").textContent)||"1",10);
   const raw=p.price*qty;
   const c=bestCoupon(p,raw);
-  const total=c?raw-c.minus:raw;
+  let total=c?raw-c.minus:raw;
+  if(total<0.01) total=0.01;
   $("#cfCoupon").innerHTML=c?'<span class="confirm-coupon">已使用「'+c.name+'」 -¥'+c.minus+'</span>':'<span style="color:var(--weak);font-weight:400">暂无可用优惠券</span>';
   $("#cfTotal").textContent="¥"+total;
   return {qty,total,coupon:c};
@@ -2428,8 +2430,11 @@ const ACTIONS={
   "get-coupon"(el){
     if(requireLogin()) return;
     const id=el.dataset.id;
+    const def=COUPONS.find(c=>c.id===id);
+    if(!def||def.claimable!==true){ toast("该优惠券暂不可领取",false); return; }
     if(store.coupons.some(x=>x.id===id)) return;
-    store.coupons.push({id,claimedAt:Date.now(),status:"active",usedAt:null,expiredAt:null});
+    const now=Date.now();
+    store.coupons.push({id,claimedAt:now,status:"active",usedAt:null,expiredAt:null,updatedAt:now});
     saveStore();
     const box=$("#couponBox");
     if(box) box.innerHTML=couponBlock(productById(parseInt(box.dataset.id,10)));
@@ -2482,7 +2487,9 @@ const ACTIONS={
             // 订单与优惠券"已使用"状态会在网络恢复后异步同步到云端（防重复抵扣仍在云端兜底）。
             const lc=store.coupons.find(x=>x.id===r.coupon.id);
             const def=COUPONS.find(c=>c.id===r.coupon.id);
-            const valid=lc&&(lc.status==="active"||!lc.status)&&def&&(!lc.claimedAt||Date.now()-lc.claimedAt<=def.validDays*86400000);
+            // 本地订单级防重复：如果本地已有未取消订单使用过这张券，不允许再次使用
+            const localUsedByOrder=(store.orders||[]).some(o=>o.couponId===r.coupon.id&&o.status!=="cancelled");
+            const valid=lc&&(lc.status==="active"||!lc.status)&&def&&(!lc.claimedAt||Date.now()-lc.claimedAt<=def.validDays*86400000)&&!localUsedByOrder;
             if(!valid){
               applyCloudCouponVerdict(r.coupon.id,"missing");
               recalcBuy(p);

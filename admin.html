@@ -1479,7 +1479,12 @@ async function modifyUserCoupon(uid,cid,action){
       coupons=coupons.filter(c=>c.id!==cid);
     }else if(action==="tog"){
       const c=coupons.find(x=>x.id===cid);
-      if(c){ c.status=c.status==="active"?"used":"active"; c.updatedAt=Date.now(); if(c.status==="used"){c.usedAt=Date.now();}else{c.usedAt=null;} }
+      if(c){
+        c.status=c.status==="active"?"used":"active";
+        c.updatedAt=Date.now();
+        if(c.status==="used"){c.usedAt=Date.now();}
+        else{c.usedAt=null;c.orderNo=null;}
+      }
     }
     await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(uid),{method:"PATCH",body:{coupons}});
     loadUserCoupons();
