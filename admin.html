@@ -361,7 +361,7 @@ input[type=file]{display:none}
   <section class="panel" id="panel-usercoupons">
     <div class="card">
       <h2>用户优惠券管理</h2>
-      <p class="hint">直接读写 Supabase 的 user_data 表，可查看所有用户持有的优惠券，支持按用户发放 / 删除 / 改状态，以及批量操作。</p>
+      <p class="hint">查看所有用户<strong>已领取</strong>的优惠券，支持对单个用户发放 / 删除 / 恢复。批量发放请到「优惠券模板」面板点「发放」按钮。</p>
       <div class="row2">
         <div class="field"><label>Supabase Anon Key</label><input type="text" id="sbAnonKey" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0"></div>
         <div class="field"><label>数据表名</label><input type="text" id="sbTable" value="user_data"></div>
@@ -369,7 +369,6 @@ input[type=file]{display:none}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
         <button class="btn primary sm" id="sbLoadUsers">加载所有用户</button>
         <button class="btn ghost sm" id="sbRefreshUserCoupons">刷新</button>
-        <button class="btn sm" id="sbGrantAll">批量发券给所有用户</button>
         <select id="ucStatusFilter" style="font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)">
           <option value="all">全部状态</option>
           <option value="active">仅有效(active)</option>
@@ -1255,7 +1254,8 @@ function renderCouponList(){
   if(!Array.isArray(state.coupons)||!state.coupons.length){ el.innerHTML='<p class="hint">暂无优惠券，点击右上角「新增优惠券」</p>'; return; }
   el.innerHTML=state.coupons.map((c,i)=>{
     const scopeT=COUPON_SCOPES.find(s=>s.v===c.scope)?.t||c.scope;
-    const statusCls=c.claimable===false?"已关闭领取":"可领取";
+    const isDistributed=c.claimable!==false;
+    const statusCls=isDistributed?"🟢 已发放，可领取":"⚪ 未发放";
     return '<div class="item" data-cidx="'+i+'">'+
       '<div class="item-main">'+
         '<div class="item-title">'+esc(c.name||"未命名")+' <span style="font-size:11px;color:var(--sub);font-weight:400">('+esc(c.id)+')</span></div>'+
@@ -1263,6 +1263,7 @@ function renderCouponList(){
         (c.desc?('<div class="item-sub" style="color:var(--weak)">'+esc(c.desc)+'</div>'):"")+
       '</div>'+
       '<div class="item-actions">'+
+        '<button class="btn '+(isDistributed?"ghost":"primary")+' sm" data-action="toggle-distribute" data-i="'+i+'">'+(isDistributed?"停止发放":"发放")+'</button>'+
         '<button class="btn sm" data-action="edit-coupon" data-i="'+i+'">编辑</button>'+
         '<button class="btn danger sm" data-action="del-coupon" data-i="'+i+'">删除</button>'+
       '</div>'+
@@ -1327,6 +1328,12 @@ document.addEventListener("click", e=>{
     if(confirm("确定删除优惠券「"+state.coupons[i].name+"」吗？")){
       state.coupons.splice(i,1); saveState(); renderCouponList();
     }
+  }else if(a==="toggle-distribute"){
+    const i=parseInt(act.dataset.i,10);
+    const c=state.coupons[i];
+    c.claimable=c.claimable===false?true:false;
+    saveState(); renderCouponList();
+    toast(c.claimable!==false?"已发放「"+c.name+"」，用户可领取":"已停止发放「"+c.name+"」");
   }
 });
 
@@ -1455,7 +1462,8 @@ async function grantCouponToUser(uid){
     const rows=await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(uid)+"&select=uid,coupons",{method:"GET"});
     const coupons=(rows[0]?.coupons||[]).filter(c=>c&&typeof c==="object");
     if(coupons.some(c=>c.id===def.id)){ toast("该用户已持有此券"); return; }
-    coupons.push({id:def.id,claimedAt:Date.now(),status:"active",usedAt:null,expiredAt:null});
+    const now=Date.now();
+    coupons.push({id:def.id,claimedAt:now,status:"active",usedAt:null,expiredAt:null,updatedAt:now});
     await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(uid),{method:"PATCH",body:{coupons}});
     toast("已发放「"+def.name+"」给 "+uid);
     loadUserCoupons();
@@ -1471,7 +1479,7 @@ async function modifyUserCoupon(uid,cid,action){
       coupons=coupons.filter(c=>c.id!==cid);
     }else if(action==="tog"){
       const c=coupons.find(x=>x.id===cid);
-      if(c){ c.status=c.status==="active"?"used":"active"; if(c.status==="used"){c.usedAt=Date.now();}else{c.usedAt=null;} }
+      if(c){ c.status=c.status==="active"?"used":"active"; c.updatedAt=Date.now(); if(c.status==="used"){c.usedAt=Date.now();}else{c.usedAt=null;} }
     }
     await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(uid),{method:"PATCH",body:{coupons}});
     loadUserCoupons();
@@ -1492,7 +1500,8 @@ async function grantToAllUsers(){
     try{
       const coupons=(u.coupons||[]).filter(c=>c&&typeof c==="object");
       if(coupons.some(c=>c.id===def.id)) continue;
-      coupons.push({id:def.id,claimedAt:Date.now(),status:"active",usedAt:null,expiredAt:null});
+      const now=Date.now();
+      coupons.push({id:def.id,claimedAt:now,status:"active",usedAt:null,expiredAt:null,updatedAt:now});
       await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(u.uid),{method:"PATCH",body:{coupons}});
       ok++;
     }catch(e){ fail++; }
@@ -1502,7 +1511,6 @@ async function grantToAllUsers(){
 }
 $("#sbLoadUsers").addEventListener("click", loadUserCoupons);
 $("#sbRefreshUserCoupons").addEventListener("click", loadUserCoupons);
-$("#sbGrantAll").addEventListener("click", grantToAllUsers);
 $("#ucStatusFilter").addEventListener("change", renderUserCouponList);
 document.addEventListener("click", e=>{
   const act=e.target.closest("[data-uc-act]");
