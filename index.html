@@ -2426,14 +2426,25 @@ const ACTIONS={
       const verdict=await verifyCouponOnCloud(r.coupon.id);
       if(!verdict.ok){
         if(verdict.status==="unreachable"){
-          toast("无法连接云端校验优惠券，请稍后重试",false);
+          // 云端暂时连不上（网络抖动/GFW 间歇阻断）：不要因为一次网络失败就把下单卡死。
+          // 退化为本地校验——只要本地这张券仍 active 且未过期就放行，
+          // 订单与优惠券"已使用"状态会在网络恢复后异步同步到云端（防重复抵扣仍在云端兜底）。
+          const lc=store.coupons.find(x=>x.id===r.coupon.id);
+          const def=COUPONS.find(c=>c.id===r.coupon.id);
+          const valid=lc&&(lc.status==="active"||!lc.status)&&def&&(!lc.claimedAt||Date.now()-lc.claimedAt<=def.validDays*86400000);
+          if(!valid){
+            applyCloudCouponVerdict(r.coupon.id,"missing");
+            recalcBuy(p);
+            toast("优惠券已失效，已为您移除",false);
+            return;
+          }
+        }else{
+          applyCloudCouponVerdict(r.coupon.id,verdict.status);
+          recalcBuy(p);
+          const msg={missing:"优惠券不存在或已失效，已为您移除",used:"该优惠券已被使用，已为您移除",expired:"该优惠券已过期，已为您移除",invalid:"优惠券不可用"}[verdict.status];
+          toast(msg||"优惠券不可用，请重新确认",false);
           return;
         }
-        applyCloudCouponVerdict(r.coupon.id,verdict.status);
-        recalcBuy(p);
-        const msg={missing:"优惠券不存在或已失效，已为您移除",used:"该优惠券已被使用，已为您移除",expired:"该优惠券已过期，已为您移除",invalid:"优惠券不可用"}[verdict.status];
-        toast(msg||"优惠券不可用，请重新确认",false);
-        return;
       }
     }
     const payType=($(".pay-method.selected")||{dataset:{}}).dataset.pay||"alipay";
