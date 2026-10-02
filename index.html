@@ -794,6 +794,7 @@ async function loadSiteData(){
         desc:p.desc||"", rank:p.rank||"",
         price:Number(p.price)||0, unit:p.unit||"局",
         img:p.img||"", tags:(p.tags||[]).slice(),
+        couponEnabled:p.couponEnabled!==false,
         heat:Number(p.heat)||0, sales:Number(p.sales)||0,
         title:"【"+p.cat+"】"+p.name
       }));
@@ -851,9 +852,10 @@ const normUid=u=>(u&&UID_OVERRIDE[u])||u;
 // 若直连 supabase.co 在部分网络不可达，可在 SB_BASE_URLS 里追加一个
 // Cloudflare Worker 反代地址（见 sb-proxy-worker.js）作为自动降级。
 // sbRequest 会优先用直连，直连失败时自动切换到下一个端点。
+// 注意：原 Worker sb-proxy.3552453862.workers.dev 已下线（SSL 握手失败），
+// 实测直连 supabase.co 可达，故这里只保留直连，避免每次请求都把 5 秒浪费在挂掉的代理上。
 const SB_BASE_URLS=[
-  "https://jsrxbpysgaywdhnntqnl.supabase.co",
-  "https://sb-proxy.3552453862.workers.dev"
+  "https://jsrxbpysgaywdhnntqnl.supabase.co"
 ];
 const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
 const SB_TABLE="user_data";
@@ -956,7 +958,7 @@ async function saveUserData(uid){
         let toSave={...data};
         if(cloudRow){
           toSave.orders=mergeOrders(cloudRow.orders||[],store.orders);
-          toSave.coupons=mergeSetPush(cloudRow.coupons||[],store.coupons,snap.coupons,c=>c.id);
+          toSave.coupons=mergeCouponsPush(cloudRow.coupons||[],store.coupons,snap.coupons);
           toSave.favs=mergeSetPush(cloudRow.favs||[],store.favs,snap.favs,x=>x);
           toSave.feedbacks=mergeSetPush(cloudRow.feedbacks||[],store.feedbacks,snap.feedbacks,x=>x.ts);
           toSave.invitedBy=cloudRow.invited_by||data.invitedBy;
@@ -1025,7 +1027,7 @@ async function refreshUserDataFromCloud(){
     // 合并：云端为主，仅保留本地「新增」项（云端已删除的不再回写）
     const beforeOrders=JSON.stringify(store.orders.map(o=>o.no+":"+o.status));
     store.orders=mergeOrders(cloudOrders,store.orders);
-    store.coupons=mergeSetPull(cloudCoupons,store.coupons,snap.coupons,c=>c.id);
+    store.coupons=mergeCouponsPull(cloudCoupons,store.coupons,snap.coupons);
     store.favs=mergeSetPull(cloudFavs,store.favs,snap.favs,x=>x);
     store.feedbacks=mergeSetPull(cloudFbs,store.feedbacks,snap.feedbacks,x=>x.ts);
     // 更新云端快照
@@ -1102,6 +1104,29 @@ function mergeSetPush(cloud,local,lastCloud,keyFn){
   });
   return Object.values(map);
 }
+// 优惠券状态优先级：used/expired 视为已消耗，永远压在 active 之上，
+// 避免云端旧 active 或本地旧 active 把已使用的券覆盖回可用，导致重复使用。
+const couponStatusRank=x=>(x&&(x.status==="used"||x.status==="expired"))?2:((x&&x.status==="active")?1:0);
+function mergeCouponsPush(cloud,local,lastCloud){
+  const map={},lastSet=toKeySet(lastCloud,c=>c.id);
+  (local||[]).forEach(x=>{map[x.id]=x;});
+  (cloud||[]).forEach(x=>{
+    const k=x.id,ex=map[k];
+    if(!ex){ if(!lastSet.has(k)) map[k]=x; }
+    else if(couponStatusRank(x)>couponStatusRank(ex)) map[k]=x;
+  });
+  return Object.values(map);
+}
+function mergeCouponsPull(cloud,local,lastCloud){
+  const map={},lastSet=toKeySet(lastCloud,c=>c.id);
+  (cloud||[]).forEach(x=>{map[x.id]=x;});
+  (local||[]).forEach(x=>{
+    const k=x.id,ex=map[k];
+    if(!ex){ if(!lastSet.has(k)) map[k]=x; }
+    else if(couponStatusRank(x)>couponStatusRank(ex)) map[k]=x;
+  });
+  return Object.values(map);
+}
 function migrateOrders(){
   let changed=false;
   store.orders.forEach(o=>{
@@ -1133,7 +1158,7 @@ if(store.user&&store.user.uid){
       // loadUserData 已写入云端快照，此处用拉取方向合并，云端删除不会被本地回写
       const snap=getCloudSnap(store.user.uid);
       store.orders=mergeOrders(saved.orders,_localOrders);
-      store.coupons=mergeSetPull(saved.coupons,_localCoupons,snap.coupons,c=>c.id);
+      store.coupons=mergeCouponsPull(saved.coupons,_localCoupons,snap.coupons);
       store.favs=mergeSetPull(saved.favs,_localFavs,snap.favs,x=>x);
       store.feedbacks=mergeSetPull(saved.feedbacks,_localFbs,snap.feedbacks,x=>x.ts);
       store.invitedBy=saved.invitedBy||store.invitedBy||"";
@@ -1813,7 +1838,7 @@ function serveLineHtml(l){
   const ico=marked?'':icon("check");
   return '<li>'+ico+'<span>'+esc(l)+'</span></li>';
 }
-const couponFits=(c,p)=>c.scope==="all"||c.scope===p.zone;
+const couponFits=(c,p)=>p&&p.couponEnabled!==false&&(c.scope==="all"||c.scope===p.zone);
 function couponBlock(p){
   const rows=COUPONS.filter(c=>couponFits(c,p)&&c.claimable!==false).map(c=>({c,st:getCouponStatus(c.id)})).filter(x=>x.st==="none"||x.st==="active");
   if(!rows.length) return "";
@@ -1908,6 +1933,38 @@ function getCouponStatus(id){
     return "expired";
   }
   return "active";
+}
+// === 优惠券云端校验 ===
+// 创建付款订单使用优惠券前，必须到云端确认：该账号确实持有这张券、且未被使用/未过期，
+// 防止本地缓存被篡改或跨设备重复使用同一张券。
+async function verifyCouponOnCloud(couponId){
+  const def=COUPONS.find(c=>c.id===couponId);
+  if(!def) return {ok:false,status:"invalid"};
+  if(!store.user||!store.user.uid) return {ok:false,status:"unreachable"};
+  let row=null;
+  try{ row=await sbSelect(store.user.uid,4000); }
+  catch(e){ return {ok:false,status:"unreachable"}; }
+  if(row===null) return {ok:false,status:"missing"};
+  const cloudCoupons=row.coupons||[];
+  const rec=cloudCoupons.find(x=>x.id===couponId);
+  if(!rec) return {ok:false,status:"missing"};
+  if(rec.status==="used") return {ok:false,status:"used"};
+  if(rec.status==="expired") return {ok:false,status:"expired"};
+  if(rec.claimedAt&&Date.now()-rec.claimedAt>def.validDays*86400000) return {ok:false,status:"expired"};
+  // 兜底防重复：即使优惠券记录因同步失败停留在 active，只要云端已有
+  // 未取消订单使用过这张券，就视为已使用，防止同一张券被多笔订单重复抵扣。
+  if((row.orders||[]).some(o=>o.couponId===couponId&&o.status!=="cancelled")) return {ok:false,status:"used"};
+  return {ok:true,status:"active",rec};
+}
+// 将云端校验结果落到本地，避免已用/已过期/不存在的券继续被选中
+function applyCloudCouponVerdict(couponId,status){
+  if(status==="missing"){
+    store.coupons=(store.coupons||[]).filter(c=>c.id!==couponId);
+  }else if(status==="used"||status==="expired"){
+    const c=store.coupons.find(x=>x.id===couponId);
+    if(c){ c.status=status; if(status==="used"){c.usedAt=Date.now();}else{c.expiredAt=Date.now();} }
+  }
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(store));}catch(e){}
 }
 function viewCoupons(){
   const now=Date.now();
@@ -2342,6 +2399,21 @@ const ACTIONS={
     syncOrders();
     if(unpaidRateLimited()){toast("下单太频繁，1分钟内最多创建3个待支付订单，请稍后再试",false);return;}
     const r=recalcBuy(p);
+    // 使用优惠券前，先到云端校验该账号是否持有、是否已被使用，防止重复使用/篡改
+    if(r.coupon){
+      const verdict=await verifyCouponOnCloud(r.coupon.id);
+      if(!verdict.ok){
+        if(verdict.status==="unreachable"){
+          toast("无法连接云端校验优惠券，请稍后重试",false);
+          return;
+        }
+        applyCloudCouponVerdict(r.coupon.id,verdict.status);
+        recalcBuy(p);
+        const msg={missing:"优惠券不存在或已失效，已为您移除",used:"该优惠券已被使用，已为您移除",expired:"该优惠券已过期，已为您移除",invalid:"优惠券不可用"}[verdict.status];
+        toast(msg||"优惠券不可用，请重新确认",false);
+        return;
+      }
+    }
     const payType=($(".pay-method.selected")||{dataset:{}}).dataset.pay||"alipay";
     const no="XY"+String(Date.now()).slice(-8)+Math.floor(Math.random()*90+10);
     const order={
@@ -2352,7 +2424,7 @@ const ACTIONS={
     };
     if(r.coupon){
       const c=store.coupons.find(x=>x.id===r.coupon.id);
-      c.status="used";c.usedAt=Date.now();c.orderNo=no;
+      if(c&&c.status==="active"){c.status="used";c.usedAt=Date.now();c.orderNo=no;}
     }
     store.orders.push(order);
     // 本地立即保存（含订单），然后等待云端同步完成再跳转支付，

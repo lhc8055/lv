@@ -464,7 +464,12 @@ let state = loadState();
 function loadState(){
   try{
     const raw = localStorage.getItem(STORE_KEY);
-    if(raw) return JSON.parse(raw);
+    if(raw){
+      const s = JSON.parse(raw);
+      // 兼容旧数据：补齐每个商品的 couponEnabled 字段，默认允许使用优惠券
+      (s.products||[]).forEach(p => { if(p.couponEnabled === undefined) p.couponEnabled = true; });
+      return s;
+    }
   }catch(e){}
   return defaultState();
 }
