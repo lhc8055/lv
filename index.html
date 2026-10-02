@@ -420,6 +420,20 @@ img.im.fade{animation:imFade .22s var(--ease-std)}
 @keyframes promoPop{from{transform:scale(.86);opacity:0}to{transform:none;opacity:1}}
 .promo-close{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.3);color:#fff;font-size:22px;font-weight:300;line-height:1;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.45)}
 
+/* 文字公告弹窗（简约正式） */
+.notice-modal{position:fixed;inset:0;z-index:210;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:32px;backdrop-filter:blur(4px)}
+.notice-modal.show{display:flex;animation:maskIn .3s var(--ease-std)}
+.notice-card{width:100%;max-width:380px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:noticeIn .4s var(--ease-spring)}
+@keyframes noticeIn{from{transform:scale(.88) translateY(20px);opacity:0}to{transform:none;opacity:1}}
+.notice-card .nc-head{padding:18px 24px 8px;display:flex;align-items:center;gap:10px}
+.notice-card .nc-icon{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#5b6cf0,#8a63ff);display:flex;align-items:center;justify-content:center;color:#fff;flex:none}
+.notice-card .nc-icon svg{width:16px;height:16px}
+.notice-card .nc-title{font-size:17px;font-weight:700;color:var(--ink)}
+.notice-card .nc-body{padding:4px 24px 18px;font-size:14.5px;line-height:1.7;color:#555b85;white-space:pre-wrap;word-break:break-word;max-height:50vh;overflow-y:auto}
+.notice-card .nc-foot{padding:12px 20px 18px;display:flex;justify-content:flex-end}
+.notice-card .nc-btn{padding:9px 24px;border-radius:10px;background:linear-gradient(135deg,#5b6cf0,#8a63ff);color:#fff;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:transform .2s var(--ease-spring)}
+.notice-card .nc-btn:active{transform:scale(.95)}
+
 .page-loader{position:fixed;inset:0;background:#f3f5fc;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;opacity:0;transition:opacity .2s;animation:autoHide 3s forwards}@keyframes autoHide{0%,88%{opacity:1}100%{opacity:0}}
 .page-loader.show{opacity:1;pointer-events:auto;}
 .page-loader.hide{display:none !important;}
@@ -568,6 +582,19 @@ setTimeout(function(){try{hidePageLoader()}catch(e){var p=document.getElementByI
 <div class="promo" id="promoBox">
   <div class="promo-slide"><img id="promoImg" alt="促销活动"></div>
   <button class="promo-close" id="promoClose" aria-label="关闭">×</button>
+</div>
+
+<div class="notice-modal" id="noticeModal">
+  <div class="notice-card">
+    <div class="nc-head">
+      <span class="nc-icon" id="noticeIcon"></span>
+      <span class="nc-title" id="noticeTitle">公告</span>
+    </div>
+    <div class="nc-body" id="noticeBody"></div>
+    <div class="nc-foot">
+      <button class="nc-btn" id="noticeBtn">我知道了</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -814,6 +841,8 @@ async function loadSiteData(){
         scope:c.scope||"all", claimable:c.claimable===true
       }));
     }
+    // 弹窗配置：公告 + 图片
+    window.POPUPS=d.popups||{notice:{enabled:false},images:{enabled:true,mode:"random",imgs:["pop1.webp","pop2.webp"]}};
     return true;
   }catch(e){ return false; }
 }
@@ -2798,20 +2827,69 @@ function handleUrlParams(){
 }
 
 function initPromo(){
-  const box=$("#promoBox"),img=$("#promoImg");
-  if(!box) return;
-  let seen=false;
-  try{seen=!!sessionStorage.getItem("xy_promo_seen");}catch(e){}
-  if(seen){box.remove();return;}
-  const close=()=>{box.classList.remove("show");setTimeout(()=>box.remove(),300);};
-  img.onload=()=>{
-    try{sessionStorage.setItem("xy_promo_seen","1");}catch(e){}
-    setTimeout(()=>box.classList.add("show"),380);
-  };
-  img.onerror=()=>box.remove();
-  img.src=["pop1.webp","pop2.webp"][Math.floor(Math.random()*2)];
-  $("#promoClose").addEventListener("click",close);
-  box.addEventListener("click",e=>{if(e.target===box) close();});
+  const noticeBox=$("#noticeModal");
+  const imgBox=$("#promoBox");
+  const cfg=window.POPUPS||{};
+  const noticeCfg=cfg.notice||{};
+  const imgCfg=cfg.images||{};
+
+  // 已看过的标记（本次会话内不重复弹）
+  let noticeSeen=false, imgSeen=false;
+  try{ noticeSeen=!!sessionStorage.getItem("xy_notice_seen"); }catch(e){}
+  try{ imgSeen=!!sessionStorage.getItem("xy_promo_seen"); }catch(e){}
+
+  // 显示公告（优先）
+  function showNotice(){
+    if(!noticeBox) return;
+    if(!noticeCfg.enabled||noticeSeen) { showImages(); return; }
+    $("#noticeTitle").textContent=noticeCfg.title||"公告";
+    $("#noticeBody").textContent=noticeCfg.body||"";
+    $("#noticeBtn").textContent=noticeCfg.btnText||"我知道了";
+    $("#noticeIcon").innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2z"/><path d="M8 9h8M8 12h5"/></svg>';
+    try{sessionStorage.setItem("xy_notice_seen","1");}catch(e){}
+    noticeBox.classList.add("show");
+    $("#noticeBtn").onclick=closeNotice;
+    noticeBox.addEventListener("click",function h(e){
+      if(e.target===noticeBox){ closeNotice(); }
+      noticeBox.removeEventListener("click",h);
+    });
+  }
+  function closeNotice(){
+    noticeBox.classList.remove("show");
+    // 公告关闭后才显示图片弹窗
+    showImages();
+  }
+
+  // 显示图片弹窗
+  function showImages(){
+    if(!imgBox||!imgCfg.enabled||imgSeen) { imgBox&&imgBox.remove(); return; }
+    const imgs=Array.isArray(imgCfg.imgs)&&imgCfg.imgs.length?imgCfg.imgs:["pop1.webp"];
+    let pick;
+    if(imgCfg.mode==="loop"&&imgs.length>1){
+      // 循环：按顺序取（用 sessionStorage 记录上次索引）
+      let idx=0;
+      try{ idx=parseInt(sessionStorage.getItem("xy_promo_idx")||"0",10)||0; }catch(e){}
+      pick=imgs[idx%imgs.length];
+      try{ sessionStorage.setItem("xy_promo_idx",String((idx+1)%imgs.length)); }catch(e){}
+    }else if(imgCfg.mode==="random"&&imgs.length>1){
+      pick=imgs[Math.floor(Math.random()*imgs.length)];
+    }else{
+      pick=imgs[0];
+    }
+    const img=$("#promoImg");
+    const close=()=>{ imgBox.classList.remove("show"); setTimeout(()=>imgBox.remove(),300); };
+    img.onload=()=>{
+      try{ sessionStorage.setItem("xy_promo_seen","1"); }catch(e){}
+      setTimeout(()=>imgBox.classList.add("show"),380);
+    };
+    img.onerror=()=>imgBox.remove();
+    img.src=pick;
+    $("#promoClose").onclick=close;
+    imgBox.onclick=e=>{ if(e.target===imgBox) close(); };
+  }
+
+  // 启动：先公告，公告关闭后图片
+  showNotice();
 }
 
 try{history.scrollRestoration="manual";}catch(e){}

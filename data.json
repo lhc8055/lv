@@ -529,5 +529,18 @@
     }
   ],
   "nextProductId": 22,
-  "dataVersion": 1790953638000
+  "popups": {
+    "notice": {
+      "enabled": false,
+      "title": "星柚电竞公告",
+      "body": "欢迎使用星柚电竞，下单立减3元，如有疑问请联系客服。",
+      "btnText": "我知道了"
+    },
+    "images": {
+      "enabled": true,
+      "mode": "random",
+      "imgs": ["pop1.webp", "pop2.webp"]
+    }
+  },
+  "dataVersion": 1790953638001
 }

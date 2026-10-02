@@ -270,6 +270,7 @@ input[type=file]{display:none}
   <button data-tab="products">商品管理</button>
   <button data-tab="coupons">优惠券模板</button>
   <button data-tab="usercoupons">用户优惠券</button>
+  <button data-tab="popups">弹窗管理</button>
   <button data-tab="export">数据导出/导入</button>
 </nav>
 
@@ -382,7 +383,43 @@ input[type=file]{display:none}
   </section>
 
   <!-- ============================================================
-       面板七：数据导出 / 导入
+       面板七：弹窗管理（公告 + 图片弹窗）
+       ============================================================ -->
+  <section class="panel" id="panel-popups">
+    <div class="card">
+      <h2>文字公告弹窗</h2>
+      <p class="hint">用户打开网站时优先弹出的文字公告，关闭后才显示图片弹窗。用户关闭后本次会话内不再重复弹出。</p>
+      <div class="field">
+        <label><input type="checkbox" id="noticeEnabled" style="width:auto;margin-right:6px">启用公告弹窗</label>
+      </div>
+      <div class="field"><label>标题</label><input type="text" id="noticeTitle" placeholder="星柚电竞公告"></div>
+      <div class="field"><label>正文（支持换行）</label><textarea id="noticeBody" rows="5" placeholder="公告正文内容..."></textarea></div>
+      <div class="field"><label>按钮文字</label><input type="text" id="noticeBtnText" placeholder="我知道了"></div>
+    </div>
+
+    <div class="card">
+      <h2>图片弹窗</h2>
+      <p class="hint">公告关闭后（或公告未启用时）弹出的图片弹窗。可配置多张图片，支持随机或循环轮播。用户关闭后本次会话内不再重复弹出。</p>
+      <div class="field">
+        <label><input type="checkbox" id="imgEnabled" style="width:auto;margin-right:6px">启用图片弹窗</label>
+      </div>
+      <div class="field">
+        <label>轮播模式</label>
+        <select id="imgMode">
+          <option value="random">随机（每次随机一张）</option>
+          <option value="loop">循环（按顺序依次展示）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>图片列表</label>
+        <div id="popupImgList"></div>
+        <button class="btn ghost" id="addPopupImg" style="margin-top:8px">+ 添加图片</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       面板八：数据导出 / 导入
        ============================================================ -->
   <section class="panel" id="panel-export">
     <div class="card">
@@ -544,7 +581,11 @@ function defaultState(){
       {id:16,game:"wz",zone:"fun",cat:"五排车队",name:"差你一个上车",desc:"",rank:"不限段位",price:25,unit:"小时",img:IMG.g6,tags:["五排固定队","欢乐连麦"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:5870,sales:5600,sort:160},
       {id:17,game:"wz",zone:"tech",cat:"巅峰赛",name:"小国标配打手",desc:"",rank:"巅峰赛",price:88,unit:"局",img:IMG.g3,tags:["小国标","巅峰高分"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:4560,sales:760,sort:170}
     ],
-    nextProductId: 18
+    nextProductId: 18,
+    popups:{
+      notice:{enabled:false,title:"星柚电竞公告",body:"欢迎使用星柚电竞，下单立减3元，如有疑问请联系客服。",btnText:"我知道了"},
+      images:{enabled:true,mode:"random",imgs:["pop1.webp","pop2.webp"]}
+    }
   };
 }
 
@@ -559,6 +600,12 @@ function loadState(){
       const s = JSON.parse(raw);
       (s.products||[]).forEach(p => { if(p.couponEnabled === undefined) p.couponEnabled = true; });
       if(!Array.isArray(s.coupons)) s.coupons = defaultState().coupons;
+      const dp=defaultState().popups;
+      if(!s.popups) s.popups=dp;
+      else{
+        if(!s.popups.notice) s.popups.notice=dp.notice;
+        if(!s.popups.images) s.popups.images=dp.images;
+      }
       return s;
     }
   }catch(e){}
@@ -686,6 +733,65 @@ $("#quickHotTitle").addEventListener("input", () => { state.home.quickHot.title 
 $("#quickHotBtn").addEventListener("input", () => { state.home.quickHot.btn = $("#quickHotBtn").value; saveState(); });
 $("#quickAllTitle").addEventListener("input", () => { state.home.quickAll.title = $("#quickAllTitle").value; saveState(); });
 $("#quickAllBtn").addEventListener("input", () => { state.home.quickAll.btn = $("#quickAllBtn").value; saveState(); });
+
+/* ================================================================
+   5.5 弹窗管理 面板
+   ================================================================ */
+function renderPopupPanel(){
+  const p=state.popups;
+  if(!p) return;
+  // 公告
+  $("#noticeEnabled").checked=!!p.notice.enabled;
+  $("#noticeTitle").value=p.notice.title||"";
+  $("#noticeBody").value=p.notice.body||"";
+  $("#noticeBtnText").value=p.notice.btnText||"";
+  // 图片
+  $("#imgEnabled").checked=!!p.images.enabled;
+  $("#imgMode").value=p.images.mode||"random";
+  renderPopupImgList();
+}
+function renderPopupImgList(){
+  const wrap=$("#popupImgList");
+  const imgs=state.popups.images.imgs||[];
+  wrap.innerHTML=imgs.length?"":"<div class='empty-tip'>还没有图片，点击下方添加</div>";
+  imgs.forEach((src,i)=>{
+    const row=document.createElement("div");
+    row.className="list-item";
+    row.innerHTML=
+      '<div class="li-thumb">'+(src?'<img src="'+esc(src)+'" style="object-fit:cover">':'')+'</div>'+
+      '<div class="li-body"><input type="text" class="popup-img-input" data-idx="'+i+'" value="'+esc(src)+'" placeholder="pop1.webp 或粘贴图片链接" style="width:100%;font-size:12px"></div>'+
+      '<button class="btn ghost" data-del-popup-img="'+i+'" style="padding:4px 10px;color:#e2492d">删除</button>';
+    wrap.appendChild(row);
+  });
+  // 图片输入框
+  wrap.querySelectorAll(".popup-img-input").forEach(inp=>{
+    inp.addEventListener("input",e=>{
+      const idx=parseInt(e.target.dataset.idx,10);
+      state.popups.images.imgs[idx]=e.target.value;
+      saveState();
+    });
+  });
+  wrap.querySelectorAll("[data-del-popup-img]").forEach(btn=>{
+    btn.addEventListener("click",e=>{
+      const idx=parseInt(e.currentTarget.dataset.delPopupImg,10);
+      state.popups.images.imgs.splice(idx,1);
+      saveState();
+      renderPopupImgList();
+    });
+  });
+}
+$("#noticeEnabled").addEventListener("change",e=>{ state.popups.notice.enabled=e.target.checked; saveState(); });
+$("#noticeTitle").addEventListener("input",e=>{ state.popups.notice.title=e.target.value; saveState(); });
+$("#noticeBody").addEventListener("input",e=>{ state.popups.notice.body=e.target.value; saveState(); });
+$("#noticeBtnText").addEventListener("input",e=>{ state.popups.notice.btnText=e.target.value; saveState(); });
+$("#imgEnabled").addEventListener("change",e=>{ state.popups.images.enabled=e.target.checked; saveState(); });
+$("#imgMode").addEventListener("change",e=>{ state.popups.images.mode=e.target.value; saveState(); });
+$("#addPopupImg").addEventListener("click",()=>{
+  state.popups.images.imgs.push("pop"+(state.popups.images.imgs.length+1)+".webp");
+  saveState();
+  renderPopupImgList();
+});
+renderPopupPanel();
 
 /* ================================================================
    6. 游戏管理 面板
@@ -1533,6 +1639,7 @@ function renderAll(){
   renderZoneList();
   renderProductList();
   renderCouponList();
+  renderPopupPanel();
   refreshExportPreview();
 }
 
