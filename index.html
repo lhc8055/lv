@@ -2829,22 +2829,22 @@ function handleUrlParams(){
 function initPromo(){
   const noticeBox=$("#noticeModal");
   const imgBox=$("#promoBox");
-  const cfg=window.POPUPS||{};
-  const noticeCfg=cfg.notice||{};
-  const imgCfg=cfg.images||{};
 
   // 已看过的标记（本次会话内不重复弹）
   let noticeSeen=false, imgSeen=false;
   try{ noticeSeen=!!sessionStorage.getItem("xy_notice_seen"); }catch(e){}
   try{ imgSeen=!!sessionStorage.getItem("xy_promo_seen"); }catch(e){}
 
+  // 实时读取配置（后台同步后可即时更新）
+  function getNoticeCfg(){ return (window.POPUPS&&window.POPUPS.notice)||{}; }
+  function getImgCfg(){ return (window.POPUPS&&window.POPUPS.images)||{}; }
+
   // 显示公告（优先）
   function showNotice(){
     if(!noticeBox) return;
-    if(!noticeCfg.enabled||noticeSeen) { showImages(); return; }
-    $("#noticeTitle").textContent=noticeCfg.title||"公告";
-    $("#noticeBody").textContent=noticeCfg.body||"";
-    $("#noticeBtn").textContent=noticeCfg.btnText||"我知道了";
+    const nc=getNoticeCfg();
+    if(!nc.enabled||noticeSeen) { showImages(); return; }
+    updateNoticeContent();
     $("#noticeIcon").innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2z"/><path d="M8 9h8M8 12h5"/></svg>';
     try{sessionStorage.setItem("xy_notice_seen","1");}catch(e){}
     noticeBox.classList.add("show");
@@ -2854,6 +2854,13 @@ function initPromo(){
       noticeBox.removeEventListener("click",h);
     });
   }
+  // 实时更新公告内容（后台改了文字，弹窗立即同步）
+  function updateNoticeContent(){
+    const nc=getNoticeCfg();
+    if($("#noticeTitle")) $("#noticeTitle").textContent=nc.title||"公告";
+    if($("#noticeBody")) $("#noticeBody").textContent=nc.body||"";
+    if($("#noticeBtn")) $("#noticeBtn").textContent=nc.btnText||"我知道了";
+  }
   function closeNotice(){
     noticeBox.classList.remove("show");
     // 公告关闭后才显示图片弹窗
@@ -2862,6 +2869,7 @@ function initPromo(){
 
   // 显示图片弹窗
   function showImages(){
+    const imgCfg=getImgCfg();
     if(!imgBox||!imgCfg.enabled||imgSeen) { imgBox&&imgBox.remove(); return; }
     const imgs=Array.isArray(imgCfg.imgs)&&imgCfg.imgs.length?imgCfg.imgs:["pop1.webp"];
     let pick;
@@ -2890,6 +2898,14 @@ function initPromo(){
 
   // 启动：先公告，公告关闭后图片
   showNotice();
+
+  // 实时轮询：公告显示中时，后台改了文字立即同步
+  setInterval(()=>{
+    // 公告弹窗正在显示 → 实时更新文字
+    if(noticeBox&&noticeBox.classList.contains("show")){
+      updateNoticeContent();
+    }
+  },2000);
 }
 
 try{history.scrollRestoration="manual";}catch(e){}
@@ -2917,6 +2933,19 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
   }
   try{fetch(PAY_CONFIG.queryApi+"?out_trade_no=__warm__").catch(()=>{});}catch(e){}
   setTimeout(pollUnpaidOrders,400);
+  // 弹窗配置实时更新：定期检查 data.json 的 dataVersion，发现更新就刷新 window.POPUPS
+  setInterval(async ()=>{
+    try{
+      const r=await fetch("data.json?_t="+Date.now(),{cache:"no-store"});
+      if(!r.ok) return;
+      const d=await r.json();
+      if(!d||!d.dataVersion) return;
+      if(d.dataVersion!==DATA_VERSION){
+        // 版本变了，重新加载配置（包括弹窗）
+        await loadSiteData();
+      }
+    }catch(e){}
+  },5000);
   // 跨浏览器实时同步：在订单/优惠券/收藏/个人页每 2 秒从云端拉取
   const SYNC_PAGES=["orders","coupons","favs","profile"];
   let _bgSync=false;
