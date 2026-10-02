@@ -1139,16 +1139,30 @@ function mergeSetPush(cloud,local,lastCloud,keyFn){
   });
   return Object.values(map);
 }
-// 优惠券状态优先级：used/expired 视为已消耗，永远压在 active 之上，
-// 避免云端旧 active 或本地旧 active 把已使用的券覆盖回可用，导致重复使用。
+// 优惠券状态优先级：used/expired 视为已消耗，优先级高于 active。
+// 但合并时不能只看等级——若本地刚把券释放为 active（订单取消/超时），
+// 而云端还是旧的 used，此时本地的 active 更新、应优先。因此等级相同时或
+// 跨等级冲突时，用 updatedAt 时间戳裁决：更新者胜。
 const couponStatusRank=x=>(x&&(x.status==="used"||x.status==="expired"))?2:((x&&x.status==="active")?1:0);
+const couponUpdated=x=>x&&(x.updatedAt||x.usedAt||x.expiredAt||x.claimedAt||0);
+function pickCoupon(a,b){
+  const ra=couponStatusRank(a),rb=couponStatusRank(b);
+  if(ra!==rb){
+    // 等级不同：只有当低等级的 updatedAt 更新时才让低等级赢（即刚释放的 active 赢旧 used）
+    const ta=couponUpdated(a),tb=couponUpdated(b);
+    if(ra<rb&&ta>tb) return a;
+    if(rb<ra&&tb>ta) return b;
+    return ra>rb?a:b;
+  }
+  return couponUpdated(a)>=couponUpdated(b)?a:b;
+}
 function mergeCouponsPush(cloud,local,lastCloud){
   const map={},lastSet=toKeySet(lastCloud,c=>c.id);
   (local||[]).forEach(x=>{map[x.id]=x;});
   (cloud||[]).forEach(x=>{
     const k=x.id,ex=map[k];
     if(!ex){ if(!lastSet.has(k)) map[k]=x; }
-    else if(couponStatusRank(x)>couponStatusRank(ex)) map[k]=x;
+    else map[k]=pickCoupon(ex,x);
   });
   return Object.values(map);
 }
@@ -1158,7 +1172,7 @@ function mergeCouponsPull(cloud,local,lastCloud){
   (local||[]).forEach(x=>{
     const k=x.id,ex=map[k];
     if(!ex){ if(!lastSet.has(k)) map[k]=x; }
-    else if(couponStatusRank(x)>couponStatusRank(ex)) map[k]=x;
+    else map[k]=pickCoupon(ex,x);
   });
   return Object.values(map);
 }
@@ -1970,7 +1984,7 @@ function getCouponStatus(id){
   if(!c||!def) return "none";
   if(c.status==="used"||c.status==="expired") return c.status;
   if(Date.now()-c.claimedAt>def.validDays*86400000){
-    c.status="expired";c.expiredAt=Date.now();saveStore();
+    c.status="expired";c.expiredAt=Date.now();c.updatedAt=Date.now();saveStore();
     return "expired";
   }
   return "active";
@@ -2003,7 +2017,7 @@ function applyCloudCouponVerdict(couponId,status){
     store.coupons=(store.coupons||[]).filter(c=>c.id!==couponId);
   }else if(status==="used"||status==="expired"){
     const c=store.coupons.find(x=>x.id===couponId);
-    if(c){ c.status=status; if(status==="used"){c.usedAt=Date.now();}else{c.expiredAt=Date.now();} }
+    if(c){ c.status=status; c.updatedAt=Date.now(); if(status==="used"){c.usedAt=Date.now();}else{c.expiredAt=Date.now();} }
   }
   try{localStorage.setItem(STORE_KEY,JSON.stringify(store));}catch(e){}
 }
@@ -2085,7 +2099,8 @@ function openFeedback(){
 }
 function grantCoupon(id){
   if(store.coupons.some(x=>x.id===id)) return false;
-  store.coupons.push({id,claimedAt:Date.now(),status:"active",usedAt:null,expiredAt:null});
+  const now=Date.now();
+  store.coupons.push({id,claimedAt:now,status:"active",usedAt:null,expiredAt:null,updatedAt:now});
   saveStore();
   return true;
 }
@@ -2176,10 +2191,10 @@ function releaseCoupon(o){
   // 退还前检查是否已过期：过期则不退还，直接标记为 expired
   const def=COUPONS.find(x=>x.id===o.couponId);
   if(def&&c.claimedAt&&Date.now()-c.claimedAt>def.validDays*86400000){
-    c.status="expired";c.expiredAt=Date.now();c.orderNo=null;c.usedAt=null;
+    c.status="expired";c.expiredAt=Date.now();c.orderNo=null;c.usedAt=null;c.updatedAt=Date.now();
     return;
   }
-  c.status="active";c.usedAt=null;c.orderNo=null;
+  c.status="active";c.usedAt=null;c.orderNo=null;c.updatedAt=Date.now();
 }
 function syncOrders(){
   const now=Date.now();
@@ -2503,7 +2518,7 @@ const ACTIONS={
       };
       if(r.coupon){
         const c=store.coupons.find(x=>x.id===r.coupon.id);
-        if(c&&c.status==="active"){c.status="used";c.usedAt=Date.now();c.orderNo=no;}
+        if(c&&c.status==="active"){c.status="used";c.usedAt=Date.now();c.orderNo=no;c.updatedAt=Date.now();}
       }
       store.orders.push(order);
       // 本地立即保存（含订单），然后等待云端同步完成再跳转支付，
