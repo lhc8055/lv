@@ -1,16 +1,16 @@
 {
   "home": {
-    "bannerImg": "imgs/banner.webp",
+    "bannerImg": "",
     "bannerTitle": "星柚电竞",
     "bannerSubtitle": "无畏契约· 三角洲行动\n王者荣耀 · 技术上分娱乐陪玩",
     "noticeText": "下单立减3元，点击浏览器收藏本站，方便下次使用",
     "quickHot": {
-      "img": "imgs/hot.webp",
+      "img": "https://i.imgs.ovh/2026/10/01/54aa2dabaaabffa274d93957098136f0.webp",
       "title": "热门推荐",
       "btn": "查看推荐"
     },
     "quickAll": {
-      "img": "imgs/quick-all.webp",
+      "img": "https://aka.doubaocdn.com/s/5zFlvBV0CU",
       "title": "全部商品",
       "btn": "查看商品"
     }
@@ -19,7 +19,7 @@
     {
       "id": "val",
       "name": "瓦手",
-      "icon": "imgs/g-val.webp",
+      "icon": "https://i.imgs.ovh/2026/09/30/4a0329ef1af32bba347285f72cd9bf01.webp",
       "servers": [
         "QQ区",
         "微信区",
@@ -30,7 +30,7 @@
     {
       "id": "df",
       "name": "三角洲行动",
-      "icon": "imgs/g-df.webp",
+      "icon": "https://i.imgs.ovh/2026/09/30/0f8fc34ddf2085fe65cec2d0d2727f64.webp",
       "servers": [
         "QQ区",
         "微信区",
@@ -41,7 +41,7 @@
     {
       "id": "wz",
       "name": "王者荣耀",
-      "icon": "imgs/g-wz.webp",
+      "icon": "https://i.imgs.ovh/2026/09/30/a479d981d6c5dac5a5da4164880eac1d.webp",
       "servers": [
         "微信区",
         "QQ区",
@@ -100,15 +100,6 @@
     "魔王护",
     "对赌局"
   ],
-  "coupons": [
-    {"id":"c1","cls":"","minus":3,"need":30,"name":"新人立减券","desc":"全站通用 · 领取后7天有效 · 每个账号限领1张","validDays":7,"scope":"all","claimable":false},
-    {"id":"c2","cls":"c2","minus":10,"need":100,"name":"技术单局券","desc":"仅限技术单局区商品 · 满100元可用","validDays":7,"scope":"tech","claimable":false},
-    {"id":"c3","cls":"c3","minus":25,"need":200,"name":"开黑畅玩券","desc":"娱乐小时区与技术区通用 · 满200元可用","validDays":7,"scope":"all","claimable":false},
-    {"id":"c4","cls":"c2","minus":2,"need":0,"name":"邀请注册券","desc":"填写邀请码注册获得 · 无门槛全站通用 · 7天有效","validDays":7,"scope":"all","claimable":false},
-    {"id":"c5","cls":"","minus":5,"need":80,"name":"邀请首单券","desc":"好友完成首单奖励 · 满80元可用 · 仅限技术单局区","validDays":7,"scope":"tech","claimable":false},
-    {"id":"c6","cls":"","minus":3,"need":0,"name":"3元无门槛券","desc":"无门槛全站通用 · 领取后30天有效","validDays":30,"scope":"all","claimable":false},
-    {"id":"c7","cls":"c2","minus":0.01,"need":0.02,"name":"测试专用券","desc":"满0.02减0.01 · 仅用于测试 · 7天有效","validDays":7,"scope":"all","claimable":false}
-  ],
   "products": [
     {
       "id": 1,
@@ -120,7 +111,7 @@
       "rank": "铂金→钻石",
       "price": 0.01,
       "unit": "局",
-      "img": "imgs/p-mythic.webp",
+      "img": "https://aka.doubaocdn.com/s/ctZqDYRbtQ",
       "tags": [
         "秒上号",
         "质保一局",
@@ -143,7 +134,7 @@
       "rank": "黄金→铂金",
       "price": 0.02,
       "unit": "局",
-      "img": "imgs/p-team.webp",
+      "img": "https://aka.doubaocdn.com/s/9DMlHgX2Ff",
       "tags": [
         "三排车队",
         "不赢补打"
@@ -165,7 +156,7 @@
       "rank": "黑铁→白银",
       "price": 40,
       "unit": "局",
-      "img": "imgs/p-trash.webp",
+      "img": "https://aka.doubaocdn.com/s/PlinUk0Jjp",
       "tags": [
         "萌新友好",
         "耐心教学"
@@ -187,7 +178,7 @@
       "rank": "钻石→神话",
       "price": 70,
       "unit": "局",
-      "img": "imgs/p-empower.webp",
+      "img": "https://aka.doubaocdn.com/s/NbFFhyn4Ij",
       "tags": [
         "赋能大神",
         "全程录屏"
@@ -209,7 +200,7 @@
       "rank": "不限段位",
       "price": 25,
       "unit": "小时",
-      "img": "imgs/p-sweet.webp",
+      "img": "https://aka.doubaocdn.com/s/eKkUPDZcQ2",
       "tags": [
         "声优陪聊",
         "氛围拉满"
@@ -231,7 +222,7 @@
       "rank": "限量活动",
       "price": 99,
       "unit": "局",
-      "img": "imgs/p-df1.webp",
+      "img": "https://i.imgs.ovh/2026/09/30/4569eb44e8b48c030bd4a3eb85ddc3b9.webp",
       "tags": [
         "打完结算",
         "限量"
@@ -253,7 +244,7 @@
       "rank": "护航",
       "price": 88,
       "unit": "局",
-      "img": "imgs/p-df2.webp",
+      "img": "https://i.imgs.ovh/2026/10/01/46b8843a613dd5b7eb1606da088de59f.webp",
       "tags": [
         "高难图",
         "稳撤离"
@@ -275,7 +266,7 @@
       "rank": "保底1888万",
       "price": 288,
       "unit": "局",
-      "img": "imgs/p-df3.webp",
+      "img": "https://i.imgs.ovh/2026/10/01/a3238ad236428d07d28fcbaac9a1b8c4.webp",
       "tags": [
         "稳撤离",
         "性价比高",
@@ -298,7 +289,7 @@
       "rank": "新手友好",
       "price": 88,
       "unit": "局",
-      "img": "imgs/p-df4.webp",
+      "img": "https://i.imgs.ovh/2026/10/02/a74db4fad23b9132a7751671d3d0a772.webp",
       "tags": [
         "魔王护",
         "对赌局",
@@ -321,7 +312,7 @@
       "rank": "不限模式",
       "price": 30,
       "unit": "小时",
-      "img": "imgs/p-sweet.webp",
+      "img": "https://aka.doubaocdn.com/s/eKkUPDZcQ2",
       "tags": [
         "轻松休闲",
         "话多不冷场"
@@ -343,7 +334,7 @@
       "rank": "钻石→星耀",
       "price": 40,
       "unit": "局",
-      "img": "imgs/p-team.webp",
+      "img": "https://aka.doubaocdn.com/s/9DMlHgX2Ff",
       "tags": [
         "国服打手",
         "不赢补打"
@@ -365,7 +356,7 @@
       "rank": "星耀→王者",
       "price": 68,
       "unit": "局",
-      "img": "imgs/p-mythic.webp",
+      "img": "https://aka.doubaocdn.com/s/ctZqDYRbtQ",
       "tags": [
         "渡劫稳过",
         "全程录屏"
@@ -387,7 +378,7 @@
       "rank": "黄金→钻石",
       "price": 28,
       "unit": "局",
-      "img": "imgs/p-stable.webp",
+      "img": "https://aka.doubaocdn.com/s/QVmOyjpk99",
       "tags": [
         "性价比高",
         "秒开"
@@ -409,7 +400,7 @@
       "rank": "不限段位",
       "price": 20,
       "unit": "小时",
-      "img": "imgs/p-sweet.webp",
+      "img": "https://aka.doubaocdn.com/s/eKkUPDZcQ2",
       "tags": [
         "甜妹御姐",
         "可点歌"
@@ -431,7 +422,7 @@
       "rank": "不限段位",
       "price": 25,
       "unit": "小时",
-      "img": "imgs/p-trash.webp",
+      "img": "https://aka.doubaocdn.com/s/PlinUk0Jjp",
       "tags": [
         "五排固定队",
         "欢乐连麦"
@@ -453,7 +444,7 @@
       "rank": "巅峰赛",
       "price": 88,
       "unit": "局",
-      "img": "imgs/p-empower.webp",
+      "img": "https://aka.doubaocdn.com/s/NbFFhyn4Ij",
       "tags": [
         "小国标",
         "巅峰高分"
@@ -529,9 +520,88 @@
     }
   ],
   "nextProductId": 22,
+  "coupons": [
+    {
+      "id": "c1",
+      "cls": "",
+      "minus": 3,
+      "need": 30,
+      "name": "新人立减券",
+      "desc": "全站通用 · 领取后7天有效 · 每个账号限领1张",
+      "validDays": 7,
+      "scope": "all",
+      "claimable": false
+    },
+    {
+      "id": "c2",
+      "cls": "c2",
+      "minus": 10,
+      "need": 100,
+      "name": "技术单局券",
+      "desc": "仅限技术单局区商品 · 满100元可用",
+      "validDays": 7,
+      "scope": "tech",
+      "claimable": false
+    },
+    {
+      "id": "c3",
+      "cls": "c3",
+      "minus": 25,
+      "need": 200,
+      "name": "开黑畅玩券",
+      "desc": "娱乐小时区与技术区通用 · 满200元可用",
+      "validDays": 7,
+      "scope": "all",
+      "claimable": false
+    },
+    {
+      "id": "c4",
+      "cls": "c2",
+      "minus": 2,
+      "need": 0,
+      "name": "邀请注册券",
+      "desc": "填写邀请码注册获得 · 无门槛全站通用 · 7天有效",
+      "validDays": 7,
+      "scope": "all",
+      "claimable": false
+    },
+    {
+      "id": "c5",
+      "cls": "",
+      "minus": 5,
+      "need": 80,
+      "name": "邀请首单券",
+      "desc": "好友完成首单奖励 · 满80元可用 · 仅限技术单局区",
+      "validDays": 7,
+      "scope": "tech",
+      "claimable": false
+    },
+    {
+      "id": "c6",
+      "cls": "",
+      "minus": 3,
+      "need": 0,
+      "name": "3元无门槛券",
+      "desc": "无门槛全站通用 · 领取后30天有效",
+      "validDays": 30,
+      "scope": "all",
+      "claimable": false
+    },
+    {
+      "id": "c7",
+      "cls": "c2",
+      "minus": 0.01,
+      "need": 0.02,
+      "name": "测试专用券",
+      "desc": "满0.02减0.01 · 仅用于测试 · 7天有效",
+      "validDays": 7,
+      "scope": "all",
+      "claimable": false
+    }
+  ],
   "popups": {
     "notice": {
-      "enabled": false,
+      "enabled": true,
       "title": "星柚电竞公告",
       "body": "欢迎使用星柚电竞，下单立减3元，如有疑问请联系客服。",
       "btnText": "我知道了"
@@ -539,8 +609,11 @@
     "images": {
       "enabled": true,
       "mode": "random",
-      "imgs": ["pop1.webp", "pop2.webp"]
+      "imgs": [
+        "pop1.webp",
+        "pop2.webp"
+      ]
     }
   },
-  "dataVersion": 1790953638001
+  "dataVersion": 1790950145837
 }
