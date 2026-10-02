@@ -610,10 +610,9 @@
       "enabled": true,
       "mode": "random",
       "imgs": [
-        "pop1.webp",
         "pop2.webp"
       ]
     }
   },
-  "dataVersion": 1790983210207
+  "dataVersion": 1790984645641
 }
