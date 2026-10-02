@@ -1579,20 +1579,34 @@ async function grantCouponToUser(uid){
 async function modifyUserCoupon(uid,cid,action){
   const {table}=sbCfg();
   try{
-    const rows=await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(uid)+"&select=uid,coupons",{method:"GET"});
+    // 同时获取 coupons 和 orders，恢复券时需要清空关联订单的 couponId
+    const rows=await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(uid)+"&select=uid,coupons,orders",{method:"GET"});
     let coupons=(rows[0]?.coupons||[]).filter(c=>c&&typeof c==="object");
+    let orders=(rows[0]?.orders||[]).filter(o=>o&&typeof o==="object");
+    let ordersChanged=false;
     if(action==="del"){
       coupons=coupons.filter(c=>c.id!==cid);
     }else if(action==="tog"){
       const c=coupons.find(x=>x.id===cid);
       if(c){
+        const restoring=c.status!=="active"; // 从 used/expired 恢复为 active
         c.status=c.status==="active"?"used":"active";
         c.updatedAt=Date.now();
         if(c.status==="used"){c.usedAt=Date.now();}
-        else{c.usedAt=null;c.orderNo=null;}
+        else{
+          // 恢复有效：清空券的使用记录 + 清空关联订单的 couponId（防止云端校验误判）
+          const oldOrderNo=c.orderNo;
+          c.usedAt=null;c.orderNo=null;c.expiredAt=null;
+          if(oldOrderNo){
+            orders=orders.map(o=>o.no===oldOrderNo?{...o,couponId:null}:o);
+            ordersChanged=true;
+          }
+        }
       }
     }
-    await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(uid),{method:"PATCH",body:{coupons}});
+    const patch={coupons};
+    if(ordersChanged) patch.orders=orders;
+    await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(uid),{method:"PATCH",body:patch});
     loadUserCoupons();
   }catch(e){ toast("操作失败："+e.message); }
 }

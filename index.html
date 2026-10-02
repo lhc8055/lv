@@ -2139,9 +2139,13 @@ async function verifyCouponOnCloud(couponId){
   if(rec.status==="used") return {ok:false,status:"used"};
   if(rec.status==="expired") return {ok:false,status:"expired"};
   if(rec.claimedAt&&Date.now()-rec.claimedAt>def.validDays*86400000) return {ok:false,status:"expired"};
-  // 兜底防重复：即使优惠券记录因同步失败停留在 active，只要云端已有
-  // 未取消订单使用过这张券，就视为已使用，防止同一张券被多笔订单重复抵扣。
-  if((row.orders||[]).some(o=>o.couponId===couponId&&o.status!=="cancelled")) return {ok:false,status:"used"};
+  // 兜底防重复：以券自身的 orderNo 为准。
+  // 后台恢复券会清空 orderNo，此时旧订单的 couponId 只是历史记录，不应阻止再次使用。
+  // 只有当券记录了 orderNo 且该订单存在且未取消时，才视为已使用。
+  if(rec.orderNo){
+    const linked=(row.orders||[]).find(o=>o.no===rec.orderNo);
+    if(linked&&linked.status!=="cancelled") return {ok:false,status:"used"};
+  }
   return {ok:true,status:"active",rec};
 }
 // 将云端校验结果落到本地，避免已用/已过期/不存在的券继续被选中
@@ -2638,8 +2642,9 @@ const ACTIONS={
             // 订单与优惠券"已使用"状态会在网络恢复后异步同步到云端（防重复抵扣仍在云端兜底）。
             const lc=store.coupons.find(x=>x.id===r.coupon.id);
             const def=COUPONS.find(c=>c.id===r.coupon.id);
-            // 本地订单级防重复：如果本地已有未取消订单使用过这张券，不允许再次使用
-            const localUsedByOrder=(store.orders||[]).some(o=>o.couponId===r.coupon.id&&o.status!=="cancelled");
+            // 本地订单级防重复：以券自身的 orderNo 为准（与云端逻辑一致）。
+            // 后台恢复券会清空 orderNo，旧订单的 couponId 不阻止再次使用。
+            const localUsedByOrder=lc&&lc.orderNo&&(store.orders||[]).some(o=>o.no===lc.orderNo&&o.status!=="cancelled");
             const valid=lc&&(lc.status==="active"||!lc.status)&&def&&(!lc.claimedAt||Date.now()-lc.claimedAt<=def.validDays*86400000)&&!localUsedByOrder;
             if(!valid){
               applyCloudCouponVerdict(r.coupon.id,"missing");
