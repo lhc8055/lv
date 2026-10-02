@@ -188,6 +188,16 @@ button.pf-header:active{opacity:.8}
 .pf-label{font-size:11.5px;color:#555b85;font-weight:500}
 .pf-badge{position:absolute;top:-4px;right:calc(50% - 30px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--red);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
 
+/* tab bar "我的" 数字角标 */
+.t-badge{position:absolute;top:2px;right:calc(50% - 22px);min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--red);color:#fff;font-size:9.5px;font-weight:700;display:none;align-items:center;justify-content:center;line-height:1;box-shadow:0 2px 6px rgba(255,77,79,.4);transition:transform .3s var(--ease-spring)}
+.t-badge.show{display:flex}
+.t-badge.bump{animation:tBadgeBump .5s var(--ease-spring) both}
+@keyframes tBadgeBump{0%{transform:scale(.4)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+
+/* 优惠券/收藏 新增项渐入动画 */
+.coupon.enter,.gcard.enter{animation:itemEnter .52s var(--ease-spring) both}
+@keyframes itemEnter{0%{opacity:0;transform:translateY(14px) scale(.96)}100%{opacity:1;transform:none}}
+
 .d-back{flex:none;width:36px;height:36px;border-radius:50%;background:#fff;box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:center;transition:transform .32s var(--ease-spring)}
 .d-back:active{transform:scale(.9)}
 .d-back svg{width:18px;height:18px}
@@ -553,7 +563,7 @@ setTimeout(function(){try{hidePageLoader()}catch(e){var p=document.getElementByI
       <img class="ic-off" src="tab-cat-off.webp" alt="分类" decoding="async" fetchpriority="high"><img class="ic-on" src="tab-cat-on.webp" alt="分类" decoding="async" fetchpriority="high"><span class="t-txt">分类</span>
     </button>
     <button type="button" class="tab t-me" data-action="route" data-route="profile">
-      <img class="ic-off" src="tab-me-off.webp" alt="我的" decoding="async" fetchpriority="high"><img class="ic-on" src="tab-me-on.webp" alt="我的" decoding="async" fetchpriority="high"><span class="t-txt">我的</span>
+      <img class="ic-off" src="tab-me-off.webp" alt="我的" decoding="async" fetchpriority="high"><img class="ic-on" src="tab-me-on.webp" alt="我的" decoding="async" fetchpriority="high"><span class="t-txt">我的</span><span class="t-badge" id="tabMeBadge"></span>
     </button>
   </nav>
 
@@ -1041,8 +1051,11 @@ async function refreshUserDataFromCloud(){
     const cloudFavs=row.favs||[];
     const cloudFbs=row.feedbacks||[];
     const snap=getCloudSnap(uid);
-    // 合并：云端为主，仅保留本地「新增」项（云端已删除的不再回写）
+    // 合并前快照：记录本地券ID/收藏ID，用于检测新增项
+    const _couponsBefore=new Set((store.coupons||[]).map(c=>c.id));
+    const _favsBefore=new Set(store.favs||[]);
     const beforeOrders=JSON.stringify(store.orders.map(o=>o.no+":"+o.status));
+    // 合并：云端为主，仅保留本地「新增」项（云端已删除的不再回写）
     store.orders=mergeOrdersPull(cloudOrders,store.orders,snap.orders);
     store.coupons=mergeCouponsPull(cloudCoupons,store.coupons,snap.coupons,snap.snapTs||0);
     store.favs=mergeSetPull(cloudFavs,store.favs,snap.favs,x=>x);
@@ -1051,13 +1064,37 @@ async function refreshUserDataFromCloud(){
     setCloudSnap(uid,{orders:cloudOrders,coupons:cloudCoupons,favs:cloudFavs,feedbacks:cloudFbs});
     // 同步到本地缓存
     try{localStorage.setItem(STORE_KEY,JSON.stringify(store));}catch(e){}
-    // 返回订单是否有变化
-    return beforeOrders!==JSON.stringify(store.orders.map(o=>o.no+":"+o.status));
+    // 检测变化：新增的券 / 新增的收藏 / 订单变化
+    const newCouponIds=(store.coupons||[]).filter(c=>!_couponsBefore.has(c.id)).map(c=>c.id);
+    const newFavIds=(store.favs||[]).filter(id=>!_favsBefore.has(id));
+    const ordersChanged=beforeOrders!==JSON.stringify(store.orders.map(o=>o.no+":"+o.status));
+    return {
+      ordersChanged,
+      newCouponIds,
+      newFavIds,
+      // 是否有任何变化（用于触发 render）
+      any: ordersChanged||newCouponIds.length>0||newFavIds.length>0
+    };
   }catch(e){ return false; }
 }
 function dedupeCoupons(){
   const seen={};
   store.coupons=(store.coupons||[]).filter(c=>seen[c.id]?false:(seen[c.id]=true));
+}
+// 待高亮的新增项（后台同步检测到，render 后加 enter 动画）
+let _pendingEnter={coupons:new Set(),favs:new Set()};
+// 更新"我的"tab 上的优惠券数量角标
+function updateTabBadge(bump){
+  const el=$("#tabMeBadge");
+  if(!el) return;
+  const active=store.coupons.filter(c=>getCouponStatus(c.id)==="active").length;
+  if(active>0){
+    el.textContent=active>99?"99+":active;
+    el.classList.add("show");
+    if(bump){ el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
+  }else{
+    el.classList.remove("show","bump");
+  }
 }
 // 合并本地与云端订单：按订单号去重，同一订单取状态更靠后的（已完成>进行中>待接单>待支付）
 const STATUS_RANK={unpaid:0,pending:1,ongoing:2,processing:2,in_progress:2,completed:3,done:3,cancelled:4,refunded:4,refunding:4};
@@ -1333,7 +1370,7 @@ function gameIcon(g){
 const splitTitle=t=>{const m=/^【([^】]*)】\s*([\s\S]*)$/.exec(String(t==null?"":t));return m&&m[2]?{pre:m[1],name:m[2]}:{pre:"",name:String(t==null?"":t)};};
 const titleHtml=t=>String(t==null?"":t).split(/(^【[^】]*】|\d+(?:\.\d+)?[万千亿元局%+]?)/).map((x,i)=>i%2?'<span class="nw">'+esc(x)+'</span>':esc(x)).join("");
 function cardHtml(p,idx){
-  return '<button type="button" class="gcard" data-action="detail" data-id="'+p.id+'">'+
+  return '<button type="button" class="gcard" data-action="detail" data-id="'+p.id+'" data-pid="'+p.id+'">'+
     '<div class="g-img">'+imgTag(p.img,p.title,(idx!=null&&idx<2)?' fetchpriority="high"':'')+'</div>'+
     '<div class="g-body"><div>'+(splitTitle(p.title).pre?'<div class="g-pre">'+esc(splitTitle(p.title).pre)+'</div>':'')+'<div class="g-title">'+titleHtml(splitTitle(p.title).name)+'</div></div>'+
     '<div class="g-tags">'+p.tags.slice(0,2).map(t=>'<span>'+esc(t)+'</span>').join("")+'</div>'+
@@ -1780,6 +1817,27 @@ function render(keepScroll){
     else if(ghost) playBack(back,leftId,ghost,carry);
   });
   if(needLogin) openLogin();
+  // 更新"我的"tab 角标
+  updateTabBadge(false);
+  // 给后台同步检测到的新增项加渐入动画
+  if(_pendingEnter.coupons.size>0&&r.name==="coupons"){
+    requestAnimationFrame(()=>{
+      _pendingEnter.coupons.forEach(id=>{
+        const el=document.querySelector('.coupon[data-cid="'+id+'"]');
+        if(el){ el.classList.add("enter"); setTimeout(()=>el.classList.remove("enter"),600); }
+      });
+      _pendingEnter.coupons.clear();
+    });
+  }
+  if(_pendingEnter.favs.size>0&&r.name==="favs"){
+    requestAnimationFrame(()=>{
+      _pendingEnter.favs.forEach(id=>{
+        const el=document.querySelector('.gcard[data-pid="'+id+'"]');
+        if(el){ el.classList.add("enter"); setTimeout(()=>el.classList.remove("enter"),600); }
+      });
+      _pendingEnter.favs.clear();
+    });
+  }
 }
 window.addEventListener("hashchange",()=>{hasInternalNav=true;render();});
 
@@ -2056,7 +2114,7 @@ function viewCoupons(){
       if(ts&&now-ts>86400000) return "";
     }
     const label={used:"已使用",expired:"已过期",active:"可使用"}[st];
-    return '<div class="coupon '+c.cls+(st==="used"||st==="expired"?" "+st:"")+'"><div class="c-shine"></div>'+
+    return '<div class="coupon '+c.cls+(st==="used"||st==="expired"?" "+st:"")+'" data-cid="'+c.id+'"><div class="c-shine"></div>'+
       '<div class="c-left"><div class="c-price"><small>¥</small>'+c.minus+'</div><div class="c-cond">满'+c.need+'可用</div></div>'+
       '<div class="c-right"><div class="c-name">'+c.name+'</div><div class="c-desc">'+c.desc+'</div></div>'+
       (st==="none"?'<button class="c-get" data-action="get-coupon" data-id="'+c.id+'">立即领取</button>':'<span class="c-got">'+label+'</span>')+'</div>';
@@ -2792,12 +2850,14 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
     window._dataReady=true;
     stash=null;
     render();
+    updateTabBadge(false);
     hidePageLoader();
   }else{
     await Promise.race([primeMany(criticalImgs(),6),new Promise(r=>setTimeout(r,1600))]);
     window._dataReady=true;
     stash=null;
     render();
+    updateTabBadge(false);
     hidePageLoader();
   }
   try{fetch(PAY_CONFIG.queryApi+"?out_trade_no=__warm__").catch(()=>{});}catch(e){}
@@ -2818,8 +2878,21 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
       // 先清理过期/超额未支付订单：删除需先落库，再拉取，避免把刚删除的订单又拉回来
       if(syncOrders()){ await saveStore(); render(true); }
       // 从云端拉取并合并；若本地有云端没有的数据（如未同步的订单），回写云端
-      const changed=await refreshUserDataFromCloud();
-      if(changed){ saveStore(); render(true); }
+      const ch=await refreshUserDataFromCloud();
+      if(ch&&ch.any){
+        saveStore();
+        // 把新增项加入待高亮集合，render 后会自动加渐入动画
+        if(ch.newCouponIds&&ch.newCouponIds.length){
+          ch.newCouponIds.forEach(id=>_pendingEnter.coupons.add(id));
+          // 不在优惠券页时，给 tab 角标加 bump 动画提示
+          if(parseHash().name!=="coupons") updateTabBadge(true);
+        }
+        if(ch.newFavIds&&ch.newFavIds.length){
+          ch.newFavIds.forEach(id=>_pendingEnter.favs.add(id));
+        }
+        render(true);
+        // 在优惠券页时，tab 角标也要更新（render 内已调 updateTabBadge）
+      }
     }finally{ _bgSync=false; }
   },3000);
   initPromo();
