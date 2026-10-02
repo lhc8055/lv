@@ -1239,8 +1239,11 @@ if(store.user&&store.user.uid){
       saveStore(); // 合并后同步到云端（内部读-改-写，不会覆盖）
     }
     // 云端不可达时：保留本地数据（_localOrders 等），不清空
+    // 无论云端是否可达，初始加载已完成，解锁后台同步
+    if(window._setInitialSyncDone) window._setInitialSyncDone();
   }).catch(()=>{
-    // 异常时保留本地数据
+    // 异常时保留本地数据，但仍然解锁后台同步
+    if(window._setInitialSyncDone) window._setInitialSyncDone();
   });
 }
 
@@ -2695,12 +2698,14 @@ async function processAzeLogin(d){
   const _preCoupons=JSON.parse(JSON.stringify(store.coupons||[]));
   const _preFavs=JSON.parse(JSON.stringify(store.favs||[]));
   const _preFbs=JSON.parse(JSON.stringify(store.feedbacks||[]));
+  // 保存旧 snapTs，loadUserData 会覆盖
+  const _oldSnapTs=getCloudSnapTs(uid);
   const saved=(await loadUserData(uid))||{};
   // 登录时：云端与本地合并（订单/优惠券/收藏/反馈全部合并）
-  // loadUserData 已写入云端快照，用拉取方向合并避免本地回写云端已删除项
+  // 用旧 snapTs 判断本地新增，云端已删除的不再回写
   const _loginSnap=getCloudSnap(uid);
   store.orders=mergeOrdersPull(saved.orders,_preOrders,_loginSnap.orders);
-  store.coupons=mergeSetPull(saved.coupons,_preCoupons,_loginSnap.coupons,c=>c.id);
+  store.coupons=mergeCouponsPull(saved.coupons,_preCoupons,_loginSnap.coupons,_oldSnapTs);
   store.favs=mergeSetPull(saved.favs,_preFavs,_loginSnap.favs,x=>x);
   store.feedbacks=mergeSetPull(saved.feedbacks,_preFbs,_loginSnap.feedbacks,x=>x.ts);
   store.invitedBy=saved.invitedBy||"";
@@ -2800,8 +2805,12 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
   // 跨浏览器实时同步：在订单/优惠券/收藏/个人页每 3 秒从云端拉取
   const SYNC_PAGES=["orders","coupons","favs","profile"];
   let _bgSync=false;
+  // 初始加载未完成前不允许后台同步，防止本地旧缓存被回写云端
+  let _initialSyncDone=false;
+  window._setInitialSyncDone=()=>{_initialSyncDone=true;};
   setInterval(async ()=>{
     if(_bgSync) return;
+    if(!_initialSyncDone) return; // 等待初始加载完成
     if(!store.user||!store.user.uid) return;
     if(!SYNC_PAGES.includes(parseHash().name)||$(".mask")) return;
     _bgSync=true;
