@@ -149,6 +149,24 @@ main{max-width:920px;margin:0 auto;padding:16px 14px 60px}
 .li-actions .del{color:var(--red)}
 .li-actions .edit{color:var(--pri)}
 
+/* 用户优惠券管理 */
+.uc-user{background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px}
+.uc-user-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px}
+.uc-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px dashed var(--line);font-size:12px}
+.uc-name{font-weight:700;min-width:90px}
+.uc-amt{color:var(--sub)}
+.uc-st{min-width:60px}
+.uc-ts{color:var(--weak);font-size:11px}
+.uc-ops{margin-left:auto;display:flex;gap:6px}
+.uc-empty{text-align:center;color:var(--weak);font-size:12px;padding:10px 0}
+
+/* 优惠券模板列表项 */
+.item{display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border-radius:12px;margin-bottom:10px}
+.item-main{flex:1;min-width:0}
+.item-title{font-size:13.5px;font-weight:700}
+.item-sub{font-size:11.5px;color:var(--sub);margin-top:3px}
+.item-actions{flex:none;display:flex;gap:6px}
+
 .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .section-head h2{font-size:15px;font-weight:800}
 
@@ -225,6 +243,8 @@ input[type=file]{display:none}
   <button data-tab="games">游戏管理</button>
   <button data-tab="zones">分区管理</button>
   <button data-tab="products">商品管理</button>
+  <button data-tab="coupons">优惠券模板</button>
+  <button data-tab="usercoupons">用户优惠券</button>
   <button data-tab="export">数据导出/导入</button>
 </nav>
 
@@ -300,7 +320,45 @@ input[type=file]{display:none}
   </section>
 
   <!-- ============================================================
-       面板五：数据导出 / 导入
+       面板五：优惠券模板管理
+       ============================================================ -->
+  <section class="panel" id="panel-coupons">
+    <div class="card">
+      <div class="section-head"><h2>优惠券模板</h2><button class="btn primary sm" id="addCouponBtn">＋ 新增优惠券</button></div>
+      <p class="hint">自定义优惠券的「满减金额」「使用门槛」「有效天数」「适用范围」。保存后同步到 data.json，前台会自动加载。</p>
+      <div id="couponList"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       面板六：用户优惠券管理（Supabase）
+       ============================================================ -->
+  <section class="panel" id="panel-usercoupons">
+    <div class="card">
+      <h2>用户优惠券管理</h2>
+      <p class="hint">直接读写 Supabase 的 user_data 表，可查看所有用户持有的优惠券，支持按用户发放 / 删除 / 改状态，以及批量操作。</p>
+      <div class="row2">
+        <div class="field"><label>Supabase Anon Key</label><input type="text" id="sbAnonKey" placeholder="eyJhbGci..."></div>
+        <div class="field"><label>数据表名</label><input type="text" id="sbTable" value="user_data"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn primary sm" id="sbLoadUsers">加载所有用户</button>
+        <button class="btn ghost sm" id="sbRefreshUserCoupons">刷新</button>
+        <button class="btn sm" id="sbGrantAll">批量发券给所有用户</button>
+        <select id="ucStatusFilter" style="font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)">
+          <option value="all">全部状态</option>
+          <option value="active">仅有效(active)</option>
+          <option value="used">已使用(used)</option>
+          <option value="expired">已过期(expired)</option>
+        </select>
+      </div>
+      <div id="ucStatus" style="font-size:12px;color:var(--sub);margin-bottom:8px">未加载</div>
+      <div id="userCouponList"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       面板七：数据导出 / 导入
        ============================================================ -->
   <section class="panel" id="panel-export">
     <div class="card">
@@ -434,6 +492,15 @@ function defaultState(){
       {id:"fun", name:"娱乐小时区",sort:20}
     ],
     tagPool: TAG_POOL_DEFAULT.slice(),
+    coupons: [
+      {id:"c1",cls:"",minus:3,need:30,name:"新人立减券",desc:"全站通用 · 领取后7天有效 · 每个账号限领1张",validDays:7,scope:"all",claimable:true},
+      {id:"c2",cls:"c2",minus:10,need:100,name:"技术单局券",desc:"仅限技术单局区商品 · 满100元可用",validDays:7,scope:"tech",claimable:true},
+      {id:"c3",cls:"c3",minus:25,need:200,name:"开黑畅玩券",desc:"娱乐小时区与技术区通用 · 满200元可用",validDays:7,scope:"all",claimable:true},
+      {id:"c4",cls:"c2",minus:2,need:0,name:"邀请注册券",desc:"填写邀请码注册获得 · 无门槛全站通用 · 7天有效",validDays:7,scope:"all",claimable:false},
+      {id:"c5",cls:"",minus:5,need:80,name:"邀请首单券",desc:"好友完成首单奖励 · 满80元可用 · 仅限技术单局区",validDays:7,scope:"tech",claimable:false},
+      {id:"c6",cls:"",minus:3,need:0,name:"3元无门槛券",desc:"无门槛全站通用 · 领取后30天有效",validDays:30,scope:"all",claimable:false},
+      {id:"c7",cls:"c2",minus:0.01,need:0.02,name:"测试专用券",desc:"满0.02减0.01 · 仅用于测试 · 7天有效",validDays:7,scope:"all",claimable:false}
+    ],
     products:[
       {id:1,game:"val",zone:"tech",cat:"铂金排位",name:"神话打手",desc:"",rank:"铂金→钻石",price:0.01,unit:"局",img:IMG.g1,tags:["秒上号","质保一局","打完结算"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:4351,sales:2180,sort:10},
       {id:2,game:"val",zone:"tech",cat:"黄金排位",name:"稳上分车队",desc:"",rank:"黄金→铂金",price:45,unit:"局",img:IMG.g2,tags:["三排车队","不赢补打"],cornerMode:"auto",cornerText:"",couponEnabled:true,heat:5606,sales:3065,sort:20},
@@ -466,8 +533,8 @@ function loadState(){
     const raw = localStorage.getItem(STORE_KEY);
     if(raw){
       const s = JSON.parse(raw);
-      // 兼容旧数据：补齐每个商品的 couponEnabled 字段，默认允许使用优惠券
       (s.products||[]).forEach(p => { if(p.couponEnabled === undefined) p.couponEnabled = true; });
+      if(!Array.isArray(s.coupons)) s.coupons = defaultState().coupons;
       return s;
     }
   }catch(e){}
@@ -1137,6 +1204,7 @@ $("#syncPullBtn").addEventListener("click", async () => {
     if(f && f.content){
       state = f.content;
       if(!state.nextProductId) state.nextProductId = (state.products||[]).reduce((m,p)=>Math.max(m, Number(p.id)||0), 0)+1;
+      if(!Array.isArray(state.coupons)) state.coupons = defaultState().coupons;
       saveState(); renderAll();
       localStorage.setItem("gh_token_xy", token);
       setSyncStatus("✓ 已从网站拉取最新数据", true);
@@ -1153,12 +1221,257 @@ $("#syncPullBtn").addEventListener("click", async () => {
 const savedToken = localStorage.getItem("gh_token_xy");
 if(savedToken) $("#ghToken").value = savedToken;
 
-/* ---------- 11. 首次渲染 ---------- */
+/* ---------- 11. 优惠券模板管理 ---------- */
+const COUPON_SCOPES=[{v:"all",t:"全站通用"},{v:"tech",t:"仅技术单局区"},{v:"fun",t:"仅娱乐小时区"}];
+const COUPON_CLASSES=["","c2","c3"];
+function renderCouponList(){
+  const el=$("#couponList");
+  if(!el) return;
+  if(!Array.isArray(state.coupons)||!state.coupons.length){ el.innerHTML='<p class="hint">暂无优惠券，点击右上角「新增优惠券」</p>'; return; }
+  el.innerHTML=state.coupons.map((c,i)=>{
+    const scopeT=COUPON_SCOPES.find(s=>s.v===c.scope)?.t||c.scope;
+    const statusCls=c.claimable===false?"已关闭领取":"可领取";
+    return '<div class="item" data-cidx="'+i+'">'+
+      '<div class="item-main">'+
+        '<div class="item-title">'+esc(c.name||"未命名")+' <span style="font-size:11px;color:var(--sub);font-weight:400">('+esc(c.id)+')</span></div>'+
+        '<div class="item-sub">满 ¥'+c.need+' 减 ¥'+c.minus+' · '+scopeT+' · '+c.validDays+'天有效 · '+statusCls+'</div>'+
+        (c.desc?('<div class="item-sub" style="color:var(--weak)">'+esc(c.desc)+'</div>'):"")+
+      '</div>'+
+      '<div class="item-actions">'+
+        '<button class="btn sm" data-action="edit-coupon" data-i="'+i+'">编辑</button>'+
+        '<button class="btn danger sm" data-action="del-coupon" data-i="'+i+'">删除</button>'+
+      '</div>'+
+    '</div>';
+  }).join("");
+}
+function openCouponForm(i){
+  const isNew=i==null;
+  const draft=isNew?{id:"c"+Date.now().toString(36).slice(-4),cls:"",minus:0,need:0,name:"",desc:"",validDays:7,scope:"all",claimable:true}:JSON.parse(JSON.stringify(state.coupons[i]));
+  const root=$("#modalRoot");
+  root.innerHTML=
+    '<div class="mask" id="cpMask"><div class="sheet">'+
+      '<div class="sheet-head"><h3>'+(isNew?"新增优惠券":"编辑优惠券")+'</h3><button class="close" id="cpClose">×</button></div>'+
+      '<div class="field"><label>券ID（唯一）</label><input type="text" id="cf_id" value="'+esc(draft.id)+'"></div>'+
+      '<div class="row2">'+
+        '<div class="field"><label>优惠金额（减多少）</label><input type="number" step="0.01" id="cf_minus" value="'+draft.minus+'"></div>'+
+        '<div class="field"><label>使用门槛（满多少）</label><input type="number" step="0.01" id="cf_need" value="'+draft.need+'"></div>'+
+      '</div>'+
+      '<div class="row2">'+
+        '<div class="field"><label>有效天数</label><input type="number" id="cf_validDays" value="'+draft.validDays+'"></div>'+
+        '<div class="field"><label>适用范围</label><select id="cf_scope">'+COUPON_SCOPES.map(s=>'<option value="'+s.v+'"'+(s.v===draft.scope?" selected":"")+'>'+s.t+'</option>').join("")+'</select></div>'+
+      '</div>'+
+      '<div class="field"><label>券名称</label><input type="text" id="cf_name" value="'+esc(draft.name||"")+'"></div>'+
+      '<div class="field"><label>描述</label><input type="text" id="cf_desc" value="'+esc(draft.desc||"")+'"></div>'+
+      '<div class="field"><label><input type="checkbox" id="cf_claimable" '+(draft.claimable!==false?"checked":"")+'> 允许用户自行领取</label></div>'+
+      '<div class="sheet-foot"><button class="btn ghost" id="cpCancel">取消</button><button class="btn primary" id="cpSave">保存</button></div>'+
+    '</div></div>';
+  const close=()=>root.innerHTML="";
+  $("#cpClose").addEventListener("click",close);
+  $("#cpCancel").addEventListener("click",close);
+  $("#cpMask").addEventListener("click",e=>{if(e.target.id==="cpMask")close();});
+  $("#cpSave").addEventListener("click",()=>{
+    const id=$("#cf_id").value.trim();
+    if(!id){ toast("券ID不能为空"); return; }
+    draft.id=id;
+    draft.minus=parseFloat($("#cf_minus").value)||0;
+    draft.need=parseFloat($("#cf_need").value)||0;
+    draft.validDays=parseInt($("#cf_validDays").value,10)||7;
+    draft.scope=$("#cf_scope").value;
+    draft.name=$("#cf_name").value.trim()||"优惠券";
+    draft.desc=$("#cf_desc").value.trim();
+    draft.claimable=$("#cf_claimable").checked;
+    if(isNew){
+      if(state.coupons.some(x=>x.id===id)){ toast("券ID已存在"); return; }
+      state.coupons.push(draft);
+    }else{
+      if(id!==state.coupons[i].id && state.coupons.some((x,idx)=>idx!==i&&x.id===id)){ toast("券ID已存在"); return; }
+      state.coupons[i]=draft;
+    }
+    saveState(); renderCouponList();
+    close(); toast("优惠券已保存");
+  });
+}
+$("#addCouponBtn").addEventListener("click", ()=>openCouponForm(null));
+document.addEventListener("click", e=>{
+  const act=e.target.closest("[data-action]");
+  if(!act) return;
+  const a=act.dataset.action;
+  if(a==="edit-coupon"){ openCouponForm(parseInt(act.dataset.i,10)); }
+  else if(a==="del-coupon"){
+    const i=parseInt(act.dataset.i,10);
+    if(confirm("确定删除优惠券「"+state.coupons[i].name+"」吗？")){
+      state.coupons.splice(i,1); saveState(); renderCouponList();
+    }
+  }
+});
+
+/* ---------- 12. 用户优惠券管理（Supabase 直连） ---------- */
+const SB_URL="https://jsrxbpysgaywdhnntqnl.supabase.co";
+const SB_ANON_DEFAULT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
+let _ucUsers=[]; // 缓存加载的用户数据
+function sbCfg(){
+  const key=$("#sbAnonKey").value.trim()||SB_ANON_DEFAULT;
+  const table=$("#sbTable").value.trim()||"user_data";
+  return {key,table};
+}
+async function sbApi(path,opts){
+  const {key}=sbCfg();
+  const hdrs={"apikey":key,"Authorization":"Bearer "+key};
+  if(opts&&opts.body!==undefined){hdrs["Content-Type"]="application/json";hdrs["Prefer"]="return=representation";}
+  const res=await fetch(SB_URL+path,{method:opts.method,headers:hdrs,body:opts.body!==undefined?JSON.stringify(opts.body):undefined});
+  const text=await res.text();
+  let json=null;try{json=text?JSON.parse(text):null;}catch(e){}
+  if(!res.ok) throw new Error("HTTP "+res.status+": "+(json&&json.message||text));
+  return json;
+}
+function fmtTs(ts){ if(!ts) return "-"; const d=new Date(ts); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function couponStatusBadge(c,def){
+  const now=Date.now();
+  if(c.status==="used") return '<span style="color:var(--sub)">已使用</span>';
+  if(c.status==="expired") return '<span style="color:var(--red)">已过期</span>';
+  if(def&&c.claimedAt&&now-c.claimedAt>def.validDays*86400000) return '<span style="color:var(--red)">已过期</span>';
+  return '<span style="color:var(--green)">有效</span>';
+}
+async function loadUserCoupons(){
+  const {table}=sbCfg();
+  $("#ucStatus").textContent="加载中...";
+  try{
+    const rows=await sbApi("/rest/v1/"+table+"?select=uid,coupons",{method:"GET"});
+    _ucUsers=rows||[];
+    $("#ucStatus").textContent="共 "+_ucUsers.length+" 个用户";
+    renderUserCouponList();
+  }catch(e){
+    $("#ucStatus").textContent="加载失败："+e.message;
+    $("#ucStatus").style.color="var(--red)";
+  }
+}
+function renderUserCouponList(){
+  const el=$("#userCouponList");
+  if(!el) return;
+  const filter=$("#ucStatusFilter").value;
+  const couponDefs=state.coupons;
+  let totalCoupons=0;
+  const html=_ucUsers.map(u=>{
+    const coupons=(u.coupons||[]).filter(c=>c&&typeof c==="object"&&c.id);
+    let list=coupons;
+    if(filter!=="all"){
+      list=coupons.filter(c=>{
+        const def=couponDefs.find(d=>d.id===c.id);
+        const expired=def&&c.claimedAt&&Date.now()-c.claimedAt>def.validDays*86400000;
+        const st=c.status==="used"?"used":(c.status==="expired"||expired?"expired":"active");
+        return st===filter;
+      });
+    }
+    if(filter!=="all"&&!list.length) return "";
+    totalCoupons+=list.length;
+    const rows=list.map(c=>{
+      const def=couponDefs.find(d=>d.id===c.id);
+      const name=def?def.name:c.id;
+      const minus=def?def.minus:"?";
+      const need=def?def.need:"?";
+      return '<div class="uc-row">'+
+        '<span class="uc-name">'+esc(name)+'</span>'+
+        '<span class="uc-amt">满¥'+need+'减¥'+minus+'</span>'+
+        '<span class="uc-st">'+couponStatusBadge(c,def)+'</span>'+
+        '<span class="uc-ts">领取:'+fmtTs(c.claimedAt)+'</span>'+
+        (c.orderNo?('<span class="uc-ts">订单:'+esc(c.orderNo)+'</span>'):"")+
+        '<span class="uc-ops">'+
+          '<button class="btn sm" data-uc-act="grant" data-uid="'+esc(u.uid)+'">发券</button>'+
+          '<button class="btn sm" data-uc-act="tog" data-uid="'+esc(u.uid)+'" data-cid="'+esc(c.id)+'">'+(c.status==="active"?"标记已用":"恢复有效")+'</button>'+
+          '<button class="btn danger sm" data-uc-act="del" data-uid="'+esc(u.uid)+'" data-cid="'+esc(c.id)+'">删除</button>'+
+        '</span>'+
+      '</div>';
+    }).join("");
+    return '<div class="uc-user">'+
+      '<div class="uc-user-head">'+
+        '<b>'+esc(u.uid)+'</b>'+
+        '<span style="color:var(--sub);font-size:12px">共 '+(coupons.length)+' 张</span>'+
+        '<span style="margin-left:auto"><button class="btn primary sm" data-uc-act="grant" data-uid="'+esc(u.uid)+'">＋ 给该用户发券</button></span>'+
+      '</div>'+
+      (rows||'<div class="uc-empty">该用户暂无优惠券</div>')+
+    '</div>';
+  }).join("");
+  el.innerHTML=html||'<p class="hint">没有符合条件的优惠券</p>';
+  $("#ucStatus").textContent="共 "+_ucUsers.length+" 个用户，显示 "+totalCoupons+" 张优惠券";
+}
+// 给用户发券
+async function grantCouponToUser(uid){
+  const couponIds=state.coupons.map(c=>c.id);
+  if(!couponIds.length){ toast("请先在「优惠券模板」中添加券"); return; }
+  const pick=prompt("输入要发放的券ID（可选项："+couponIds.join("、")+"）", couponIds[0]);
+  if(!pick) return;
+  const def=state.coupons.find(c=>c.id===pick.trim());
+  if(!def){ toast("券ID不存在"); return; }
+  const {table}=sbCfg();
+  try{
+    const rows=await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(uid)+"&select=uid,coupons",{method:"GET"});
+    const coupons=(rows[0]?.coupons||[]).filter(c=>c&&typeof c==="object");
+    if(coupons.some(c=>c.id===def.id)){ toast("该用户已持有此券"); return; }
+    coupons.push({id:def.id,claimedAt:Date.now(),status:"active",usedAt:null,expiredAt:null});
+    await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(uid),{method:"PATCH",body:{coupons}});
+    toast("已发放「"+def.name+"」给 "+uid);
+    loadUserCoupons();
+  }catch(e){ toast("发放失败："+e.message); }
+}
+// 修改/删除用户券
+async function modifyUserCoupon(uid,cid,action){
+  const {table}=sbCfg();
+  try{
+    const rows=await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(uid)+"&select=uid,coupons",{method:"GET"});
+    let coupons=(rows[0]?.coupons||[]).filter(c=>c&&typeof c==="object");
+    if(action==="del"){
+      coupons=coupons.filter(c=>c.id!==cid);
+    }else if(action==="tog"){
+      const c=coupons.find(x=>x.id===cid);
+      if(c){ c.status=c.status==="active"?"used":"active"; if(c.status==="used"){c.usedAt=Date.now();}else{c.usedAt=null;} }
+    }
+    await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(uid),{method:"PATCH",body:{coupons}});
+    loadUserCoupons();
+  }catch(e){ toast("操作失败："+e.message); }
+}
+// 批量给所有用户发券
+async function grantToAllUsers(){
+  const couponIds=state.coupons.map(c=>c.id);
+  if(!couponIds.length){ toast("请先添加优惠券模板"); return; }
+  const pick=prompt("批量发放券ID（可选项："+couponIds.join("、")+"），将发放给所有用户", couponIds[0]);
+  if(!pick) return;
+  const def=state.coupons.find(c=>c.id===pick.trim());
+  if(!def){ toast("券ID不存在"); return; }
+  if(!confirm("确定给所有 "+_ucUsers.length+" 个用户发放「"+def.name+"」吗？")) return;
+  const {table}=sbCfg();
+  let ok=0,fail=0;
+  for(const u of _ucUsers){
+    try{
+      const coupons=(u.coupons||[]).filter(c=>c&&typeof c==="object");
+      if(coupons.some(c=>c.id===def.id)) continue;
+      coupons.push({id:def.id,claimedAt:Date.now(),status:"active",usedAt:null,expiredAt:null});
+      await sbApi("/rest/v1/"+table+"?uid=eq."+encodeURIComponent(u.uid),{method:"PATCH",body:{coupons}});
+      ok++;
+    }catch(e){ fail++; }
+  }
+  toast("批量发放完成：成功 "+ok+" 个，失败/跳过 "+fail+" 个");
+  loadUserCoupons();
+}
+$("#sbLoadUsers").addEventListener("click", loadUserCoupons);
+$("#sbRefreshUserCoupons").addEventListener("click", loadUserCoupons);
+$("#sbGrantAll").addEventListener("click", grantToAllUsers);
+$("#ucStatusFilter").addEventListener("change", renderUserCouponList);
+document.addEventListener("click", e=>{
+  const act=e.target.closest("[data-uc-act]");
+  if(!act) return;
+  const a=act.dataset.ucAct, uid=act.dataset.uid, cid=act.dataset.cid;
+  if(a==="grant") grantCouponToUser(uid);
+  else if(a==="del"){ if(confirm("确定删除该用户的这张券吗？")) modifyUserCoupon(uid,cid,"del"); }
+  else if(a==="tog") modifyUserCoupon(uid,cid,"tog");
+});
+
+/* ---------- 首次渲染 ---------- */
 function renderAll(){
   renderHomePanel();
   renderGameList();
   renderZoneList();
   renderProductList();
+  renderCouponList();
   refreshExportPreview();
 }
 renderAll();
