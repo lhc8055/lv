@@ -2839,26 +2839,33 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
   }
   try{fetch(PAY_CONFIG.queryApi+"?out_trade_no=__warm__").catch(()=>{});}catch(e){}
   setTimeout(pollUnpaidOrders,400);
-  // 跨浏览器实时同步：在订单/优惠券/收藏/个人页每 3 秒从云端拉取
+  // 跨浏览器实时同步：在订单/优惠券/收藏/个人页每 2 秒从云端拉取
   const SYNC_PAGES=["orders","coupons","favs","profile"];
   let _bgSync=false;
   // 初始加载未完成前不允许后台同步，防止本地旧缓存被回写云端
   let _initialSyncDone=false;
   window._setInitialSyncDone=()=>{_initialSyncDone=true;};
-  setInterval(async ()=>{
+  // 安全超时：即使 loadUserData 卡住，8 秒后也解锁后台同步
+  setTimeout(()=>{ _initialSyncDone=true; },8000);
+  // 进入优惠券/收藏页时立即触发一次同步（去抖动）
+  let _hashSyncTimer=null;
+  window.addEventListener("hashchange",()=>{
+    if(!_initialSyncDone||!store.user||!store.user.uid) return;
+    const page=parseHash().name;
+    if(!SYNC_PAGES.includes(page)) return;
+    clearTimeout(_hashSyncTimer);
+    _hashSyncTimer=setTimeout(()=>{ _doBgSync(); },300);
+  });
+  async function _doBgSync(){
     if(_bgSync) return;
-    if(!_initialSyncDone) return; // 等待初始加载完成
     if(!store.user||!store.user.uid) return;
     if(!SYNC_PAGES.includes(parseHash().name)||$(".mask")) return;
     _bgSync=true;
     try{
-      // 先清理过期/超额未支付订单：删除需先落库，再拉取，避免把刚删除的订单又拉回来
       if(syncOrders()){ await saveStore(); render(true); }
-      // 从云端拉取并合并；若本地有云端没有的数据（如未同步的订单），回写云端
       const ch=await refreshUserDataFromCloud();
       if(ch&&ch.any){
         saveStore();
-        // 把新增项加入待高亮集合，render 后会自动加渐入动画
         if(ch.newCouponIds&&ch.newCouponIds.length){
           ch.newCouponIds.forEach(id=>_pendingEnter.coupons.add(id));
         }
@@ -2868,7 +2875,8 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
         render(true);
       }
     }finally{ _bgSync=false; }
-  },3000);
+  }
+  setInterval(_doBgSync,2000);
   initPromo();
   if(window.requestIdleCallback) requestIdleCallback(()=>primeMany(restImgs(),3),{timeout:2500});
   else setTimeout(()=>primeMany(restImgs(),3),600);
