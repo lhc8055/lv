@@ -860,13 +860,14 @@ const normUid=u=>(u&&UID_OVERRIDE[u])||u;
 // 一旦加载失败 window.supabase 为 undefined，所有云端读写会静默失效，
 // 导致订单/收藏/优惠券只在本地、跨浏览器完全不互通。这里改为用 fetch 直接
 // 调用 Supabase REST(PostgREST)，去掉对外部 CDN 的依赖，根治同步断链。
-// 若直连 supabase.co 在部分网络不可达，可在 SB_BASE_URLS 里追加一个
-// Cloudflare Worker 反代地址（见 sb-proxy-worker.js）作为自动降级。
-// sbRequest 会优先用直连，直连失败时自动切换到下一个端点。
-// 注意：原 Worker sb-proxy.3552453862.workers.dev 已下线（SSL 握手失败），
-// 实测直连 supabase.co 可达，故这里只保留直连，避免每次请求都把 5 秒浪费在挂掉的代理上。
+// 若直连 supabase.co 在部分网络不可达（被墙/DNS污染），自动降级到 CORS 代理。
+// sbRequest 会优先用直连，直连失败时依次尝试代理端点。
 const SB_BASE_URLS=[
   "https://jsrxbpysgaywdhnntqnl.supabase.co"
+];
+const SB_PROXIES=[
+  "https://corsproxy.io/?url=",
+  "https://api.allorigins.win/raw?url="
 ];
 const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
 const SB_TABLE="user_data";
@@ -879,15 +880,20 @@ async function sbRequest(path,opts){
   const ms=(opts&&opts.ms)||SB_TIMEOUT;
   const headers={"apikey":SB_ANON,"Authorization":"Bearer "+SB_ANON};
   if(body!==undefined){ headers["Content-Type"]="application/json"; headers["Prefer"]="resolution=merge-duplicates,return=representation"; }
-  const urls=[_sbActiveUrl].concat(SB_BASE_URLS.filter(u=>u!==_sbActiveUrl));
+  // 构建请求链：直连 → 代理1 → 代理2
+  const targets=[];
+  for(const base of [_sbActiveUrl].concat(SB_BASE_URLS.filter(u=>u!==_sbActiveUrl))){
+    targets.push(base+path);
+    for(const p of SB_PROXIES) targets.push(p+encodeURIComponent(base+path));
+  }
   let lastErr=null;
-  for(const base of urls){
+  for(const url of targets){
     const ctrl=("AbortController" in window)?new AbortController():null;
     const timer=ctrl?setTimeout(()=>ctrl.abort(),ms):null;
     try{
-      const res=await fetch(base+path,{method,headers,body:body!==undefined?JSON.stringify(body):undefined,signal:ctrl?ctrl.signal:undefined});
+      const res=await fetch(url,{method,headers,body:body!==undefined?JSON.stringify(body):undefined,signal:ctrl?ctrl.signal:undefined});
       if(timer) clearTimeout(timer);
-      _sbActiveUrl=base;
+      if(url===SB_BASE_URLS[0]+path) _sbActiveUrl=SB_BASE_URLS[0];
       const text=await res.text();
       let json=null; try{json=text?JSON.parse(text):null;}catch(e){}
       if(!res.ok){

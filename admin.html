@@ -1305,9 +1305,15 @@ document.addEventListener("click", e=>{
   }
 });
 
-/* ---------- 12. 用户优惠券管理（Supabase 直连） ---------- */
+/* ---------- 12. 用户优惠券管理（Supabase 直连 + 代理降级） ---------- */
 const SB_URL="https://jsrxbpysgaywdhnntqnl.supabase.co";
 const SB_ANON_DEFAULT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
+// 直连 supabase.co 在国内部分网络可能被墙/DNS污染，直连失败时自动走 CORS 代理
+const SB_PROXIES=[
+  "https://corsproxy.io/?url=",
+  "https://api.allorigins.win/raw?url="
+];
+let _sbActiveProxy=-1; // -1=直连优先
 let _ucUsers=[]; // 缓存加载的用户数据
 function sbCfg(){
   const key=$("#sbAnonKey").value.trim()||SB_ANON_DEFAULT;
@@ -1318,11 +1324,28 @@ async function sbApi(path,opts){
   const {key}=sbCfg();
   const hdrs={"apikey":key,"Authorization":"Bearer "+key};
   if(opts&&opts.body!==undefined){hdrs["Content-Type"]="application/json";hdrs["Prefer"]="return=representation";}
-  const res=await fetch(SB_URL+path,{method:opts.method,headers:hdrs,body:opts.body!==undefined?JSON.stringify(opts.body):undefined});
-  const text=await res.text();
-  let json=null;try{json=text?JSON.parse(text):null;}catch(e){}
-  if(!res.ok) throw new Error("HTTP "+res.status+": "+(json&&json.message||text));
-  return json;
+  const method=opts&&opts.method||"GET";
+  const body=opts&&opts.body!==undefined?JSON.stringify(opts.body):undefined;
+  // 构建请求链：直连 → 代理1 → 代理2
+  const targets=[{url:SB_URL+path,proxy:false}];
+  for(const p of SB_PROXIES) targets.push({url:p+encodeURIComponent(SB_URL+path),proxy:true});
+  let lastErr=null;
+  for(const t of targets){
+    const ctrl=("AbortController" in window)?new AbortController():null;
+    const timer=ctrl?setTimeout(()=>ctrl.abort(),10000):null;
+    try{
+      const res=await fetch(t.url,{method,headers:hdrs,body,signal:ctrl?ctrl.signal:undefined});
+      if(timer) clearTimeout(timer);
+      const text=await res.text();
+      let json=null;try{json=text?JSON.parse(text):null;}catch(e){}
+      if(!res.ok){ lastErr=new Error("HTTP "+res.status+": "+(json&&json.message||text)); continue; }
+      return json;
+    }catch(e){
+      if(timer) clearTimeout(timer);
+      lastErr=e&&e.name==="AbortError"?new Error("请求超时（10秒）"):e;
+    }
+  }
+  throw lastErr||new Error("所有端点均不可达");
 }
 function fmtTs(ts){ if(!ts) return "-"; const d=new Date(ts); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
 function couponStatusBadge(c,def){
