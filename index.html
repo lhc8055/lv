@@ -975,7 +975,7 @@ async function saveUserData(uid){
         let toSave={...data};
         if(cloudRow){
           toSave.orders=mergeOrdersPush(cloudRow.orders||[],store.orders,snap.orders);
-          toSave.coupons=mergeCouponsPush(cloudRow.coupons||[],store.coupons,snap.coupons);
+          toSave.coupons=mergeCouponsPush(cloudRow.coupons||[],store.coupons,snap.coupons,snap.snapTs||0);
           toSave.favs=mergeSetPush(cloudRow.favs||[],store.favs,snap.favs,x=>x);
           toSave.feedbacks=mergeSetPush(cloudRow.feedbacks||[],store.feedbacks,snap.feedbacks,x=>x.ts);
           toSave.invitedBy=cloudRow.invited_by||data.invitedBy;
@@ -1044,7 +1044,7 @@ async function refreshUserDataFromCloud(){
     // 合并：云端为主，仅保留本地「新增」项（云端已删除的不再回写）
     const beforeOrders=JSON.stringify(store.orders.map(o=>o.no+":"+o.status));
     store.orders=mergeOrdersPull(cloudOrders,store.orders,snap.orders);
-    store.coupons=mergeCouponsPull(cloudCoupons,store.coupons,snap.coupons);
+    store.coupons=mergeCouponsPull(cloudCoupons,store.coupons,snap.coupons,snap.snapTs||0);
     store.favs=mergeSetPull(cloudFavs,store.favs,snap.favs,x=>x);
     store.feedbacks=mergeSetPull(cloudFbs,store.feedbacks,snap.feedbacks,x=>x.ts);
     // 更新云端快照
@@ -1110,7 +1110,15 @@ function getCloudSnap(uid){
   try{return JSON.parse(localStorage.getItem("xy_cloudsnap_"+uid)||"{}");}catch(e){return {};}
 }
 function setCloudSnap(uid,snap){
-  try{localStorage.setItem("xy_cloudsnap_"+uid,JSON.stringify(snap));}catch(e){}
+  try{
+    snap=snap||{};
+    snap.snapTs=Date.now();
+    localStorage.setItem("xy_cloudsnap_"+uid,JSON.stringify(snap));
+  }catch(e){}
+}
+function getCloudSnapTs(uid){
+  const s=getCloudSnap(uid);
+  return s.snapTs||0;
 }
 function toKeySet(arr,keyFn){
   const s=new Set();
@@ -1156,23 +1164,34 @@ function pickCoupon(a,b){
   }
   return couponUpdated(a)>=couponUpdated(b)?a:b;
 }
-function mergeCouponsPush(cloud,local,lastCloud){
+// 优惠券合并：以云端为权威，防止本地缓存旧数据复活已删除的券。
+// 只有「本次会话新领取」（updatedAt > snapTs）的券才允许本地优先。
+// snapTs=0（首次访问/缓存被清）时，云端为绝对权威，本地没有的券一律不保留。
+function mergeCouponsPush(cloud,local,lastCloud,snapTs){
   const map={},lastSet=toKeySet(lastCloud,c=>c.id);
-  (local||[]).forEach(x=>{map[x.id]=x;});
-  (cloud||[]).forEach(x=>{
-    const k=x.id,ex=map[k];
-    if(!ex){ if(!lastSet.has(k)) map[k]=x; }
-    else map[k]=pickCoupon(ex,x);
-  });
-  return Object.values(map);
-}
-function mergeCouponsPull(cloud,local,lastCloud){
-  const map={},lastSet=toKeySet(lastCloud,c=>c.id);
+  // 云端券全部放入（云端为权威）
   (cloud||[]).forEach(x=>{map[x.id]=x;});
   (local||[]).forEach(x=>{
     const k=x.id,ex=map[k];
-    if(!ex){ if(!lastSet.has(k)) map[k]=x; }
-    else map[k]=pickCoupon(ex,x);
+    if(!ex){
+      // 本地有但云端没有：只有当本地是本次会话新领取的（updatedAt>snapTs）才保留
+      // snapTs=0 时一律不保留（首次访问，云端为绝对权威）
+      if(snapTs&&couponUpdated(x)>snapTs) map[k]=x;
+    }else map[k]=pickCoupon(ex,x);
+  });
+  return Object.values(map);
+}
+function mergeCouponsPull(cloud,local,lastCloud,snapTs){
+  const map={},lastSet=toKeySet(lastCloud,c=>c.id);
+  // 云端券全部放入（云端为权威）
+  (cloud||[]).forEach(x=>{map[x.id]=x;});
+  (local||[]).forEach(x=>{
+    const k=x.id,ex=map[k];
+    if(!ex){
+      // 本地有但云端没有：只有当本地是本次会话新领取的（updatedAt>snapTs）才保留
+      // snapTs=0 时一律不保留（首次访问，云端为绝对权威）
+      if(snapTs&&couponUpdated(x)>snapTs) map[k]=x;
+    }else map[k]=pickCoupon(ex,x);
   });
   return Object.values(map);
 }
@@ -1201,13 +1220,16 @@ if(store.user&&store.user.uid){
   const _localCoupons=JSON.parse(JSON.stringify(store.coupons||[]));
   const _localFavs=JSON.parse(JSON.stringify(store.favs||[]));
   const _localFbs=JSON.parse(JSON.stringify(store.feedbacks||[]));
+  // 保存旧的 snapTs（上次同步完成时间），loadUserData 会覆盖为新时间
+  // 用旧 snapTs 合并：本次会话新领取的券（updatedAt > 旧 snapTs）才不会被云端删除覆盖
+  const _oldSnapTs=getCloudSnapTs(store.user.uid);
   loadUserData(store.user.uid).then(saved=>{
     if(_cloudReachable&&saved){
       // 云端可达：合并云端与本地（订单/优惠券/收藏/反馈全部合并）
-      // loadUserData 已写入云端快照，此处用拉取方向合并，云端删除不会被本地回写
+      // 用旧 snapTs 判断本地新增（本次会话领取的），云端已删除的不再回写
       const snap=getCloudSnap(store.user.uid);
       store.orders=mergeOrdersPull(saved.orders,_localOrders,snap.orders);
-      store.coupons=mergeCouponsPull(saved.coupons,_localCoupons,snap.coupons);
+      store.coupons=mergeCouponsPull(saved.coupons,_localCoupons,snap.coupons,_oldSnapTs);
       store.favs=mergeSetPull(saved.favs,_localFavs,snap.favs,x=>x);
       store.feedbacks=mergeSetPull(saved.feedbacks,_localFbs,snap.feedbacks,x=>x.ts);
       store.invitedBy=saved.invitedBy||store.invitedBy||"";
