@@ -297,7 +297,7 @@
       ],
       "cornerMode": "auto",
       "cornerText": "",
-      "couponEnabled": false,
+      "couponEnabled": true,
       "heat": 2650,
       "sales": 1740,
       "sort": 100
@@ -520,5 +520,5 @@
     }
   ],
   "nextProductId": 22,
-  "dataVersion": 1790905227133
+  "dataVersion": 1790905432537
 }
