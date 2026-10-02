@@ -601,7 +601,7 @@
   ],
   "popups": {
     "notice": {
-      "enabled": true,
+      "enabled": false,
       "title": "星柚电竞公告",
       "body": "支付功能遭受攻击，现已临时暂停服务。如需下单，请直接联系客服办理，由此带来不便敬请谅解。",
       "btnText": "我知道了"
@@ -615,5 +615,5 @@
       ]
     }
   },
-  "dataVersion": 1790950384530
+  "dataVersion": 1790983210207
 }
