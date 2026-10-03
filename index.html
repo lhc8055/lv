@@ -622,6 +622,13 @@ const IMG={
   avatar:"imgs/avatar.webp"
 };
 
+// 首页两张快捷入口卡片的文字配置（后台可切换是否显示、可改标题/按钮文字）
+const HOME_QUICK={
+  showText:true,
+  hot:{title:"热门推荐",btn:"查看推荐"},
+  all:{title:"全部商品",btn:"查看商品"}
+};
+
 const DEFAULT_GAMES=[
   {id:"val",name:"瓦手",alias:["无畏契约","无畏契约手游","valorant"],cls:"",icon:"imgs/g-val.webp",servers:["QQ区","微信区","全区可接"]},
   {id:"df",name:"三角洲行动",alias:["三角洲","delta"],cls:"",icon:"imgs/g-df.webp",servers:["QQ区","微信区","全区可接"]},
@@ -822,8 +829,17 @@ async function loadSiteData(){
     }
     if(d.home){
       if(d.home.bannerImg) IMG.banner=d.home.bannerImg;
-      if(d.home.quickHot&&d.home.quickHot.img) IMG.hot=d.home.quickHot.img;
-      if(d.home.quickAll&&d.home.quickAll.img) IMG.all=d.home.quickAll.img;
+      if(d.home.quickHot){
+        if(d.home.quickHot.img) IMG.hot=d.home.quickHot.img;
+        if(d.home.quickHot.title) HOME_QUICK.hot.title=d.home.quickHot.title;
+        if(d.home.quickHot.btn) HOME_QUICK.hot.btn=d.home.quickHot.btn;
+      }
+      if(d.home.quickAll){
+        if(d.home.quickAll.img) IMG.all=d.home.quickAll.img;
+        if(d.home.quickAll.title) HOME_QUICK.all.title=d.home.quickAll.title;
+        if(d.home.quickAll.btn) HOME_QUICK.all.btn=d.home.quickAll.btn;
+      }
+      if(d.home.quickShowText!==undefined) HOME_QUICK.showText=!!d.home.quickShowText;
     }
     if(Array.isArray(d.games)&&d.games.length){
       GAMES=d.games.slice().sort((a,b)=>(a.sort||0)-(b.sort||0)).map(g=>({
@@ -1895,6 +1911,16 @@ function render(keepScroll){
 }
 window.addEventListener("hashchange",()=>{hasInternalNav=true;render();});
 
+function quickTextHtml(which){
+  if(!HOME_QUICK.showText) return "";
+  const c=HOME_QUICK[which];
+  if(!c.title && !c.btn) return "";
+  return '<div class="q-center">'+
+    (c.title?'<div class="q-title">'+esc(c.title)+'</div>':'')+
+    (c.btn?'<span class="q-btn">'+esc(c.btn)+'</span>':'')+
+  '</div>';
+}
+
 function viewHome(){
   const hg=store.homeGame||"val";
   const hot=PRODUCTS.filter(p=>p.game===hg).sort((a,b)=>(a.sort||0)-(b.sort||0));
@@ -1903,8 +1929,8 @@ function viewHome(){
     searchBar("homeSearch","")+
     '<div class="banner">'+imgTag(IMG.banner,"星柚电竞",' fetchpriority="high"')+'<div class="b-text"><div class="b-name">星柚电竞</div><div class="b-sub">瓦手 · 三角洲行动<br>王者荣耀 · 技术上分娱乐陪玩</div></div></div>'+
     '<div class="quick">'+
-      '<button type="button" class="quick-card hot" data-action="cat-hot">'+imgTag(IMG.hot,"热门推荐",' fetchpriority="high"')+'<div class="q-center"><div class="q-title">热门推荐</div><span class="q-btn">查看推荐</span></div></button>'+
-      '<button type="button" class="quick-card all" data-action="cat-game" data-game="all">'+imgTag(IMG.all,"全部商品",' fetchpriority="high"')+'<div class="q-center"><div class="q-title">全部商品</div><span class="q-btn">查看商品</span></div></button>'+
+      '<button type="button" class="quick-card hot" data-action="cat-hot">'+imgTag(IMG.hot,"热门推荐",' fetchpriority="high"')+quickTextHtml("hot")+'</button>'+
+      '<button type="button" class="quick-card all" data-action="cat-game" data-game="all">'+imgTag(IMG.all,"全部商品",' fetchpriority="high"')+quickTextHtml("all")+'</button>'+
     '</div>'+
     '<div class="games home-games">'+games+'</div>'+
     '<div class="section-title" style="visibility:hidden"><span>'+gameById(hg).name+' · 热门商品</span><button class="more" data-action="cat-game" data-game="'+hg+'">查看全部'+icon("chevron")+'</button></div>'+

@@ -297,6 +297,7 @@ input[type=file]{display:none}
     <div class="card">
       <h2>两张快捷入口卡片</h2>
       <p class="hint">首页横幅下方左右两张入口图（如“热门推荐”“全部商品”）。</p>
+      <div class="switch-row"><div><div class="st-label">显示卡片文字</div><div class="st-desc">关闭后首页这两张卡片只显示图片，不显示标题和按钮文字</div></div><div class="toggle on" id="quickTextToggle"></div></div>
       <div class="group-title">左侧卡片</div>
       <div id="quickHotImgPicker"></div>
       <div class="row2">
@@ -540,6 +541,7 @@ function defaultState(){
       bannerTitle:"星柚电竞",
       bannerSubtitle:"瓦手 · 三角洲行动\n王者荣耀 · 技术上分娱乐陪玩",
       noticeText:"下单立减3元，点击浏览器收藏本站，方便下次使用",
+      quickShowText:true,
       quickHot:{img:IMG.hot,title:"热门推荐",btn:"查看推荐"},
       quickAll:{img:IMG.all,title:"全部商品",btn:"查看商品"}
     },
@@ -725,6 +727,8 @@ function renderHomePanel(){
   renderImgPicker($("#quickAllImgPicker"), state.home.quickAll.img, v => { state.home.quickAll.img = v; saveState(); });
   $("#quickAllTitle").value = state.home.quickAll.title;
   $("#quickAllBtn").value = state.home.quickAll.btn;
+
+  $("#quickTextToggle").classList.toggle("on", state.home.quickShowText !== false);
 }
 ["bannerTitle","bannerSubtitle","noticeText"].forEach(id => {
   $("#"+id).addEventListener("input", () => { state.home[id] = $("#"+id).value; saveState(); });
@@ -733,6 +737,11 @@ $("#quickHotTitle").addEventListener("input", () => { state.home.quickHot.title 
 $("#quickHotBtn").addEventListener("input", () => { state.home.quickHot.btn = $("#quickHotBtn").value; saveState(); });
 $("#quickAllTitle").addEventListener("input", () => { state.home.quickAll.title = $("#quickAllTitle").value; saveState(); });
 $("#quickAllBtn").addEventListener("input", () => { state.home.quickAll.btn = $("#quickAllBtn").value; saveState(); });
+$("#quickTextToggle").addEventListener("click", () => {
+  state.home.quickShowText = !(state.home.quickShowText !== false);
+  $("#quickTextToggle").classList.toggle("on", state.home.quickShowText);
+  saveState();
+});
 
 /* ================================================================
    5.5 弹窗管理 面板
