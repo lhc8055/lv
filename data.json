@@ -10,7 +10,7 @@
       "btn": "查看推荐"
     },
     "quickAll": {
-      "img": "https://i.imgs.ovh/2026/10/03/d723842ebb86e9223a4a256bcecfcca4.webp",
+      "img": "https://i.imgs.ovh/2026/10/03/0535d6d07311f0e36626c5d69ee0e0eb.webp",
       "title": "全部商品",
       "btn": "查看商品"
     }
@@ -614,5 +614,5 @@
       ]
     }
   },
-  "dataVersion": 1791021749325
+  "dataVersion": 1791022254201
 }
