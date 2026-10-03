@@ -928,20 +928,23 @@ async function sbRequest(path,opts){
   const ms=(opts&&opts.ms)||SB_TIMEOUT;
   const headers={"apikey":SB_ANON,"Authorization":"Bearer "+SB_ANON};
   if(body!==undefined){ headers["Content-Type"]="application/json"; headers["Prefer"]="resolution=merge-duplicates,return=representation"; }
-  // 构建请求链：直连 → 代理1 → 代理2
+  // 代理需要把 apikey 放到 URL query 里（部分代理不转发自定义 header）
+  const sep=path.includes("?")?"&":"?";
+  const proxiedPath=path+sep+"apikey="+encodeURIComponent(SB_ANON);
+  // 构建请求链：直连 → 代理
   const targets=[];
   for(const base of [_sbActiveUrl].concat(SB_BASE_URLS.filter(u=>u!==_sbActiveUrl))){
-    targets.push(base+path);
-    for(const p of SB_PROXIES) targets.push(p+encodeURIComponent(base+path));
+    targets.push({url:base+path,base});
+    for(const p of SB_PROXIES) targets.push({url:p+encodeURIComponent(base+proxiedPath),base});
   }
   let lastErr=null;
-  for(const url of targets){
+  for(const t of targets){
     const ctrl=("AbortController" in window)?new AbortController():null;
     const timer=ctrl?setTimeout(()=>ctrl.abort(),ms):null;
     try{
-      const res=await fetch(url,{method,headers,body:body!==undefined?JSON.stringify(body):undefined,signal:ctrl?ctrl.signal:undefined});
+      const res=await fetch(t.url,{method,headers,body:body!==undefined?JSON.stringify(body):undefined,signal:ctrl?ctrl.signal:undefined});
       if(timer) clearTimeout(timer);
-      if(url===SB_BASE_URLS[0]+path) _sbActiveUrl=SB_BASE_URLS[0];
+      if(t.url===t.base+path) _sbActiveUrl=t.base;
       const text=await res.text();
       let json=null; try{json=text?JSON.parse(text):null;}catch(e){}
       if(!res.ok){
