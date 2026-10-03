@@ -13,7 +13,8 @@
       "img": "https://i.imgs.ovh/2026/10/03/0535d6d07311f0e36626c5d69ee0e0eb.webp",
       "title": "全部商品",
       "btn": "查看商品"
-    }
+    },
+    "quickShowText": false
   },
   "games": [
     {
@@ -614,5 +615,5 @@
       ]
     }
   },
-  "dataVersion": 1791022395812
+  "dataVersion": 1791022778215
 }
