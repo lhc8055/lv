@@ -1446,15 +1446,20 @@ document.addEventListener("click", e=>{
 /* ---------- 12. 用户优惠券管理（Supabase 直连 + 代理降级） ---------- */
 const SB_URL="https://jsrxbpysgaywdhnntqnl.supabase.co";
 const SB_ANON_DEFAULT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
-// 直连 supabase.co 在国内部分网络可能被墙/DNS污染，直连失败时自动走 CORS 代理
-const SB_PROXIES=[
-  "https://corsproxy.io/?url=",
-  "https://api.allorigins.win/raw?url="
-];
-let _sbActiveProxy=-1; // -1=直连优先
+// 直连 supabase.co 在国内部分网络可能被墙/DNS污染，直连失败时自动走 CORS 代理。
+// 代理 URL 拼接方式不同，用函数逐个生成：cors.eu.org 直接拼目标 URL（转发 header/body，支持 POST/PATCH），
+// allorigins 用 url 参数（需 URL 编码，仅 GET 可靠）。
+function sbProxyUrls(target){
+  return [
+    "https://cors.eu.org/"+target,
+    "https://api.allorigins.win/raw?url="+encodeURIComponent(target)
+  ];
+}
 let _ucUsers=[]; // 缓存加载的用户数据
 function sbCfg(){
-  const key=$("#sbAnonKey").value.trim()||SB_ANON_DEFAULT;
+  // 校验 anon key 是否为合法的 JWT 三段格式（xxx.yyy.zzz），非法则回退默认值
+  const inputVal=($("#sbAnonKey").value||"").trim();
+  const key=(inputVal && inputVal.split(".").length===3) ? inputVal : SB_ANON_DEFAULT;
   const table=$("#sbTable").value.trim()||"user_data";
   return {key,table};
 }
@@ -1464,18 +1469,16 @@ async function sbApi(path,opts){
   if(opts&&opts.body!==undefined){hdrs["Content-Type"]="application/json";hdrs["Prefer"]="return=representation";}
   const method=opts&&opts.method||"GET";
   const body=opts&&opts.body!==undefined?JSON.stringify(opts.body):undefined;
-  // 直连 URL（header 传 apikey）
+  // 直连 URL（header 传 apikey）；代理把 apikey 放 URL（部分代理不转发自定义 header）
   const directUrl=SB_URL+path;
-  // 代理 URL：把 apikey 放到 query 里，因为部分代理不转发自定义 header
   const sep=path.includes("?")?"&":"?";
-  const proxiedPath=path+sep+"apikey="+encodeURIComponent(key);
-  // 构建请求链：直连 → 代理
+  const proxyTarget=SB_URL+path+sep+"apikey="+encodeURIComponent(key);
   const targets=[{url:directUrl,proxy:false}];
-  for(const p of SB_PROXIES) targets.push({url:p+encodeURIComponent(SB_URL+proxiedPath),proxy:true});
+  for(const pu of sbProxyUrls(proxyTarget)) targets.push({url:pu,proxy:true});
   let lastErr=null;
   for(const t of targets){
     const ctrl=("AbortController" in window)?new AbortController():null;
-    const timer=ctrl?setTimeout(()=>ctrl.abort(),12000):null;
+    const timer=ctrl?setTimeout(()=>ctrl.abort(),15000):null;
     try{
       const res=await fetch(t.url,{method,headers:hdrs,body,signal:ctrl?ctrl.signal:undefined});
       if(timer) clearTimeout(timer);
@@ -1485,7 +1488,7 @@ async function sbApi(path,opts){
       return json;
     }catch(e){
       if(timer) clearTimeout(timer);
-      lastErr=e&&e.name==="AbortError"?new Error("请求超时（12秒）"):e;
+      lastErr=e&&e.name==="AbortError"?new Error("请求超时（15秒）"):e;
     }
   }
   throw lastErr||new Error("所有端点均不可达");

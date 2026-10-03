@@ -913,10 +913,14 @@ const normUid=u=>(u&&UID_OVERRIDE[u])||u;
 const SB_BASE_URLS=[
   "https://jsrxbpysgaywdhnntqnl.supabase.co"
 ];
-const SB_PROXIES=[
-  "https://corsproxy.io/?url=",
-  "https://api.allorigins.win/raw?url="
-];
+// 代理 URL 拼接方式不同：cors.eu.org 直接拼目标 URL（转发 header/body，支持 POST/PATCH），
+// allorigins 用 url 参数（需 URL 编码，仅 GET 可靠）。
+function sbProxyUrls(target){
+  return [
+    "https://cors.eu.org/"+target,
+    "https://api.allorigins.win/raw?url="+encodeURIComponent(target)
+  ];
+}
 const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
 const SB_TABLE="user_data";
 const SB_TIMEOUT=5000;
@@ -935,7 +939,7 @@ async function sbRequest(path,opts){
   const targets=[];
   for(const base of [_sbActiveUrl].concat(SB_BASE_URLS.filter(u=>u!==_sbActiveUrl))){
     targets.push({url:base+path,base});
-    for(const p of SB_PROXIES) targets.push({url:p+encodeURIComponent(base+proxiedPath),base});
+    for(const pu of sbProxyUrls(base+proxiedPath)) targets.push({url:pu,base});
   }
   let lastErr=null;
   for(const t of targets){
