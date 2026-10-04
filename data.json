@@ -609,11 +609,12 @@
     },
     "images": {
       "enabled": true,
-      "mode": "random",
+      "mode": "loop",
       "imgs": [
-        "pop2.webp"
+        "pop2.webp",
+        "pop1.webp"
       ]
     }
   },
-  "dataVersion": 1791078898967
+  "dataVersion": 1791120336991
 }
