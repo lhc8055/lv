@@ -611,10 +611,9 @@
       "enabled": true,
       "mode": "loop",
       "imgs": [
-        "pop2.webp",
-        "pop1.webp"
+        "pop2.webp"
       ]
     }
   },
-  "dataVersion": 1791120336991
+  "dataVersion": 1791120492866
 }
