@@ -403,6 +403,7 @@ html.vt-local::view-transition-group(vt-box),html.vt-local::view-transition-old(
 img.im{opacity:0}
 img.im.ok{opacity:1}
 img.im.fade{animation:imFade .22s var(--ease-std)}
+img.im.im-err{opacity:1;background:#eef0fb}
 @keyframes imFade{from{opacity:0}to{opacity:1}}
 
 #toastRoot{position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:99;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;width:max-content;max-width:88%}
@@ -826,19 +827,25 @@ function primeImg(url,hi){
       if(el){k.el=el;k.src=blobUrl;return;}
       try{URL.revokeObjectURL(blobUrl);}catch(e){}
     }
-    let blob=null;
-    try{
-      const r=await fetch(url,{mode:"cors",credentials:"omit",priority:hi===false?"low":"high"});
-      if(r.ok) blob=await r.blob();
-    }catch(e){}
-    if(blob&&blob.size){
-      const bu=URL.createObjectURL(blob);
-      const el=await loadDecoded(bu,hi);
-      if(el){k.el=el;k.src=bu;putCachedImg(url,blob).catch(()=>{});return;}
-      try{URL.revokeObjectURL(bu);}catch(e){}
+    // 跨域图片通常没有 CORS 头，fetch(mode:cors) 必然失败；
+    // 直接走 <img> 加载，省掉一次失败请求的往返耗时
+    let crossOrigin=false;
+    try{crossOrigin=new URL(url,location.href).origin!==location.origin;}catch(e){}
+    if(!crossOrigin){
+      let blob=null;
+      try{
+        const r=await fetch(url,{mode:"cors",credentials:"omit",priority:hi===false?"low":"high"});
+        if(r.ok) blob=await r.blob();
+      }catch(e){}
+      if(blob&&blob.size){
+        const bu=URL.createObjectURL(blob);
+        const el=await loadDecoded(bu,hi);
+        if(el){k.el=el;k.src=bu;putCachedImg(url,blob).catch(()=>{});return;}
+        try{URL.revokeObjectURL(bu);}catch(e){}
+      }
     }
     const el=await loadDecoded(url,hi);
-    if(el){k.el=el;queuePersist(url);}
+    if(el){k.el=el;if(!crossOrigin) queuePersist(url);}
   })();
   return k.p;
 }
@@ -876,16 +883,19 @@ function _imgHot(url){const k=_imgKeep.get(url);return !!(k&&k.el);}
 function imgTag(url,alt,extra){
   if(!url) return "";
   const hot=_imgHot(url);
-  return '<img class="im'+(hot?' ok':'')+'" src="'+esc(srcOf(url))+'" alt="'+esc(alt)+'" decoding="'+(hot?'sync':'async')+'"'+(extra||"")+' onload="if(!this.classList.contains(\'ok\'))this.className+=\' ok fade\'">';
+  return '<img class="im'+(hot?' ok':'')+'" src="'+esc(srcOf(url))+'" alt="'+esc(alt)+'" decoding="'+(hot?'sync':'async')+'"'+(extra||"")+' onload="if(!this.classList.contains(\'ok\'))this.className+=\' ok fade\'" onerror="this.classList.add(\'im-err\')">';
 }
 function imgPlain(url,alt,extra){
   if(!url) return "";
-  return '<img src="'+esc(srcOf(url))+'" alt="'+esc(alt)+'" decoding="async"'+(extra||"")+'>';
+  return '<img src="'+esc(srcOf(url))+'" alt="'+esc(alt)+'" decoding="async"'+(extra||"")+' onerror="this.classList.add(\'im-err\')">';
 }
 function markImgs(root){
   if(!root) return;
   root.querySelectorAll("img.im:not(.ok)").forEach(im=>{
-    if(im.complete&&im.naturalWidth>0) im.classList.add("ok");
+    if(im.complete){
+      if(im.naturalWidth>0) im.classList.add("ok");
+      else im.classList.add("im-err");
+    }
   });
 }
 
@@ -1510,7 +1520,7 @@ function gameIcon(g){
 }
 const splitTitle=t=>{const m=/^【([^】]*)】\s*([\s\S]*)$/.exec(String(t==null?"":t));return m&&m[2]?{pre:m[1],name:m[2]}:{pre:"",name:String(t==null?"":t)};};
 const titleHtml=t=>String(t==null?"":t).split(/(^【[^】]*】|\d+(?:\.\d+)?[万千亿元局%+]?)/).map((x,i)=>i%2?'<span class="nw">'+esc(x)+'</span>':esc(x)).join("");
-const imgPri=idx=>idx==null?'':idx<4?' fetchpriority="high"':idx>=8?' fetchpriority="low"':'';
+const imgPri=idx=>idx==null?'':(idx<4?' fetchpriority="high"':' loading="lazy"')+(idx>=8?' fetchpriority="low"':'');
 function cardHtml(p,idx){
   return '<button type="button" class="gcard" data-action="detail" data-id="'+p.id+'" data-pid="'+p.id+'">'+
     '<div class="g-img">'+imgTag(p.img,p.title,imgPri(idx))+'</div>'+
