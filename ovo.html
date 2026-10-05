@@ -396,8 +396,8 @@ async function gateSubmit(){
 }
 $("#gateBtn").addEventListener("click",gateSubmit);
 $("#gatePwd").addEventListener("keydown",e=>{ if(e.key==="Enter") gateSubmit(); });
-if(isAuthed()){ $("#adminGate").classList.add("hide"); $("#app").style.visibility="visible"; init(); }
-return; // 以下函数在 init 后才执行
+// 用 setTimeout 把 init 推到本 IIFE 执行完毕之后，确保下方 let/const 声明已初始化，避免 TDZ
+if(isAuthed()){ $("#adminGate").classList.add("hide"); $("#app").style.visibility="visible"; setTimeout(init,0); }
 
 /* ============ Supabase 直连 + 代理降级（与 admin.html 同款） ============ */
 function sbInit(){
