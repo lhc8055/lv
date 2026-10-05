@@ -462,6 +462,17 @@ function displayStatus(o){
   if(o.status==='ongoing' && !o.contactUrl) return 'pending';
   return o.status;
 }
+// 从任意文本中提取第一个 http/https URL
+// 用途：客服从 QQ 复制"点击链接加入群聊【游戏组队开黑群】：https://qm.qq.com/q/xxx"整段文字粘贴时，
+// 自动提取出纯 URL 部分，避免前面带中文导致验证失败
+function extractUrl(text){
+  if(!text) return '';
+  // 匹配 http/https 开头的 URL，遇到中文字符/中文标点/全角字符/空白/引号/<> 即终止
+  const m=String(text).match(/https?:\/\/[^\s\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef<>"]+/i);
+  if(!m) return '';
+  // 去掉末尾可能粘连的英文标点（QQ 复制偶尔会在末尾带个句号/逗号）
+  return m[0].replace(/[.,;:!?)+]+$/,'');
+}
 
 /* ============ 数据加载 ============ */
 async function loadGames(){
@@ -858,8 +869,12 @@ panel.addEventListener('click',async e=>{
     const o=orders.find(x=>x.id===panel.dataset.oid);
     if(!o)return;
     const urlInput=$('#acceptUrl',panel);
-    const url=(urlInput&&urlInput.value||'').trim();
-    if(!url||!/^https?:\/\//i.test(url)){toast('请填正确的联系打手链接（http/https 开头）');return;}
+    // 自动提取 URL：客服可能粘贴"点击链接加入群聊【游戏组队开黑群】：https://..."整段文字
+    const raw=(urlInput&&urlInput.value||'').trim();
+    const url=extractUrl(raw);
+    if(!url){toast('请填正确的联系打手链接（需含 http/https 开头的网址）');return;}
+    // 提取出的 URL 与原始文本不同时，回填到输入框让客服看到解析结果
+    if(raw!==url && urlInput){urlInput.value=url;}
     accBtn.disabled=true;accBtn.textContent='接单中...';
     try{
       // GET 该用户完整 orders 数组，改对应一条，PATCH 回去（避免覆盖同 uid 其他订单）
@@ -897,6 +912,22 @@ panel.addEventListener('click',async e=>{
     }finally{
       saveBtn.disabled=false;saveBtn.textContent='保存状态';
     }
+  }
+});
+// 粘贴时自动解析：客服从 QQ 复制"点击链接加入群聊【...】：https://..."整段文字粘贴到 #acceptUrl 时，
+// 直接替换为提取出的纯 URL，避免带前缀文字导致接单失败
+panel.addEventListener('paste',e=>{
+  const t=e.target;
+  if(!t||t.id!=='acceptUrl') return;
+  const text=(e.clipboardData||window.clipboardData)&&((e.clipboardData||window.clipboardData).getData('text'))||'';
+  const url=extractUrl(text);
+  if(url && url!==text.trim()){
+    e.preventDefault();
+    // 在光标位置插入提取后的纯 URL
+    const s=t.selectionStart||0,en=t.selectionEnd||0;
+    t.value=t.value.slice(0,s)+url+t.value.slice(en);
+    t.selectionStart=t.selectionEnd=s+url.length;
+    toast('已自动提取链接：'+url);
   }
 });
 document.addEventListener('click',e=>{
