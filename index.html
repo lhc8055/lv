@@ -2343,7 +2343,7 @@ function orderActions(o){
   // ongoing：客服已接单，可点"联系打手"跳 o.contactUrl（订单级，由后台为该订单配置）
   const contactBtn = o.contactUrl
     ? btn("","contact-player","联系打手")
-    : '<button type="button" class="oc-btn gray" disabled>客服未配置链接</button>';
+    : '<button type="button" class="oc-btn gray" disabled>待接单</button>';
   switch(o.status){
     case "unpaid":return btn("gray","order-cancel","取消订单")+btn("solid","order-pay","去支付");
     case "pending":return btn("gray","order-refund","申请退款")+'<button type="button" class="oc-btn gray" disabled>等待客服接单</button>';
@@ -2357,11 +2357,15 @@ function ordersBodyHtml(){
   const list=store.orders.slice().reverse().filter(o=>{
     if(orderFilter==="all") return true;
     if(orderFilter==="after") return o.status==="refunding"||o.status==="refunded";
-    return o.status===orderFilter;
+    // 显示状态过滤：ongoing 但客服未配置 contactUrl 时归到"待接单"筛选
+    const ds=(o.status==='ongoing'&&!o.contactUrl)?'pending':o.status;
+    return ds===orderFilter;
   });
   if(list.length){
     return '<div class="order-list">'+list.map((o,i)=>{
-      const st=STATUS[o.status]||{text:o.status,cls:""};
+      // 显示状态：ongoing 但客服未配置 contactUrl 时仍按"待接单"显示（与按钮文案一致）
+      const dispStatus=(o.status==='ongoing'&&!o.contactUrl)?'pending':o.status;
+      const st=STATUS[dispStatus]||{text:o.status,cls:""};
       const rate=o.rating?'<div class="oc-rate">我的评价 <span class="stars-mini">'+"★".repeat(o.rating.star)+"☆".repeat(5-o.rating.star)+'</span> '+esc(o.rating.text||"")+'</div>':"";
       const rawAmt=(Number(o.price)||0)*(Number(o.qty)||1);
       const totalAmt=round2(Math.max(0.01,Number(o.total)||0));

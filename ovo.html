@@ -456,6 +456,12 @@ const STATUS_MAP={
 const FB_STATUS_MAP={'待处理':'b-warn','处理中':'b-info','已处理':'b-ok'};
 const badge=s=>{const m=STATUS_MAP[s]||{label:s,cls:'b-gray'};return `<span class="badge ${m.cls}"><i></i>${esc(m.label)}</span>`;};
 const fbBadge=s=>`<span class="badge ${FB_STATUS_MAP[s]||'b-gray'}"><i></i>${esc(s)}</span>`;
+// 显示状态：ongoing 但没 contactUrl 时仍按"待接单"显示（用户无法联系打手，逻辑上等于未接单）
+// 客服在后台填了链接接单后，订单才有 contactUrl，才真正进入"进行中"
+function displayStatus(o){
+  if(o.status==='ongoing' && !o.contactUrl) return 'pending';
+  return o.status;
+}
 
 /* ============ 数据加载 ============ */
 async function loadGames(){
@@ -691,9 +697,9 @@ function renderStats(){
   $('#sOrdersSub').innerHTML=delta(todayOrders.length,yOrders.length);
   $('#sAmount').textContent=moneyInt(sumAmt(todayOrders));
   $('#sAmountSub').innerHTML=delta(sumAmt(todayOrders),sumAmt(yOrders));
-  const pend=orders.filter(o=>o.status==='pending').length;
+  const pend=orders.filter(o=>displayStatus(o)==='pending').length;
   $('#sPending').innerHTML=pend+'<small>单</small>';
-  $('#sPendingSub').textContent=todayOrders.length?`占今日订单 ${Math.round(todayOrders.filter(o=>o.status==='pending').length/todayOrders.length*100)}%`:'暂无订单';
+  $('#sPendingSub').textContent=todayOrders.length?`占今日订单 ${Math.round(todayOrders.filter(o=>displayStatus(o)==='pending').length/todayOrders.length*100)}%`:'暂无订单';
   $('#sFeedback').innerHTML=feedbacks.length+'<small>条</small>';
   $('#sFeedbackSub').textContent=`待处理 ${feedbacks.filter(f=>f.status==='待处理').length} 条`;
 }
@@ -712,7 +718,7 @@ function renderHomeStatic(){
   $('#weekSub').textContent=`最近 7 天共 ${wk.reduce((a,b)=>a+b.n,0)} 单`;
   window.__wk=wk;
   const statuses=Object.keys(STATUS_MAP);
-  const cnt=statuses.map(s=>({label:STATUS_MAP[s].label,value:orders.filter(o=>o.status===s).length,color:{unpaid:'#ff9f0a',ongoing:'#0a84ff',done:'#34c759',cancelled:'#c7c7cc',after_sale:'#af52de'}[s]||'#8e8e93'}));
+  const cnt=statuses.map(s=>({label:STATUS_MAP[s].label,value:orders.filter(o=>displayStatus(o)===s).length,color:{unpaid:'#ff9f0a',pending:'#ff9f0a',ongoing:'#0a84ff',done:'#34c759',cancelled:'#c7c7cc',after_sale:'#af52de'}[s]||'#8e8e93'}));
   const tot=orders.length||1;
   $('#legend').innerHTML=cnt.map(d=>`<div class="lg"><i style="background:${d.color}"></i><span>${d.label}</span><b>${d.value}</b><em>${Math.round(d.value/tot*100)}%</em></div>`).join('');
   window.__donut=cnt;
@@ -731,12 +737,12 @@ function orderRow(o,compact){
   return `<div class="orow" data-oid="${esc(o.id)}" tabindex="0" role="button">
     <div class="c-no">${esc(o.no)}</div><div class="c-prod">${esc(o.title)}</div>
     <div class="c-user" data-t="${compact?relTime(o.ts):''}">${esc(o.user)}</div><div class="c-amt">${money(o.amount)}</div>
-    <div class="c-time">${relTime(o.ts)}</div><div class="c-st">${badge(o.status)}</div></div>`;
+    <div class="c-time">${relTime(o.ts)}</div><div class="c-st">${badge(displayStatus(o))}</div></div>`;
 }
 const weekStart=new Date(todayStart.getTime()-6*dayMs);
 const FILTERS=[
   ['全部',()=>true],['今日',o=>isToday(o.ts)],['本周',o=>new Date(o.ts)>=weekStart],
-  ['待接单',o=>o.status==='pending'],['进行中',o=>o.status==='ongoing'],['已完成',o=>o.status==='done'],['已取消',o=>o.status==='cancelled']
+  ['待接单',o=>displayStatus(o)==='pending'],['进行中',o=>displayStatus(o)==='ongoing'],['已完成',o=>o.status==='done'],['已取消',o=>o.status==='cancelled']
 ];
 let curFilter=0,shown=20;const PAGE=20;
 function renderOrders(){
@@ -814,25 +820,20 @@ function closePanel(){
 }
 const kv=(k,v)=>`<div class="kv"><span>${k}</span><b>${v}</b></div>`;
 function orderPanel(o){
-  // 客服接单控件：pending 必须填链接 + 点接单；ongoing 历史订单若没链接可补填
+  // 客服接单控件：displayStatus 为 pending（含真 pending 和 ongoing-无链接）必须填链接 + 点接单
   let acceptBox='';
-  if(o.status==='pending'){
+  if(displayStatus(o)==='pending'){
     acceptBox=`<div class="p-label" style="margin-top:18px;color:#c46f00;font-weight:600">待接单 · 必填联系打手链接后才能接单</div>
       <label class="field" style="margin-top:6px"><span>联系打手链接（QQ群/加好友等）</span>
         <input id="acceptUrl" type="url" inputmode="url" placeholder="https://qm.qq.com/q/xxxxxx" value="${esc(o.contactUrl||'')}"></label>
       <button class="btn primary" id="acceptBtn" style="width:100%">填写链接并接单</button>`;
-  }else if(o.status==='ongoing'&&!o.contactUrl){
-    acceptBox=`<div class="p-label" style="margin-top:18px;color:#0a6bdc;font-weight:600">进行中 · 该订单尚未配置联系打手链接</div>
-      <label class="field" style="margin-top:6px"><span>补填联系打手链接</span>
-        <input id="acceptUrl" type="url" inputmode="url" placeholder="https://qm.qq.com/q/xxxxxx" value=""></label>
-      <button class="btn primary" id="acceptBtn" style="width:100%">补填链接</button>`;
   }else if(o.contactUrl){
     acceptBox=`<div class="p-label" style="margin-top:18px">联系打手链接</div>
       <div class="p-group"><div class="kv"><span>链接</span><b><a href="${esc(o.contactUrl)}" target="_blank" rel="noopener" style="color:var(--blue);word-break:break-all">${esc(o.contactUrl)}</a></b></div>${o.assignedAt?kv('接单时间',fullTime(o.assignedAt)):''}</div>`;
   }
   return `<div class="p-head"><div><div class="p-eyebrow">订单详情</div><h3>${esc(o.title)}</h3></div><button class="icon-btn" data-close aria-label="关闭">${IC_CLOSE}</button></div>
   <div class="p-hero"><small>订单金额</small><div class="p-amt">${money(o.amount)}</div></div>
-  <div class="p-group">${kv('订单号',esc(o.no))}${kv('商品',esc(o.title))}${kv('用户',esc(o.user))}${kv('下单时间',fullTime(o.ts))}${kv('支付时间',o.paidAt?fullTime(o.paidAt):'—')}${kv('状态',badge(o.status))}${kv('支付方式',esc(o.payType||'—'))}${kv('游戏',esc(o.gameName||o.game||'—'))}${kv('服务器',esc(o.server||'—'))}${kv('数量',o.qty+' '+esc(o.unit||''))}${kv('段位',esc(o.rank||'—'))}</div>
+  <div class="p-group">${kv('订单号',esc(o.no))}${kv('商品',esc(o.title))}${kv('用户',esc(o.user))}${kv('下单时间',fullTime(o.ts))}${kv('支付时间',o.paidAt?fullTime(o.paidAt):'—')}${kv('状态',badge(displayStatus(o)))}${kv('支付方式',esc(o.payType||'—'))}${kv('游戏',esc(o.gameName||o.game||'—'))}${kv('服务器',esc(o.server||'—'))}${kv('数量',o.qty+' '+esc(o.unit||''))}${kv('段位',esc(o.rank||'—'))}</div>
   ${acceptBox}`;
 }
 let editing=null,pendingStatus=null;
@@ -958,13 +959,13 @@ async function init(){
   setInterval(async ()=>{
     if(loadErr)return; // 初始加载失败时不轮询
     try{
-      const prevPend=orders.filter(o=>o.status==='pending').length;
+      const prevPend=orders.filter(o=>displayStatus(o)==='pending').length;
       await loadOrders();
       const cur=location.hash.replace('#/','')||'home';
       if(cur==='home'){renderStats();renderHomeStatic();}
-      else if(cur==='orders'){renderOrders();} // renderOrders 用当前 curFilter/shown 全局变量
+      else if(cur==='orders'){renderOrders();}
       // 有新待接单订单时给个轻提示
-      const newPend=orders.filter(o=>o.status==='pending').length;
+      const newPend=orders.filter(o=>displayStatus(o)==='pending').length;
       if(newPend>prevPend)toast('收到 '+ (newPend-prevPend) +' 个新待接单订单');
     }catch(e){}
   },4000);
