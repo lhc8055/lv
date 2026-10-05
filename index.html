@@ -2248,6 +2248,7 @@ function viewProfile(){
     {ico:"gift",cls:"f-orange",label:"邀请有礼",action:"invite"},
     {ico:"message",cls:"f-purple",label:"反馈记录",action:"go-feedbacks",badge:store.feedbacks.length||null},
     {ico:"headset",cls:"f-purple",label:"联系客服",action:"contact-service"},
+    {ico:"order",cls:"f-blue",label:"打手接单",action:"go-dashou"},
     {ico:u?"logout":"user",cls:u?"f-gray":"f-blue",label:u?"退出登录":"登录",action:u?"logout":"login"}
   ].map(f=>'<button type="button" class="pf-item" data-action="'+f.action+'"'+(f.f?' data-f="'+f.f+'"':'')+'>'+
     '<span class="pf-ico '+f.cls+'">'+icon(f.ico)+'</span>'+(f.badge?'<span class="pf-badge">'+f.badge+'</span>':'')+
@@ -2349,9 +2350,12 @@ function orderActions(o){
   const btn=(cls,action,text,extra)=>'<button type="button" class="oc-btn '+cls+'" data-action="'+action+'" data-no="'+o.no+'"'+(extra||"")+'>'+text+'</button>';
   // pending：付款后等客服在 OVO 后台填链接接单，用户此时不能联系打手
   // ongoing：客服已接单，可点"联系打手"跳 o.contactUrl（订单级，由后台为该订单配置）
+  // 打手端接单后设置 grabbedBy，此时显示打手已接单
   const contactBtn = o.contactUrl
     ? btn("","contact-player","联系打手")
-    : '<button type="button" class="oc-btn gray" disabled>待接单</button>';
+    : o.grabbedBy
+      ? '<button type="button" class="oc-btn gray" disabled>打手 '+esc(o.grabbedBy)+' 已接单</button>'
+      : '<button type="button" class="oc-btn gray" disabled>待接单</button>';
   switch(o.status){
     case "unpaid":return btn("gray","order-cancel","取消订单")+btn("solid","order-pay","去支付");
     case "pending":return btn("gray","order-refund","申请退款")+'<button type="button" class="oc-btn gray" disabled>等待客服接单</button>';
@@ -2365,14 +2369,14 @@ function ordersBodyHtml(){
   const list=store.orders.slice().reverse().filter(o=>{
     if(orderFilter==="all") return true;
     if(orderFilter==="after") return o.status==="refunding"||o.status==="refunded";
-    // 显示状态过滤：ongoing 但客服未配置 contactUrl 时归到"待接单"筛选
-    const ds=(o.status==='ongoing'&&!o.contactUrl)?'pending':o.status;
+    // 显示状态过滤：ongoing 但客服未配置 contactUrl 且无打手接单时归到"待接单"筛选
+    const ds=(o.status==='ongoing'&&!o.contactUrl&&!o.grabbedBy)?'pending':o.status;
     return ds===orderFilter;
   });
   if(list.length){
     return '<div class="order-list">'+list.map((o,i)=>{
-      // 显示状态：ongoing 但客服未配置 contactUrl 时仍按"待接单"显示（与按钮文案一致）
-      const dispStatus=(o.status==='ongoing'&&!o.contactUrl)?'pending':o.status;
+      // 显示状态：ongoing 但客服未配置 contactUrl 且无打手接单时仍按"待接单"显示（与按钮文案一致）
+      const dispStatus=(o.status==='ongoing'&&!o.contactUrl&&!o.grabbedBy)?'pending':o.status;
       const st=STATUS[dispStatus]||{text:o.status,cls:""};
       const rate=o.rating?'<div class="oc-rate">我的评价 <span class="stars-mini">'+"★".repeat(o.rating.star)+"☆".repeat(5-o.rating.star)+'</span> '+esc(o.rating.text||"")+'</div>':"";
       const rawAmt=(Number(o.price)||0)*(Number(o.qty)||1);
@@ -2650,7 +2654,7 @@ function syncOrders(){
   }
   store.orders.forEach(o=>{
     if(o.status==="待接单"){ o.status="pending"; changed=true; }
-    if(o.status==="pending"&&now-(o.paidAt||o.ts)>15000){ o.status="ongoing"; changed=true; }
+    // 注：pending → ongoing 不再自动过渡，改为打手端显式抢单时设置（避免订单提前从打手大厅消失）
     if(o.status==="refunding"&&o.refundTs&&now-o.refundTs>8000){ o.status="refunded"; changed=true; }
   });
   return changed;
@@ -2989,6 +2993,7 @@ const ACTIONS={
     toast("反馈已提交，客服会在10分钟内处理");
   },
   "contact-service"(){openService();},
+  "go-dashou"(){window.open("dashou.html","_blank","noopener");},
   "contact-player"(el){
     // 跳该订单的联系打手链接（由客服在 OVO 后台接单时为该订单填写，存于 user_data.orders[].contactUrl）
     const no=el&&el.dataset.no;const o=no?findOrder(no):null;
@@ -3183,7 +3188,8 @@ const ACTIONS={
         no,id:p.id,title:p.title,img:p.img,gameName:gameById(p.game).name,
         price:p.price,qty:r.qty,unit:p.unit,server:$("#cfServer").value,note:($("#cfNote").value||"").trim(),
         total:r.total,ts:Date.now(),status:"unpaid",payType,couponId:r.coupon?r.coupon.id:null,
-        rank:p.rank||"",tags:(p.tags||[]).slice(),desc:p.desc||"",cat:p.cat||"",game:p.game
+        rank:p.rank||"",tags:(p.tags||[]).slice(),desc:p.desc||"",cat:p.cat||"",game:p.game,
+        customerName:(store.user&&store.user.name)||"",customerContact:(store.user&&store.user.contact)||""
       };
       if(r.coupon){
         const c=store.coupons.find(x=>x.id===r.coupon.id);

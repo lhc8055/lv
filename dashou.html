@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7">
+<title>星柚打手接单系统</title>
+<style>
+:root{--ink:#1c1c1e;--sub:#6e6e73;--brand:#7c5cff;--brand2:#b08cff;--ease:cubic-bezier(.32,.72,0,1)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:#f2f2f7}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",Arial,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;min-height:100vh;min-height:100dvh}
+button,input{font:inherit;color:inherit;border:0;background:none;outline:0}
+button{cursor:pointer}
+.bg{position:fixed;inset:0;z-index:-1;pointer-events:none}
+.bg i{position:absolute;border-radius:50%}
+.bg i:nth-child(1){width:70vmax;height:70vmax;left:-25vmax;top:-30vmax;background:radial-gradient(circle,rgba(124,92,255,.38),transparent 65%)}
+.bg i:nth-child(2){width:60vmax;height:60vmax;right:-25vmax;top:25vh;background:radial-gradient(circle,rgba(255,120,170,.28),transparent 65%)}
+.bg i:nth-child(3){width:65vmax;height:65vmax;left:-20vmax;bottom:-30vmax;background:radial-gradient(circle,rgba(70,170,255,.30),transparent 65%)}
+.glass{position:relative;background:rgba(255,255,255,.52);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);box-shadow:0 10px 30px -12px rgba(60,40,140,.18),inset 0 1px 0 rgba(255,255,255,.8)}
+.rim::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;background:linear-gradient(145deg,rgba(255,255,255,.95),rgba(255,255,255,.08) 38%,rgba(255,255,255,.08) 62%,rgba(255,255,255,.75));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+
+.login{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px 20px;position:relative;overflow:hidden;transition:opacity .35s var(--ease),transform .35s var(--ease)}
+.login.out{opacity:0;transform:scale(1.03);pointer-events:none}
+.orb{position:absolute;border-radius:50%;pointer-events:none}
+.o1{width:210px;height:210px;left:calc(50% - 200px);top:12%;background:linear-gradient(145deg,#8f7bff,#ff8fc4)}
+.o2{width:150px;height:150px;right:calc(50% - 185px);bottom:12%;background:linear-gradient(145deg,#59c4ff,#7c5cff)}
+.lcard{width:100%;max-width:380px;border-radius:34px;padding:34px 24px 24px;text-align:center}
+.logo{width:76px;height:76px;margin:0 auto 18px;border-radius:22px;display:grid;place-items:center;background:linear-gradient(145deg,#9a7bff,#6a4dff);box-shadow:0 14px 28px -10px rgba(110,80,255,.6),inset 0 1px 0 rgba(255,255,255,.5)}
+.logo svg{width:38px;height:38px;fill:#fff}
+h1{font-size:25px;font-weight:700;letter-spacing:.5px}
+.sub{color:var(--sub);font-size:14px;margin:6px 0 24px}
+.group{border-radius:16px;background:rgba(255,255,255,.7);text-align:left;overflow:hidden}
+.group label{display:flex;align-items:center;height:52px;padding:0 16px;gap:12px}
+.group label+label{border-top:.5px solid rgba(60,60,67,.16)}
+.group label span{width:52px;font-size:15px;font-weight:500}
+.group input{flex:1;min-width:0;font-size:16px}
+.eye{font-size:13px;color:var(--brand)}
+.err{height:20px;margin:10px 0 6px;font-size:13px;color:#ff3b30}
+.primary{width:100%;height:50px;border-radius:15px;color:#fff;font-size:17px;font-weight:600;background:linear-gradient(135deg,#8f6bff,#6a4dff);box-shadow:0 12px 24px -10px rgba(110,80,255,.7);transition:opacity .2s}
+.primary:disabled{opacity:.65}
+.hint{margin-top:16px;font-size:12px;color:var(--sub)}
+.zchips{display:flex;justify-content:center;gap:6px;margin-top:18px;flex-wrap:wrap}
+.zchips span{font-size:12px;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.65);color:var(--sub)}
+.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+
+#app{display:none;max-width:520px;margin:0 auto;min-height:100dvh}
+#app.on{display:block}
+.page{display:none;padding-bottom:calc(110px + env(safe-area-inset-bottom))}
+.page.on{display:block}
+.page.on .pc{animation:pin .34s var(--ease)}
+@keyframes pin{from{opacity:0;transform:translateY(10px)}}
+.bar{position:sticky;top:0;z-index:20;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;background:rgba(242,242,247,.55);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);border-bottom:.5px solid rgba(60,60,67,.12)}
+.who{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;background:linear-gradient(145deg,#9a7bff,#ff8fc4);flex:none}
+.nm{flex:1;min-width:0}
+.nm b{display:block;font-size:16px}
+.nm span{font-size:12px;color:var(--sub)}
+.pill{display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:99px;font-size:13px;font-weight:600;background:rgba(52,199,89,.14);color:#1f9d46}
+.pill i{width:7px;height:7px;border-radius:50%;background:#34c759}
+.pill.off{background:rgba(142,142,147,.16);color:#6e6e73}
+.pill.off i{background:#8e8e93}
+.title{font-size:28px;font-weight:700;margin-bottom:12px;letter-spacing:.3px}
+.title.solo{margin-bottom:0}
+.seg{position:relative;display:grid;grid-template-columns:repeat(var(--n),1fr);padding:3px;border-radius:13px;background:rgba(118,118,128,.14)}
+.seg .thumb{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px)/var(--n));border-radius:10px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.12);transform:translateX(calc(var(--i)*100%));transition:transform .4s var(--ease)}
+.seg button{position:relative;z-index:1;height:34px;font-size:14px;font-weight:600;color:#3a3a3c;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
+.seg em{font-style:normal;font-size:11px;font-weight:600;min-width:18px;height:18px;padding:0 5px;border-radius:9px;display:grid;place-items:center;color:#6e6e73;background:rgba(118,118,128,.16)}
+.pc{padding:14px 16px 0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);border-radius:22px;padding:14px 4px;margin-bottom:14px}
+.stats div{text-align:center}
+.stats div+div{border-left:.5px solid rgba(60,60,67,.14)}
+.stats b{display:block;font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.stats span{font-size:12px;color:var(--sub)}
+.list{display:flex;flex-direction:column;gap:12px}
+.card{border-radius:24px;padding:16px}
+.card[data-zone=val]{--a1:#ff4f68;--a2:#ff7a5c;--a1t:rgba(255,79,104,.12)}
+.card[data-zone=delta]{--a1:#12b886;--a2:#34d17a;--a1t:rgba(18,184,134,.12)}
+.card[data-zone=wzry]{--a1:#ff9500;--a2:#ffb340;--a1t:rgba(255,149,0,.13)}
+.c-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.mode{font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;color:var(--a1);background:var(--a1t)}
+.znm{font-size:12px;color:var(--sub);margin-left:auto}
+.new{font-size:11px;font-weight:700;color:#fff;padding:3px 8px;border-radius:99px;background:linear-gradient(135deg,var(--a1),var(--a2))}
+.card:not(.fresh) .new{display:none}
+.card h3{font-size:19px;font-weight:700;letter-spacing:.2px}
+.desc{font-size:14px;color:var(--sub);margin:4px 0 12px;line-height:1.45}
+.info{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;padding:11px 12px;border-radius:14px;background:rgba(255,255,255,.55)}
+.info span{display:block;font-size:11px;color:var(--sub);margin-bottom:2px}
+.info b{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;word-break:break-all}
+.c-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:flex;align-items:center;gap:5px;height:28px;padding:0 10px 0 8px;border-radius:99px;font-size:13px;font-weight:500;background:rgba(255,255,255,.7);box-shadow:inset 0 0 0 .5px rgba(60,60,67,.12)}
+.ic{width:15px;height:15px;fill:currentColor;flex:none}
+.im.qq{color:#12b7f5}
+.im.wx{color:#07c160}
+.os.ios{color:#1c1c1e}
+.os.android{color:#3ddc84}
+.act{display:flex;align-items:center;gap:12px}
+.price{font-size:26px;font-weight:700;color:var(--a1);font-variant-numeric:tabular-nums;line-height:1}
+.price small{font-size:14px;margin-right:1px}
+.grab{height:38px;padding:0 20px;border-radius:99px;color:#fff;font-weight:600;font-size:15px;white-space:nowrap;background:linear-gradient(135deg,var(--a1),var(--a2));box-shadow:0 8px 16px -8px var(--a1);transition:opacity .2s}
+.grab:disabled{opacity:.6}
+.contact{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.55)}
+.contact .ic{width:24px;height:24px}
+.contact div{flex:1;min-width:0}
+.contact span{display:block;font-size:11px;color:var(--sub)}
+.contact b{font-size:16px;font-variant-numeric:tabular-nums;word-break:break-all}
+.mini{height:30px;padding:0 14px;border-radius:99px;font-size:13px;font-weight:600;color:var(--brand);background:rgba(124,92,255,.12)}
+.st{font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px}
+.st.doing{color:#0a84ff;background:rgba(10,132,255,.12)}
+.st.done{color:#1f9d46;background:rgba(52,199,89,.14)}
+.empty{display:none;text-align:center;padding:64px 20px;color:var(--sub);font-size:14px;line-height:1.6}
+.empty.show{display:block}
+.empty .pulse{width:64px;height:64px;margin:0 auto 16px;border-radius:50%;background:rgba(124,92,255,.12);display:grid;place-items:center}
+.empty .pulse::after{content:"";width:16px;height:16px;border-radius:50%;background:var(--brand);animation:pls 1.8s var(--ease) infinite}
+@keyframes pls{0%{transform:scale(.6);opacity:.9}100%{transform:scale(1.8);opacity:0}}
+.empty b{display:block;color:var(--ink);font-size:17px;margin-bottom:4px}
+.prof{display:flex;align-items:center;gap:14px;padding:18px;border-radius:24px;margin-bottom:14px}
+.prof .av{width:56px;height:56px;font-size:22px}
+.prof b{font-size:19px}
+.prof span{display:block;font-size:13px;color:var(--sub);margin-top:2px}
+.rows{border-radius:22px;overflow:hidden;margin-bottom:14px}
+.row{display:flex;align-items:center;justify-content:space-between;min-height:52px;padding:0 16px;font-size:16px}
+.row+.row{border-top:.5px solid rgba(60,60,67,.14)}
+.row em{font-style:normal;color:var(--sub);font-variant-numeric:tabular-nums}
+.sw{width:51px;height:31px;border-radius:99px;background:rgba(120,120,128,.32);position:relative;transition:background .3s var(--ease)}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.2);transition:transform .3s var(--ease)}
+.sw[aria-checked=true]{background:#34c759}
+.sw[aria-checked=true]::after{transform:translateX(20px)}
+.logout{width:100%;height:52px;border-radius:18px;color:#ff3b30;font-size:17px;font-weight:600}
+.dock{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(calc(100% - 32px),360px);height:64px;padding:4px;border-radius:99px;display:none;grid-template-columns:repeat(3,1fr);z-index:30;--i:0}
+.dock.on{display:grid}
+.dock .thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 8px)/3);border-radius:99px;background:rgba(124,92,255,.14);box-shadow:inset 0 0 0 .5px rgba(124,92,255,.18);transform:translateX(calc(var(--i)*100%));transition:transform .45s var(--ease)}
+.dock button{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600;color:#6e6e73;transition:color .3s}
+.dock button.on{color:var(--brand)}
+.dock svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.badge{position:absolute;top:6px;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:#ff3b30;color:#fff;font-size:11px;line-height:17px;text-align:center;display:none}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 12px);z-index:50;transform:translate(-50%,-140%);padding:11px 18px;border-radius:99px;font-size:14px;font-weight:600;max-width:calc(100% - 40px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:transform .45s var(--ease),opacity .3s;pointer-events:none}
+.toast.show{transform:translate(-50%,0);opacity:1}
+.svc{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);margin-top:6px}
+.svc .dot{width:6px;height:6px;border-radius:50%;background:#8e8e93}
+.svc.on .dot{background:#34c759}
+</style>
+</head>
+<body>
+<div class="bg"><i></i><i></i><i></i></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-android" viewBox="0 0 24 24"><path d="M18.4395 5.5586c-.675 1.1664-1.352 2.3318-2.0274 3.498-.0366-.0155-.0742-.0286-.1113-.043-1.8249-.6957-3.484-.8-4.42-.787-1.8551.0185-3.3544.4643-4.2597.8203-.084-.1494-1.7526-3.021-2.0215-3.4864a1.1451 1.1451 0 0 0-.1406-.1914c-.3312-.364-.9054-.4859-1.379-.203-.475.282-.7136.9361-.3886 1.5019 1.9466 3.3696-.0966-.2158 1.9473 3.3593.0172.031-.4946.2642-1.3926 1.0177C2.8987 12.176.452 14.772 0 18.9902h24c-.119-1.1108-.3686-2.099-.7461-3.0683-.7438-1.9118-1.8435-3.2928-2.7402-4.1836a12.1048 12.1048 0 0 0-2.1309-1.6875c.6594-1.122 1.312-2.2559 1.9649-3.3848.2077-.3615.1886-.7956-.0079-1.1191a1.1001 1.1001 0 0 0-.8515-.5332c-.5225-.0536-.9392.3128-1.0488.5449zm-.0391 8.461c.3944.5926.324 1.3306-.1563 1.6503-.4799.3197-1.188.0985-1.582-.4941-.3944-.5927-.324-1.3307.1563-1.6504.4727-.315 1.1812-.1086 1.582.4941zM7.207 13.5273c.4803.3197.5506 1.0577.1563 1.6504-.394.5926-1.1038.8138-1.584.4941-.48-.3197-.5503-1.0577-.1563-1.6504.4008-.6021 1.1087-.8106 1.584-.4941z"/></symbol>
+<symbol id="i-apple" viewBox="0 0 24 24"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></symbol>
+<symbol id="i-qq" viewBox="0 0 24 24"><path d="M21.395 15.035a40 40 0 0 0-.803-2.264l-1.079-2.695c.001-.032.014-.562.014-.836C19.526 4.632 17.351 0 12 0S4.474 4.632 4.474 9.241c0 .274.013.804.014.836l-1.08 2.695a39 39 0 0 0-.802 2.264c-1.021 3.283-.69 4.643-.438 4.673.54.065 2.103-2.472 2.103-2.472 0 1.469.756 3.387 2.394 4.771-.612.188-1.363.479-1.845.835-.434.32-.379.646-.301.778.343.578 5.883.369 7.482.189 1.6.18 7.14.389 7.483-.189.078-.132.132-.458-.301-.778-.483-.356-1.233-.646-1.846-.836 1.637-1.384 2.393-3.302 2.393-4.771 0 0 1.563 2.537 2.103 2.472.251-.03.581-1.39-.438-4.673"/></symbol>
+<symbol id="i-wechat" viewBox="0 0 24 24"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/></symbol>
+</defs></svg>
+
+<main class="login" id="login">
+  <div class="orb o1"></div><div class="orb o2"></div>
+  <div class="lcard glass rim" id="lcard">
+    <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7L2 9.2l7.1-.6z"/></svg></div>
+    <h1>星柚打手接单系统</h1>
+    <p class="sub">打手专用 · 登录后进入接单大厅</p>
+    <form id="loginForm" autocomplete="off">
+      <div class="group">
+        <label><span>用户名</span><input id="u" type="text" placeholder="请输入打手用户名" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <label><span>密码</span><input id="p" type="password" placeholder="请输入密码"><button type="button" class="eye" id="eye">显示</button></label>
+      </div>
+      <div class="err" id="err"></div>
+      <button class="primary" id="loginBtn" type="submit">登录</button>
+    </form>
+    <p class="hint">演示账号：xingyou　密码：123456</p>
+    <div class="zchips"><span>无畏契约</span><span>三角洲行动</span><span>王者荣耀</span></div>
+  </div>
+</main>
+
+<div id="app">
+  <section class="page on" id="p-hall">
+    <div class="bar">
+      <div class="who">
+        <div class="av" id="avatar">星</div>
+        <div class="nm"><b id="hName">打手</b><span>星柚打手接单系统</span></div>
+        <button class="pill" id="pill" data-act="toggle"><i></i><span id="pillT">接单中</span></button>
+      </div>
+      <div class="seg" id="zoneSeg" style="--n:3;--i:0">
+        <i class="thumb"></i>
+        <button data-seg="zone" data-v="val">无畏契约<em data-cnt="val">0</em></button>
+        <button data-seg="zone" data-v="delta">三角洲行动<em data-cnt="delta">0</em></button>
+        <button data-seg="zone" data-v="wzry">王者荣耀<em data-cnt="wzry">0</em></button>
+      </div>
+    </div>
+    <div class="pc">
+      <div class="stats glass rim">
+        <div><b id="stHall">0</b><span>大厅订单</span></div>
+        <div><b id="stToday">0</b><span>今日抢单</span></div>
+        <div><b id="stEarn">¥0</b><span>今日收益</span></div>
+      </div>
+      <div class="svc" id="svc"><span class="dot"></span><span id="svcT">连接中…</span></div>
+      <div class="list" id="hallList"></div>
+      <div class="empty" id="hallEmpty"><div class="pulse"></div><b id="hallEmptyT">正在等待新订单</b><span id="hallEmptyS">新订单会实时出现在这里</span></div>
+    </div>
+  </section>
+
+  <section class="page" id="p-mine">
+    <div class="bar">
+      <div class="title">我的订单</div>
+      <div class="seg" id="mineSeg" style="--n:2;--i:0">
+        <i class="thumb"></i>
+        <button data-seg="mine" data-v="doing">进行中</button>
+        <button data-seg="mine" data-v="done">已完成</button>
+      </div>
+    </div>
+    <div class="pc">
+      <div class="list" id="mineList"></div>
+      <div class="empty" id="mineEmpty"><div class="pulse"></div><b id="mineEmptyT">暂无进行中的订单</b><span id="mineEmptyS">去抢单大厅看看吧</span></div>
+    </div>
+  </section>
+
+  <section class="page" id="p-me">
+    <div class="bar"><div class="title solo">账号</div></div>
+    <div class="pc">
+      <div class="prof glass rim"><div class="av" id="meAv">星</div><div><b id="meName">打手</b><span>星柚认证打手</span></div></div>
+      <div class="rows glass rim">
+        <div class="row"><span>接单状态</span><button class="sw" id="sw" role="switch" aria-checked="true" data-act="toggle"></button></div>
+        <div class="row"><span>累计完成</span><em id="meDone">0 单</em></div>
+        <div class="row"><span>累计收益</span><em id="meEarn">¥0</em></div>
+      </div>
+      <button class="logout glass rim" data-act="logout">退出登录</button>
+    </div>
+  </section>
+</div>
+
+<nav class="dock glass rim" id="dock">
+  <i class="thumb"></i>
+  <button class="on" data-tab="hall"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>抢单大厅</button>
+  <button data-tab="mine"><svg viewBox="0 0 24 24"><path d="M9 4h6a1 1 0 011 1v1h2a1 1 0 011 1v13a1 1 0 01-1 1H6a1 1 0 01-1-1V7a1 1 0 011-1h2V5a1 1 0 011-1z"/><path d="M9 12h6M9 16h4"/></svg>我的订单<b class="badge" id="badge">0</b></button>
+  <button data-tab="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2.5 8 6"/></svg>账号</button>
+</nav>
+
+<div class="toast glass rim" id="toast"></div>
+
+<script>
+/* ===================== 配置 ===================== */
+const ZN={val:'无畏契约',delta:'三角洲行动',wzry:'王者荣耀'};
+const ZK=Object.keys(ZN);
+// 用户端 game id → 打手端 zone id
+const GAME_TO_ZONE={val:'val',df:'delta',wz:'wzry'};
+const ZONE_TO_GAME={val:'val',delta:'df',wzry:'wz'};
+const ACCOUNTS={xingyou:'123456'};
+const EASE='cubic-bezier(.32,.72,0,1)';
+
+/* ===================== Supabase 直连客户端 ===================== */
+const SB_BASE_URLS=["https://jsrxbpysgaywdhnntqnl.supabase.co"];
+function sbProxyUrls(target){
+  return [
+    "https://cors.eu.org/"+target,
+    "https://api.allorigins.win/raw?url="+encodeURIComponent(target)
+  ];
+}
+const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
+const SB_TABLE="user_data";
+const SB_TIMEOUT=8000;
+let _sbActiveUrl=SB_BASE_URLS[0];
+let _sbReachable=false;
+
+async function sbRequest(path,opts){
+  const method=(opts&&opts.method)||"GET";
+  const body=opts&&opts.body;
+  const ms=(opts&&opts.ms)||SB_TIMEOUT;
+  const headers={"apikey":SB_ANON,"Authorization":"Bearer "+SB_ANON};
+  if(body!==undefined){ headers["Content-Type"]="application/json"; headers["Prefer"]="resolution=merge-duplicates,return=representation"; }
+  const sep=path.includes("?")?"&":"?";
+  const proxiedPath=path+sep+"apikey="+encodeURIComponent(SB_ANON);
+  const targets=[];
+  for(const base of [_sbActiveUrl].concat(SB_BASE_URLS.filter(u=>u!==_sbActiveUrl))){
+    targets.push({url:base+path,base});
+    for(const pu of sbProxyUrls(base+proxiedPath)) targets.push({url:pu,base});
+  }
+  let lastErr=null;
+  for(const t of targets){
+    const ctrl=("AbortController" in window)?new AbortController():null;
+    const timer=ctrl?setTimeout(()=>ctrl.abort(),ms):null;
+    try{
+      const res=await fetch(t.url,{method,headers,body:body!==undefined?JSON.stringify(body):undefined,signal:ctrl?ctrl.signal:undefined});
+      if(timer) clearTimeout(timer);
+      if(t.url===t.base+path) _sbActiveUrl=t.base;
+      const text=await res.text();
+      let json=null; try{json=text?JSON.parse(text):null;}catch(e){}
+      if(!res.ok){ const err=new Error((json&&json.message)||("HTTP "+res.status)); err.code=json&&json.code; err.status=res.status; throw err; }
+      _sbReachable=true;
+      return json;
+    }catch(e){
+      if(timer) clearTimeout(timer);
+      lastErr=e;
+      if(e&&e.name==="AbortError"){ lastErr=new Error("云端请求超时"); lastErr.code="TIMEOUT"; }
+    }
+  }
+  _sbReachable=false;
+  throw (lastErr||new Error("云端请求失败"));
+}
+// 读取所有用户数据（用于聚合待接单订单）
+async function sbSelectAll(){
+  return await sbRequest("/rest/v1/"+SB_TABLE+"?select=*",{method:"GET",ms:SB_TIMEOUT});
+}
+// 读取单用户数据
+async function sbSelectOne(uid){
+  const rows=await sbRequest("/rest/v1/"+SB_TABLE+"?uid=eq."+encodeURIComponent(uid)+"&select=*",{method:"GET",ms:SB_TIMEOUT});
+  return (Array.isArray(rows)&&rows[0])||null;
+}
+// 写入/更新单用户数据
+async function sbUpsert(row){
+  return await sbRequest("/rest/v1/"+SB_TABLE,{method:"POST",body:row,ms:SB_TIMEOUT});
+}
+// 部分更新单用户数据（仅更新指定字段，不覆盖同行其他数据）
+async function sbPatch(uid,fields){
+  return await sbRequest("/rest/v1/"+SB_TABLE+"?uid=eq."+encodeURIComponent(uid),{method:"PATCH",body:fields,ms:SB_TIMEOUT});
+}
+
+/* ===================== 工具 ===================== */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const p2=n=>String(n).padStart(2,'0');
+const fmt=t=>{const d=new Date(t);return p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds())};
+const sameDay=t=>!!t&&new Date(t).toDateString()===new Date().toDateString();
+const ic=(id,c)=>`<svg class="ic ${c||''}" aria-hidden="true"><use href="#${id}"/></svg>`;
+// 联系类型判断：纯数字 5-11 位视为 QQ，否则微信
+const contactType=c=>/^\d{5,11}$/.test(c?'':c)?'qq':'wx';
+const contactLabel=c=>contactType(c)==='qq'?'QQ号':'微信号';
+const store={
+  get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
+  del(k){try{localStorage.removeItem(k)}catch(e){}}
+};
+
+const state={user:null,zone:'val',tab:'hall',mineTab:'doing',online:true,hall:{val:[],delta:[],wzry:[]},mine:[]};
+let toastTimer=0,_pollTimer=null,_svcTimer=null;
+
+/* ===================== 用户订单 → 打手订单映射 ===================== */
+function mapOrder(o,ownerUid){
+  const zone=GAME_TO_ZONE[o.game]||'val';
+  const im=contactType(o.customerContact);
+  // 标题：优先用 cat+rank，否则 title
+  let title=o.title||o.cat||'';
+  if(o.rank&&!title.includes(o.rank)) title=(o.cat||'')+' · '+o.rank;
+  // 描述：商品描述 + 买家备注 + 区服
+  const parts=[];
+  if(o.desc) parts.push(o.desc);
+  if(o.note) parts.push('备注：'+o.note);
+  if(o.server) parts.push('区服：'+o.server);
+  const desc=parts.join('　')||'暂无描述';
+  return {
+    id:o.no, zone,
+    mode:o.cat||'陪玩',
+    title:title||o.cat||'陪玩订单',
+    desc,
+    price:Math.round(Number(o.total)||0),
+    im,
+    os:'ios', // 客户系统暂未区分操作系统，默认展示
+    contact:o.customerContact||'',
+    customerName:o.customerName||'客户',
+    ct:o.ts||Date.now(),
+    ownerUid,
+    status:'pending',
+    qty:o.qty||1,
+    unit:o.unit||''
+  };
+}
+
+/* ===================== 卡片渲染 ===================== */
+const chips=o=>`<span class="chip">${ic(o.im==='qq'?'i-qq':'i-wechat','im '+o.im)}${o.im==='qq'?'QQ':'微信'}</span>`;
+function hallCard(o){
+  const fresh=Date.now()-o.ct<10000;
+  return `<article class="card glass rim${fresh?' fresh':''}" data-id="${o.id}" data-zone="${o.zone}">
+<div class="c-top"><span class="mode">${o.mode}</span><span class="new">新单</span><span class="znm">${ZN[o.zone]}</span></div>
+<h3>${o.title}</h3><p class="desc">${o.desc}</p>
+<div class="info"><div><span>订单号</span><b>${o.id}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>数量</span><b>${o.qty}${o.unit}</b></div><div><span>客户</span><b>${o.customerName}</b></div></div>
+<div class="c-foot"><div class="chips">${chips(o)}</div><div class="act"><div class="price"><small>¥</small>${o.price}</div><button class="grab" data-act="grab" data-id="${o.id}">抢单</button></div></div>
+</article>`;
+}
+function mineCard(o){
+  const done=o.status==='done';
+  return `<article class="card glass rim" data-id="${o.id}" data-zone="${o.zone}">
+<div class="c-top"><span class="mode">${o.mode}</span><span class="znm">${ZN[o.zone]}</span><span class="st ${done?'done':'doing'}">${done?'已完成':'进行中'}</span></div>
+<h3>${o.title}</h3><p class="desc">${o.desc}</p>
+<div class="info"><div><span>订单号</span><b>${o.id}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>抢单时间</span><b>${fmt(o.gt)}</b></div><div><span>订单金额</span><b>¥${o.price}</b></div></div>
+<div class="contact">${ic(o.im==='qq'?'i-qq':'i-wechat','im '+o.im)}<div><span>${contactLabel(o.contact)}</span><b>${o.contact||'未提供'}</b></div>${o.contact?`<button class="mini" data-act="copy" data-v="${o.contact}">复制</button>`:''}</div>
+<div class="c-foot"><div class="chips">${chips(o)}</div>${done?'':`<button class="grab" data-act="done" data-id="${o.id}">完成订单</button>`}</div>
+</article>`;
+}
+
+/* ===================== 大厅列表管理 ===================== */
+function flip(el,fn){
+  const prev=new Map([...el.children].filter(c=>c.dataset.id).map(c=>[c.dataset.id,c.getBoundingClientRect().top]));
+  fn();
+  [...el.children].forEach(c=>{
+    const id=c.dataset.id;if(!id)return;
+    if(!prev.has(id)){c.animate([{opacity:0,transform:'translateY(-16px) scale(.97)'},{opacity:1,transform:'none'}],{duration:420,easing:EASE});return}
+    const dy=prev.get(id)-c.getBoundingClientRect().top;
+    if(Math.abs(dy)>1)c.animate([{transform:`translateY(${dy}px)`},{transform:'none'}],{duration:420,easing:EASE});
+  });
+}
+const hallEl=()=>$('#hallList');
+function syncHallEmpty(){
+  const n=hallEl().querySelectorAll('.card').length;
+  $('#hallEmpty').classList.toggle('show',!n);
+  $('#hallEmptyT').textContent=state.online?'正在等待新订单':'当前为休息状态';
+  $('#hallEmptyS').textContent=state.online?'客户支付后订单会出现在这里':'开启接单后才会收到新订单';
+}
+function setZone(z){
+  state.zone=z;
+  $('#zoneSeg').style.setProperty('--i',ZK.indexOf(z));
+  const el=hallEl();
+  el.innerHTML=state.hall[z].map(hallCard).join('');
+  syncHallEmpty();
+  el.animate([{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'none'}],{duration:300,easing:EASE});
+}
+
+/* ===================== 我的订单 ===================== */
+function setMineTab(v,anim){
+  state.mineTab=v;
+  $('#mineSeg').style.setProperty('--i',v==='doing'?0:1);
+  renderMine(anim);
+}
+function renderMine(anim){
+  const list=state.mine.filter(o=>o.status===state.mineTab);
+  const el=$('#mineList');
+  el.innerHTML=list.map(mineCard).join('');
+  $('#mineEmpty').classList.toggle('show',!list.length);
+  const doing=state.mineTab==='doing';
+  $('#mineEmptyT').textContent=doing?'暂无进行中的订单':'暂无已完成订单';
+  $('#mineEmptyS').textContent=doing?'去抢单大厅看看吧':'完成订单后会显示在这里';
+  if(anim)el.animate([{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'none'}],{duration:300,easing:EASE});
+}
+function saveMine(){store.set('xy_mine_'+state.user,state.mine)}
+
+/* ===================== 统计 ===================== */
+function updateCounts(){
+  ZK.forEach(z=>{$(`[data-cnt="${z}"]`).textContent=state.hall[z].length});
+  $('#stHall').textContent=ZK.reduce((s,z)=>s+state.hall[z].length,0);
+  const done=state.mine.filter(o=>o.status==='done');
+  $('#stToday').textContent=state.mine.filter(o=>sameDay(o.gt)).length;
+  $('#stEarn').textContent='¥'+done.filter(o=>sameDay(o.doneAt)).reduce((s,o)=>s+o.price,0);
+  $('#meDone').textContent=done.length+' 单';
+  $('#meEarn').textContent='¥'+done.reduce((s,o)=>s+o.price,0);
+  const doing=state.mine.length-done.length,b=$('#badge');
+  b.textContent=doing;b.style.display=doing?'block':'none';
+}
+
+/* ===================== 抢单 / 完成（回写云端） ===================== */
+async function updateOwnerOrder(ownerUid,orderNo,updater){
+  const row=await sbSelectOne(ownerUid);
+  if(!row||!Array.isArray(row.orders)) return false;
+  const orders=row.orders;
+  const idx=orders.findIndex(o=>o.no===orderNo);
+  if(idx<0) return false;
+  updater(orders[idx],idx,orders);
+  // 仅 PATCH orders 字段，不覆盖同行其他数据（优惠券/收藏等）
+  await sbPatch(ownerUid,{orders});
+  return true;
+}
+
+async function grab(id,btn){
+  const o=state.hall[state.zone].find(x=>x.id===id);
+  if(!o||o.busy||o.gone) return;
+  if(!state.online){toast('当前为休息状态，请先开启接单');return}
+  o.busy=true;btn.disabled=true;btn.textContent='抢单中…';
+  try{
+    // 先读云端确认订单仍为 pending（防止并发抢单）
+    const row=await sbSelectOne(o.ownerUid);
+    const cloudOrder=row&&Array.isArray(row.orders)?row.orders.find(x=>x.no===o.id):null;
+    if(!cloudOrder||cloudOrder.status!=='pending'){
+      toast('手慢了，订单已被抢走');
+      removeHall(o);
+      return;
+    }
+    // 乐观更新：先加入我的订单
+    const m={...o,status:'doing',gt:Date.now(),grabbedBy:state.user};
+    delete m.busy;delete m.gone;
+    state.mine.unshift(m);
+    saveMine();updateCounts();
+    if(state.tab==='mine')renderMine();
+    // 从大厅移除
+    removeHall(o);
+    // 回写云端：把该用户订单状态改为 ongoing
+    let alreadyTaken=false;
+    const ok=await updateOwnerOrder(o.ownerUid,o.id,(od)=>{
+      if(od.status!=='pending'){ alreadyTaken=true; return; }
+      od.status='ongoing';
+      od.grabbedBy=state.user;
+      od.grabbedAt=Date.now();
+    });
+    if(ok && !alreadyTaken){
+      toast('抢单成功，联系方式已放入「我的订单」');
+      if(navigator.vibrate)navigator.vibrate(12);
+    }else{
+      toast('手慢了，订单已被抢走');
+      // 回滚：从我的订单移除
+      state.mine=state.mine.filter(x=>x.id!==o.id);
+      saveMine();updateCounts();
+      if(state.tab==='mine')renderMine();
+    }
+  }catch(e){
+    console.error(e);
+    toast('抢单失败：'+(e.message||'网络错误'));
+    // 回滚
+    state.mine=state.mine.filter(x=>x.id!==o.id);
+    saveMine();updateCounts();
+    if(state.tab==='mine')renderMine();
+    btn.disabled=false;btn.textContent='抢单';
+    o.busy=false;
+  }
+}
+
+async function complete(id){
+  const o=state.mine.find(x=>x.id===id);if(!o)return;
+  try{
+    const ok=await updateOwnerOrder(o.ownerUid,o.id,(od)=>{
+      od.status='done';
+      od.doneAt=Date.now();
+    });
+    if(!ok){toast('操作失败：订单不存在');return}
+    o.status='done';o.doneAt=Date.now();
+    state.mine.sort((a,b)=>(b.doneAt||b.gt)-(a.doneAt||a.gt));
+    saveMine();updateCounts();
+    const node=$(`#mineList [data-id="${id}"]`);
+    const finish=()=>renderMine();
+    if(node)node.animate([{opacity:1,transform:'none'},{opacity:0,transform:'scale(.96)'}],{duration:220,easing:'ease-out',fill:'forwards'}).onfinish=finish;else finish();
+    toast('订单已完成 +¥'+o.price);
+  }catch(e){
+    console.error(e);
+    toast('操作失败：'+(e.message||'网络错误'));
+  }
+}
+
+function removeHall(o){
+  if(o.gone)return;
+  o.gone=true;
+  const arr=state.hall[o.zone],i=arr.indexOf(o);
+  if(i>-1)arr.splice(i,1);
+  updateCounts();
+  if(o.zone!==state.zone)return;
+  const el=hallEl(),node=el.querySelector(`[data-id="${o.id}"]`);
+  if(!node){syncHallEmpty();return}
+  const a=node.animate([{opacity:1,transform:'none'},{opacity:0,transform:'scale(.96)'}],{duration:220,easing:'ease-out',fill:'forwards'});
+  a.onfinish=()=>{flip(el,()=>node.remove());syncHallEmpty()};
+}
+
+/* ===================== 从云端拉取待接单订单 ===================== */
+async function fetchPendingOrders(){
+  try{
+    const rows=await sbSelectAll();
+    setSvc(true);
+    if(!Array.isArray(rows)) return;
+    const seen=new Set(state.mine.map(m=>m.id)); // 已抢的不再显示
+    const all={val:[],delta:[],wzry:[]};
+    for(const row of rows){
+      if(!row||!row.uid||!Array.isArray(row.orders)) continue;
+      for(const o of row.orders){
+        if(!o||o.status!=='pending') continue;
+        if(seen.has(o.no)) continue;
+        const m=mapOrder(o,row.uid);
+        all[m.zone].push(m);
+      }
+    }
+    // 按下单时间倒序
+    ZK.forEach(z=>all[z].sort((a,b)=>b.ct-a.ct));
+    // 合并到 state.hall：保留已存在的，新增的插到前面，已消失的移除
+    ZK.forEach(z=>{
+      const newIds=new Set(all[z].map(o=>o.id));
+      const oldIds=new Set(state.hall[z].map(o=>o.id));
+      // 移除已被抢走/消失的
+      state.hall[z]=state.hall[z].filter(o=>newIds.has(o.id));
+      // 添加新的
+      for(const o of all[z]){
+        if(!oldIds.has(o.id)) state.hall[z].unshift(o);
+      }
+      state.hall[z].sort((a,b)=>b.ct-a.ct);
+    });
+    // 重新渲染当前区
+    if(state.tab==='hall'){
+      const el=hallEl();
+      const curIds=new Set(state.hall[state.zone].map(o=>o.id));
+      // 移除消失的
+      [...el.children].forEach(c=>{if(c.dataset.id&&!curIds.has(c.dataset.id))c.remove()});
+      // 插入新的
+      const existIds=new Set([...el.children].map(c=>c.dataset.id));
+      for(const o of state.hall[state.zone]){
+        if(!existIds.has(o.id)){
+          flip(el,()=>el.insertAdjacentHTML('afterbegin',hallCard(o)));
+        }
+      }
+      syncHallEmpty();
+    }
+    updateCounts();
+  }catch(e){
+    console.error('[拉取订单]',e);
+    setSvc(false);
+  }
+}
+function setSvc(ok){
+  const el=$('#svc');
+  if(!el)return;
+  el.classList.toggle('on',ok);
+  $('#svcT').textContent=ok?'已连接订单池':'连接中断，正在重试…';
+}
+
+/* ===================== 轮询 ===================== */
+function startPoll(){
+  stopPoll();
+  const tick=async ()=>{
+    if(state.user&&state.online&&!document.hidden){
+      await fetchPendingOrders();
+    }
+    _pollTimer=setTimeout(tick,state.online?3000:8000);
+  };
+  tick();
+}
+function stopPoll(){if(_pollTimer){clearTimeout(_pollTimer);_pollTimer=null}}
+
+/* ===================== Tab / 状态 ===================== */
+function setTab(t){
+  state.tab=t;
+  $$('.page').forEach(p=>p.classList.toggle('on',p.id==='p-'+t));
+  $$('.dock button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  $('#dock').style.setProperty('--i',['hall','mine','me'].indexOf(t));
+  window.scrollTo(0,0);
+  if(t==='mine')renderMine();
+  if(t==='hall'){setZone(state.zone);fetchPendingOrders()}
+}
+function setOnline(v){
+  state.online=v;
+  $('#pill').classList.toggle('off',!v);
+  $('#pillT').textContent=v?'接单中':'休息中';
+  $('#sw').setAttribute('aria-checked',v);
+  syncHallEmpty();
+  if(v)fetchPendingOrders();
+}
+
+/* ===================== Toast / 复制 ===================== */
+function toast(m){
+  const t=$('#toast');t.textContent=m;t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+function copy(v){
+  const ok=()=>toast('已复制');
+  const fb=()=>{const a=document.createElement('textarea');a.value=v;a.style.cssText='position:fixed;opacity:0';document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}a.remove();ok()};
+  if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(v).then(ok,fb);else fb();
+}
+
+/* ===================== 事件 ===================== */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act],[data-seg],[data-tab]');
+  if(!t)return;
+  if(t.dataset.tab){setTab(t.dataset.tab);return}
+  if(t.dataset.seg==='zone'){if(t.dataset.v!==state.zone)setZone(t.dataset.v);return}
+  if(t.dataset.seg==='mine'){if(t.dataset.v!==state.mineTab)setMineTab(t.dataset.v,true);return}
+  const a=t.dataset.act;
+  if(a==='grab')grab(t.dataset.id,t);
+  else if(a==='done')complete(t.dataset.id);
+  else if(a==='copy')copy(t.dataset.v);
+  else if(a==='toggle')setOnline(!state.online);
+  else if(a==='logout')logout();
+});
+// 页面可见时立即刷新一次
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&state.user&&state.online)fetchPendingOrders();
+});
+// 每秒清理 fresh 标记
+setInterval(()=>{
+  const now=Date.now();
+  $$('#hallList .fresh').forEach(c=>{
+    const o=state.hall[state.zone].find(x=>x.id===c.dataset.id);
+    if(!o||now-o.ct>10000)c.classList.remove('fresh');
+  });
+},1000);
+
+/* ===================== 登录 ===================== */
+const login=$('#login'),lcard=$('#lcard');
+function enter(u,instant){
+  state.user=u;
+  state.mine=store.get('xy_mine_'+u)||[];
+  const ch=u.charAt(0).toUpperCase();
+  $('#avatar').textContent=ch;$('#meAv').textContent=ch;
+  $('#hName').textContent=u;$('#meName').textContent=u;
+  $('#app').classList.add('on');$('#dock').classList.add('on');
+  setOnline(true);setZone('val');setMineTab('doing');updateCounts();setTab('hall');
+  if(instant)login.style.display='none';
+  else{login.classList.add('out');setTimeout(()=>{login.style.display='none'},360)}
+  startPoll();
+}
+function logout(){
+  stopPoll();
+  store.del('xy_user');
+  state.user=null;
+  $('#app').classList.remove('on');$('#dock').classList.remove('on');
+  $('#p').value='';$('#err').textContent='';
+  login.style.display='flex';
+  void login.offsetWidth;
+  login.classList.remove('out');
+  window.scrollTo(0,0);
+}
+function fail(m){
+  $('#err').textContent=m;
+  lcard.classList.remove('shake');void lcard.offsetWidth;lcard.classList.add('shake');
+}
+$('#eye').addEventListener('click',()=>{
+  const p=$('#p'),show=p.type==='password';
+  p.type=show?'text':'password';$('#eye').textContent=show?'隐藏':'显示';
+});
+$('#loginForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const u=$('#u').value.trim(),p=$('#p').value,btn=$('#loginBtn');
+  if(!u||!p){fail('请输入用户名和密码');return}
+  btn.disabled=true;btn.textContent='登录中…';
+  setTimeout(()=>{
+    btn.disabled=false;btn.textContent='登录';
+    if(Object.prototype.hasOwnProperty.call(ACCOUNTS,u)&&ACCOUNTS[u]===p){
+      $('#err').textContent='';store.set('xy_user',u);enter(u);
+    }else fail('用户名或密码错误');
+  },500);
+});
+const saved=store.get('xy_user');
+if(saved&&Object.prototype.hasOwnProperty.call(ACCOUNTS,saved))enter(saved,true);
+</script>
+</body>
+</html>
