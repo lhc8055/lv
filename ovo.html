@@ -509,6 +509,7 @@ async function loadProducts(){
     tags:Array.isArray(p.tags)?p.tags:[],
     heat:Number(p.heat||0),
     sales:Number(p.sales||0),
+    qq:p.qq||'',
     color:['#4aa8ff,#0a84ff','#ffb340,#ff9500','#8e7bff,#5e5ce6','#46d3c4,#1fb5a6','#ff7ab0,#ff4f8b','#b8a4ff,#8e5cf0'][i%6]
   }));
 }
@@ -754,6 +755,7 @@ function renderProducts(){
     <label class="field"><span>分类（cat）</span><input data-k="cat" value="${esc(p.cat)}"></label>
     <label class="field"><span>段位（rank）</span><input data-k="rank" value="${esc(p.rank)}"></label>
     <label class="field"><span>单位（unit）</span><input data-k="unit" value="${esc(p.unit)}"></label>
+    <label class="field"><span>专属 QQ 群链接（用户付款后跳转加群）</span><input data-k="qq" type="url" inputmode="url" placeholder="https://qm.qq.com/q/xxxxxx" value="${esc(p.qq||'')}"></label>
     <label class="field"><span>标签</span><div class="chipbox">${p.tags.map(t=>`<span class="t">${esc(t)}</span>`).join('')||'<span class="t" style="color:var(--ink-3)">无</span>'}</div></label>
     <div class="p-foot"><button class="btn primary" data-save>保存到 Supabase</button></div></div>`).join(''):'<div class="empty">暂无商品</div>';
 }
@@ -770,7 +772,7 @@ $('#productGrid').addEventListener('click',async e=>{
     const fresh=await sbApi("/rest/v1/config?key=eq.products&select=data");
     const arr=(fresh&&fresh[0]&&fresh[0].data)||[];
     const idx=arr.findIndex(x=>String(x.id)===String(p.id));
-    if(idx>=0){arr[idx]={...arr[idx],name:p.name,price:p.price,cat:p.cat,rank:p.rank,unit:p.unit,title:p.title};}
+    if(idx>=0){arr[idx]={...arr[idx],name:p.name,price:p.price,cat:p.cat,rank:p.rank,unit:p.unit,qq:p.qq,title:p.title};}
     await sbApi("/rest/v1/config?key=eq.products",{method:"PATCH",body:{data:arr}});
     $('.p-top b',card).textContent=p.title;
     $('.p-top small',card).textContent=`${esc(gamesMap[p.game]||p.game||'未分类')} · ${esc(p.cat||'')} · 销量 ${p.sales}`;
