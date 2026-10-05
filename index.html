@@ -1203,7 +1203,7 @@ async function refreshUserDataFromCloud(){
     // 合并前快照：记录本地券ID/收藏ID，用于检测新增项
     const _couponsBefore=new Set((store.coupons||[]).map(c=>c.id));
     const _favsBefore=new Set(store.favs||[]);
-    const beforeOrders=JSON.stringify(store.orders.map(o=>o.no+":"+o.status+":"+(o.contactUrl||"")));
+    const beforeOrders=JSON.stringify(store.orders.map(o=>o.no+":"+o.status+":"+(o.grabbedBy||"")));
     // 合并：云端为主，仅保留本地「新增」项（云端已删除的不再回写）
     store.orders=mergeOrdersPull(cloudOrders,store.orders,snap.orders);
     store.coupons=mergeCouponsPull(cloudCoupons,store.coupons,snap.coupons,snap.snapTs||0);
@@ -1216,7 +1216,7 @@ async function refreshUserDataFromCloud(){
     // 检测变化：新增的券 / 新增的收藏 / 订单变化
     const newCouponIds=(store.coupons||[]).filter(c=>!_couponsBefore.has(c.id)).map(c=>c.id);
     const newFavIds=(store.favs||[]).filter(id=>!_favsBefore.has(id));
-    const ordersChanged=beforeOrders!==JSON.stringify(store.orders.map(o=>o.no+":"+o.status+":"+(o.contactUrl||"")));
+    const ordersChanged=beforeOrders!==JSON.stringify(store.orders.map(o=>o.no+":"+o.status+":"+(o.grabbedBy||"")));
     return {
       ordersChanged,
       newCouponIds,
@@ -2275,14 +2275,14 @@ function serveLines(p){
   }else{
     lines.push("本商品为娱乐陪玩，按小时计费，可在备注中指定陪玩风格（甜妹 / 御姐 / 技术流）");
   }
-  lines.push("下单后请保持联系方式畅通，客服会在5分钟内为你安排陪玩并发送开黑房间号");
-  lines.push("全程平台担保，陪玩接单后开始计费，服务完成确认后款项才会结算给陪玩");
+  lines.push("下单时请填写游戏ID和QQ号，支付后打手会直接通过QQ联系你");
+  lines.push("全程平台担保，打手接单后开始服务，服务完成确认后款项才会结算给打手");
   if(p.zone==="tech"){
     lines.push("打手均为实名认证，支持全程录屏，发现使用外挂全额退款并封号");
   }else{
     lines.push("支持连麦聊天、点歌互动；超时15分钟内按半小时计，超出按1小时计");
   }
-  lines.push("区服："+g.servers.join("、")+"，下单时请选择对应区服并填写游戏昵称");
+  lines.push("区服："+g.servers.join("、")+"，下单时请选择对应区服并填写游戏ID");
   return lines;
 }
 function isServeHeader(l){
@@ -2348,18 +2348,14 @@ function viewDetail(params){
 
 function orderActions(o){
   const btn=(cls,action,text,extra)=>'<button type="button" class="oc-btn '+cls+'" data-action="'+action+'" data-no="'+o.no+'"'+(extra||"")+'>'+text+'</button>';
-  // pending：付款后等客服在 OVO 后台填链接接单，用户此时不能联系打手
-  // ongoing：客服已接单，可点"联系打手"跳 o.contactUrl（订单级，由后台为该订单配置）
-  // 打手端接单后设置 grabbedBy，此时显示打手已接单
-  const contactBtn = o.contactUrl
-    ? btn("","contact-player","联系打手")
-    : o.grabbedBy
-      ? '<button type="button" class="oc-btn gray" disabled>打手 '+esc(o.grabbedBy)+' 已接单</button>'
-      : '<button type="button" class="oc-btn gray" disabled>待接单</button>';
+  // 打手直接联系老板：打手接单后通过订单里的 QQ 号加老板，不再需要人工配置群链接
+  const grabbedTag = o.grabbedBy
+    ? '<button type="button" class="oc-btn gray" disabled>打手 '+esc(o.grabbedBy)+' 已接单</button>'
+    : '<button type="button" class="oc-btn gray" disabled>等待打手接单</button>';
   switch(o.status){
     case "unpaid":return btn("gray","order-cancel","取消订单")+btn("solid","order-pay","去支付");
-    case "pending":return btn("gray","order-refund","申请退款")+'<button type="button" class="oc-btn gray" disabled>等待客服接单</button>';
-    case "ongoing":return contactBtn+btn("solid","order-complete","确认完成");
+    case "pending":return btn("gray","order-refund","申请退款")+grabbedTag;
+    case "ongoing":return grabbedTag+btn("solid","order-complete","确认完成");
     case "done":return o.rating?"":btn("solid","order-rate","去评价");
     case "refunding":return '<button type="button" class="oc-btn gray" disabled>退款处理中…</button>';
     default:return btn("","detail","再次下单",' data-id="'+o.id+'"');
@@ -2369,14 +2365,14 @@ function ordersBodyHtml(){
   const list=store.orders.slice().reverse().filter(o=>{
     if(orderFilter==="all") return true;
     if(orderFilter==="after") return o.status==="refunding"||o.status==="refunded";
-    // 显示状态过滤：ongoing 但客服未配置 contactUrl 且无打手接单时归到"待接单"筛选
-    const ds=(o.status==='ongoing'&&!o.contactUrl&&!o.grabbedBy)?'pending':o.status;
+    // 显示状态过滤：ongoing 但无打手接单时归到"待接单"筛选
+    const ds=(o.status==='ongoing'&&!o.grabbedBy)?'pending':o.status;
     return ds===orderFilter;
   });
-  if(list.length){
+  if(list){
     return '<div class="order-list">'+list.map((o,i)=>{
-      // 显示状态：ongoing 但客服未配置 contactUrl 且无打手接单时仍按"待接单"显示（与按钮文案一致）
-      const dispStatus=(o.status==='ongoing'&&!o.contactUrl&&!o.grabbedBy)?'pending':o.status;
+      // 显示状态：ongoing 但无打手接单时仍按"待接单"显示
+      const dispStatus=(o.status==='ongoing'&&!o.grabbedBy)?'pending':o.status;
       const st=STATUS[dispStatus]||{text:o.status,cls:""};
       const rate=o.rating?'<div class="oc-rate">我的评价 <span class="stars-mini">'+"★".repeat(o.rating.star)+"☆".repeat(5-o.rating.star)+'</span> '+esc(o.rating.text||"")+'</div>':"";
       const rawAmt=(Number(o.price)||0)*(Number(o.qty)||1);
@@ -2391,7 +2387,7 @@ function ordersBodyHtml(){
       return '<div class="order-card" style="--i:'+Math.min(i,6)+'"><div class="oc-top"><span>订单号 '+esc(o.no)+'</span><span class="oc-status '+st.cls+'">'+st.text+'</span></div>'+
         '<div class="oc-body"><div class="oc-img">'+imgPlain(o.img,"")+'</div>'+
         '<div class="oc-info"><div class="oc-name">'+esc(o.title)+'</div>'+
-        '<div class="oc-meta">'+esc(o.gameName)+' · '+esc(o.server)+' · ×'+o.qty+o.unit+(o.note?'<br>备注：'+esc(o.note):"")+'<br>'+fmtTime(o.ts)+'</div></div>'+
+        '<div class="oc-meta">'+esc(o.gameName)+' · '+esc(o.server)+' · ×'+o.qty+o.unit+(o.gameId?'<br>游戏ID：'+esc(o.gameId):"")+(o.qq?' · QQ：'+esc(o.qq):"")+(o.note?'<br>备注：'+esc(o.note):"")+'<br>'+fmtTime(o.ts)+'</div></div>'+
         '<div class="oc-right">¥'+o.price+'/'+o.unit+'</div></div>'+couponLine+rate+
         '<div class="oc-foot"><span class="oc-total">合计 <b>¥'+totalAmt+'</b></span><span class="oc-actions">'+orderActions(o)+'</span></div></div>';
     }).join("")+'</div><div class="no-more">没有更多了</div>';
@@ -2591,7 +2587,9 @@ function openBuy(p){
     '<div class="confirm-goods">'+imgPlain(p.img,"")+'<div style="min-width:0"><div class="cg-name">'+esc(p.title)+'</div><div class="cg-price">¥'+p.price+'/'+p.unit+'</div></div></div>'+
     '<div class="confirm-line"><span>游戏区服</span><select id="cfServer" class="cf-select">'+opts+'</select></div>'+
     '<div class="confirm-line"><span>购买'+(p.unit==="局"?"局数":"时长")+'</span><div class="stepper"><button data-action="cf-minus">−</button><span class="q-num" id="cfQty">'+qty+'</span><button data-action="cf-plus">+</button></div></div>'+
-    '<div class="field" style="margin:6px 0 0"><input id="cfNote" maxlength="30" placeholder="备注：游戏昵称 / 指定陪玩风格（选填）"></div>'+
+    '<div class="field" style="margin:6px 0 0"><input id="cfGameId" maxlength="30" placeholder="游戏ID / 昵称（必填，打手加你用）"></div>'+
+    '<div class="field" style="margin:6px 0 0"><input id="cfQQ" maxlength="11" inputmode="numeric" placeholder="QQ号（必填，打手直接联系你）"></div>'+
+    '<div class="field" style="margin:6px 0 0"><input id="cfNote" maxlength="30" placeholder="备注：指定陪玩风格等（选填）"></div>'+
     '<div class="confirm-line" style="padding-top:14px;flex-direction:column;align-items:stretch"><span style="margin-bottom:8px">支付方式</span>'+
       '<div class="pay-methods"><div class="pay-method selected" data-action="sel-pay" data-pay="alipay">'+ALIPAY_SVG+'<span>支付宝</span></div>'+
       '<div class="pay-method wx" data-action="sel-pay" data-pay="wxpay">'+WX_SVG+'<span>微信支付</span></div></div></div>'+
@@ -2995,11 +2993,8 @@ const ACTIONS={
   "contact-service"(){openService();},
   "go-dashou"(){window.open("dashou.html","_blank","noopener");},
   "contact-player"(el){
-    // 跳该订单的联系打手链接（由客服在 OVO 后台接单时为该订单填写，存于 user_data.orders[].contactUrl）
-    const no=el&&el.dataset.no;const o=no?findOrder(no):null;
-    const link=o&&o.contactUrl;
-    if(link){closeSheet();window.open(link,"_blank","noopener");return;}
-    toast("客服未配置联系打手链接，请稍后重试或联系人工客服");
+    // 已改为打手直接通过 QQ 联系老板，不再需要人工配置群链接
+    toast("打手接单后会通过QQ直接联系你，请保持QQ畅通");
   },
   "human-service"(){
     // 改为直接跳转 QQ 客服（不再走"接入排队"假流程）
@@ -3183,13 +3178,20 @@ const ACTIONS={
         }
       }
       const payType=($(".pay-method.selected")||{dataset:{}}).dataset.pay||"alipay";
+      // 必填校验：游戏ID/昵称 + QQ号（打手直接联系老板用）
+      const gameId=($("#cfGameId")&&$("#cfGameId").value||"").trim();
+      const qq=($("#cfQQ")&&$("#cfQQ").value||"").trim();
+      if(!gameId){toast("请填写游戏ID/昵称",false);return;}
+      if(!qq){toast("请填写QQ号",false);return;}
+      if(!/^\d{5,11}$/.test(qq)){toast("QQ号格式不正确",false);return;}
       const no="XY"+String(Date.now()).slice(-8)+Math.floor(Math.random()*90+10);
       const order={
         no,id:p.id,title:p.title,img:p.img,gameName:gameById(p.game).name,
         price:p.price,qty:r.qty,unit:p.unit,server:$("#cfServer").value,note:($("#cfNote").value||"").trim(),
         total:r.total,ts:Date.now(),status:"unpaid",payType,couponId:r.coupon?r.coupon.id:null,
         rank:p.rank||"",tags:(p.tags||[]).slice(),desc:p.desc||"",cat:p.cat||"",game:p.game,
-        customerName:(store.user&&store.user.name)||"",customerContact:(store.user&&store.user.contact)||""
+        gameId,qq,
+        customerName:(store.user&&store.user.name)||"",customerContact:qq
       };
       if(r.coupon){
         const c=store.coupons.find(x=>x.id===r.coupon.id);
@@ -3298,8 +3300,8 @@ function queryPaid(no){
 function markPaid(o,forceJump){
   o.status="pending";o.paidAt=Date.now();
   saveStore();
-  // 付款后只 toast：客服在 OVO 后台接单后，订单才进入「进行中」，那时用户才能点"联系打手"
-  toast("支付成功，订单已提交，等待客服接单");
+  // 付款后进入待接单，打手会在打手端看到订单并通过 QQ 直接联系老板
+  toast("支付成功，已提交订单，打手将通过QQ联系你");
   if(!forceJump&&parseHash().name==="orders") render(true);
   else setTimeout(()=>go("#/orders?f=pending"),800);
 }

@@ -339,11 +339,12 @@ function mapOrder(o,ownerUid){
   // 标题：优先用 cat+rank，否则 title
   let title=o.title||o.cat||'';
   if(o.rank&&!title.includes(o.rank)) title=(o.cat||'')+' · '+o.rank;
-  // 描述：商品描述 + 买家备注 + 区服
+  // 描述：商品描述 + 买家备注 + 区服 + 游戏ID
   const parts=[];
   if(o.desc) parts.push(o.desc);
   if(o.note) parts.push('备注：'+o.note);
   if(o.server) parts.push('区服：'+o.server);
+  if(o.gameId) parts.push('游戏ID：'+o.gameId);
   const desc=parts.join('　')||'暂无描述';
   return {
     id:o.no, zone,
@@ -352,8 +353,9 @@ function mapOrder(o,ownerUid){
     desc,
     price:Math.round(Number(o.total)||0),
     im,
-    os:'ios', // 客户系统暂未区分操作系统，默认展示
-    contact:o.customerContact||'',
+    os:'ios',
+    contact:o.customerContact||o.qq||'',
+    gameId:o.gameId||'',
     customerName:o.customerName||'客户',
     ct:o.ts||Date.now(),
     ownerUid,
@@ -370,7 +372,7 @@ function hallCard(o){
   return `<article class="card glass rim${fresh?' fresh':''}" data-id="${o.id}" data-zone="${o.zone}">
 <div class="c-top"><span class="mode">${o.mode}</span><span class="new">新单</span><span class="znm">${ZN[o.zone]}</span></div>
 <h3>${o.title}</h3><p class="desc">${o.desc}</p>
-<div class="info"><div><span>订单号</span><b>${o.id}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>数量</span><b>${o.qty}${o.unit}</b></div><div><span>客户</span><b>${o.customerName}</b></div></div>
+<div class="info"><div><span>订单号</span><b>${o.id}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>数量</span><b>${o.qty}${o.unit}</b></div><div><span>游戏ID</span><b>${o.gameId||'未填'}</b></div></div>
 <div class="c-foot"><div class="chips">${chips(o)}</div><div class="act"><div class="price"><small>¥</small>${o.price}</div><button class="grab" data-act="grab" data-id="${o.id}">抢单</button></div></div>
 </article>`;
 }
@@ -380,6 +382,7 @@ function mineCard(o){
 <div class="c-top"><span class="mode">${o.mode}</span><span class="znm">${ZN[o.zone]}</span><span class="st ${done?'done':'doing'}">${done?'已完成':'进行中'}</span></div>
 <h3>${o.title}</h3><p class="desc">${o.desc}</p>
 <div class="info"><div><span>订单号</span><b>${o.id}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>抢单时间</span><b>${fmt(o.gt)}</b></div><div><span>订单金额</span><b>¥${o.price}</b></div></div>
+${o.gameId?`<div class="contact">${ic('i-qq','im qq')}<div><span>游戏ID</span><b>${o.gameId}</b></div><button class="mini" data-act="copy" data-v="${o.gameId}">复制</button></div>`:''}
 <div class="contact">${ic(o.im==='qq'?'i-qq':'i-wechat','im '+o.im)}<div><span>${contactLabel(o.contact)}</span><b>${o.contact||'未提供'}</b></div>${o.contact?`<button class="mini" data-act="copy" data-v="${o.contact}">复制</button>`:''}</div>
 <div class="c-foot"><div class="chips">${chips(o)}</div>${done?'':`<button class="grab" data-act="done" data-id="${o.id}">完成订单</button>`}</div>
 </article>`;
