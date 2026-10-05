@@ -347,34 +347,25 @@ button.pf-header:active{opacity:.8}
 .detail-bar .db-buy:active{transform:scale(.97)}
 
 .tabbar{position:fixed;left:50%;transform:translate3d(-50%,0,0);backface-visibility:hidden;bottom:0;width:100%;max-width:460px;height:calc(var(--tab-h) + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);
-  background:rgba(255,255,255,.98);display:flex;border-top:1px solid var(--line);z-index:25}
-.tabbar .tab{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:#9aa0c4;min-height:var(--tab-h);touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;contain:layout style;transition:color .24s var(--ease-std)}
-.tabbar .tab .t-ico{display:grid;place-items:end center;transform-origin:50% 100%}
-.tabbar .tab .t-ico img{grid-area:1/1;object-fit:contain;pointer-events:none;-webkit-user-drag:none;transition:opacity .2s var(--ease-std)}
+  background:#fff;display:flex;border-top:1px solid var(--line);z-index:25;contain:layout paint}
+.tabbar .tab{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:#b0a08a;min-height:var(--tab-h);touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;contain:layout style paint;transition:color .2s var(--ease-std)}
+.tabbar .tab .t-ico{display:grid;place-items:end center;transform-origin:50% 100%;will-change:transform}
+.tabbar .tab .t-ico img{grid-area:1/1;object-fit:contain;pointer-events:none;-webkit-user-drag:none}
 .tabbar .tab .t-txt{display:block;transform-origin:50% 100%}
 .tabbar .t-home img{width:22px;height:22px}
 .tabbar .t-cat img,.tabbar .t-me img{width:24px;height:24px}
 .tabbar .tab .ic-on{opacity:0}
 .tabbar .tab.on .ic-off{opacity:0}
 .tabbar .tab.on .ic-on{opacity:1}
-.tabbar .tab.on{color:var(--pri);font-weight:700}
-.tabbar .tab.pop .t-ico{will-change:transform;animation:tabJelly .6s var(--ease-jelly) both}
-.tabbar .tab.pop .t-txt{will-change:transform;animation:tabTxt .5s var(--ease-jelly) both}
+.tabbar .tab.on{color:#f97316;font-weight:700}
+.tabbar .tab.pop .t-ico{animation:tabJelly .5s var(--ease-jelly) both}
 @keyframes tabJelly{
   0%{transform:none}
-  18%{transform:translate3d(0,-6px,0) scale(.9,1.14)}
-  40%{transform:translate3d(0,0,0) scale(1.08,.92)}
-  60%{transform:translate3d(0,-1.5px,0) scale(.97,1.04)}
-  80%{transform:scale(1.01,.995)}
+  30%{transform:translate3d(0,-5px,0) scale(.92,1.1)}
+  60%{transform:translate3d(0,0,0) scale(1.05,.95)}
   100%{transform:none}
 }
-@keyframes tabTxt{
-  0%{transform:none}
-  25%{transform:translate3d(0,-1.5px,0) scale(.96,1.07)}
-  55%{transform:scale(1.03,.97)}
-  100%{transform:none}
-}
-@media(prefers-reduced-motion:reduce){.tabbar .tab.pop .t-ico,.tabbar .tab.pop .t-txt{animation:none}}
+@media(prefers-reduced-motion:reduce){.tabbar .tab.pop .t-ico{animation:none}}
 .tabbar.hide{display:none}
 html.fx-run .c-shine,html.fx-run .bs-url{animation-play-state:paused}
 .swap-in{animation:swapIn .26s var(--ease-out) both}
@@ -1387,11 +1378,6 @@ function migrateOrders(){
 loadStore();
 dedupeCoupons();
 if(store.user&&store.user.uid){
-  // 本地缓存已有数据（loadStore 已加载），先快照，再与云端合并
-  const _localOrders=JSON.parse(JSON.stringify(store.orders||[]));
-  const _localCoupons=JSON.parse(JSON.stringify(store.coupons||[]));
-  const _localFavs=JSON.parse(JSON.stringify(store.favs||[]));
-  const _localFbs=JSON.parse(JSON.stringify(store.feedbacks||[]));
   // 保存旧的 snapTs（上次同步完成时间），loadUserData 会覆盖为新时间
   // 用旧 snapTs 合并：本次会话新领取的券（updatedAt > 旧 snapTs）才不会被云端删除覆盖
   const _oldSnapTs=getCloudSnapTs(store.user.uid);
@@ -1400,17 +1386,23 @@ if(store.user&&store.user.uid){
       // 云端可达：合并云端与本地（订单/优惠券/收藏/反馈全部合并）
       // 用旧 snapTs 判断本地新增（本次会话领取的），云端已删除的不再回写
       const snap=getCloudSnap(store.user.uid);
-      store.orders=mergeOrdersPull(saved.orders,_localOrders,snap.orders);
-      store.coupons=mergeCouponsPull(saved.coupons,_localCoupons,snap.coupons,_oldSnapTs);
-      store.favs=mergeSetPull(saved.favs,_localFavs,snap.favs,x=>x);
-      store.feedbacks=mergeSetPull(saved.feedbacks,_localFbs,snap.feedbacks,x=>x.ts);
+      // 合并云端与本地：使用当前 store（而非启动时的快照），避免覆盖异步加载期间
+      // 用户产生的本地变更（如支付回调 markPaid 将订单状态从 unpaid 改为 pending）。
+      // mergeOrdersPull/mergeSetPull 内部通过 lastCloud 快照区分「本地新增」与「云端已删除」，
+      // pickOrder 会保留状态更靠后的一方，因此本地 pending 不会被云端旧的 unpaid 覆盖。
+      store.orders=mergeOrdersPull(saved.orders,store.orders,snap.orders);
+      store.coupons=mergeCouponsPull(saved.coupons,store.coupons,snap.coupons,_oldSnapTs);
+      store.favs=mergeSetPull(saved.favs,store.favs,snap.favs,x=>x);
+      store.feedbacks=mergeSetPull(saved.feedbacks,store.feedbacks,snap.feedbacks,x=>x.ts);
       store.invitedBy=saved.invitedBy||store.invitedBy||"";
       store.inviteFirstOrderDone=!!saved.inviteFirstOrderDone||store.inviteFirstOrderDone;
       store.registeredAt=saved.registeredAt||store.registeredAt;
       dedupeCoupons();
       saveStore(); // 合并后同步到云端（内部读-改-写，不会覆盖）
+      // 合并可能改变当前页面展示的数据（如跨设备订单状态更新），重新渲染保证 UI 同步
+      if(window._dataReady) render(true);
     }
-    // 云端不可达时：保留本地数据（_localOrders 等），不清空
+    // 云端不可达时：保留本地当前 store 数据，不清空
     // 无论云端是否可达，初始加载已完成，解锁后台同步
     if(window._setInitialSyncDone) window._setInitialSyncDone();
   }).catch(()=>{
@@ -1847,11 +1839,16 @@ function setFab(show,instant){
 }
 
 function tabPop(t){
+  // 减少动画：在 reduced-motion 或低端设备上直接跳过弹跳动画
+  if(FX_TIER<=1||(window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches)) return;
+  // 用双 rAF 重启动画，替代 void offsetWidth 的强制同步回流（避免掉帧）
   t.classList.remove("pop");
-  void t.offsetWidth;
-  t.classList.add("pop");
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    if(!t.isConnected) return;
+    t.classList.add("pop");
+  }));
   clearTimeout(t._pt);
-  t._pt=setTimeout(()=>t.classList.remove("pop"),680);
+  t._pt=setTimeout(()=>t.classList.remove("pop"),560);
 }
 
 function centerOrderTab(smooth){
@@ -1878,7 +1875,8 @@ function renderNow(keepScroll){
     const on=t.dataset.route===TAB_OF[r.name];
     const was=t.classList.contains("on");
     t.classList.toggle("on",on);
-    if(on&&!was&&TAB_OF[lastRoute]&&TAB_OF[lastRoute]!==TAB_OF[r.name]) tabPop(t);
+    // tab 从非激活变为激活时播放弹跳，与页面切换同步（在 view-transition update 阶段触发）
+    if(on&&!was) tabPop(t);
   });
   const y=window.scrollY;
   const prev=lastRoute,leftId=curDetailId;
@@ -2931,9 +2929,9 @@ const ACTIONS={
   route(el){
     const rt=el.dataset.route;
     if(rt==="category") Object.assign(catState,{game:"val",zone:"all",q:"",sort:"default"});
-    if(!el.classList.contains("on")) document.querySelectorAll(".tabbar .tab").forEach(t=>t.classList.toggle("on",t===el));
-    tabPop(el);
-    requestAnimationFrame(()=>go("#/"+rt));
+    // 不在此处提前切换 tab 高亮/弹跳，统一交由 renderNow 在 view-transition 的 update 阶段处理，
+    // 使 tab 状态变化与页面内容切换同步发生，避免"tab 先亮、页面后变"的错位感
+    go("#/"+rt);
   },
   login(){openLogin();},
   "aze-login"(el){
