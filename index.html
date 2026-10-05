@@ -3034,6 +3034,18 @@ const ACTIONS={
   },
   "order-complete"(el){
     const o=findOrder(el.dataset.no);
+    if(!o) return;
+    openSheet('<h3>确认完成</h3>'+
+      '<div class="qs-tip" style="text-align:left;line-height:1.6">'+
+        '订单号：'+esc(o.no)+'<br>'+
+        '商品：'+esc(o.title)+'<br>'+
+        '请确认打手已完成服务，确认后订单将变为「已完成」状态。'+
+      '</div>'+
+      '<button class="m-btn" data-action="do-complete" data-no="'+o.no+'">确认完成</button>'+
+      '<button type="button" class="m-btn gray" data-action="close-sheet" style="margin-top:8px">取消</button>');
+  },
+  "do-complete"(el){
+    const o=findOrder(el.dataset.no);
     if(o){
       o.status="done";
       if(store.invitedBy&&!store.inviteFirstOrderDone){
@@ -3048,6 +3060,7 @@ const ACTIONS={
       }
       saveStore();render(true);
     }
+    closeSheet();
   },
   "order-rate"(el){openRate(el.dataset.no);},
   "rate-star"(el){rateStar=parseInt(el.dataset.v,10);paintStars(rateStar);},
