@@ -724,7 +724,7 @@ const DEFAULT_PRODUCTS=[
 ];
 DEFAULT_PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
 
-let PRODUCTS=DEFAULT_PRODUCTS.map(p=>({...p,qq:p.qq||"",tags:(p.tags||[]).slice()}));
+let PRODUCTS=DEFAULT_PRODUCTS.map(p=>({...p,tags:(p.tags||[]).slice()}));
 PRODUCTS.forEach(p=>{p.title="【"+p.cat+"】"+p.name;});
 
 const IMG_CACHE_DB="xy_img_cache";
@@ -945,7 +945,7 @@ async function loadSiteData(){
         img:p.img||"", tags:(p.tags||[]).slice(),
         couponEnabled:p.couponEnabled!==false,
         heat:Number(p.heat)||0, sales:Number(p.sales)||0,
-        qq:p.qq||"", title:"【"+p.cat+"】"+p.name
+        title:"【"+p.cat+"】"+p.name
       }));
       PRODUCTS.length=0;
       newProds.forEach(p=>PRODUCTS.push(p));
@@ -1077,24 +1077,6 @@ async function sbSelect(uid,ms){
 async function sbUpsert(row,ms){
   return await sbRequest("/rest/v1/"+SB_TABLE,{method:"POST",body:row,ms});
 }
-// 拉取后台 config.products 里的「专属 QQ 群链接」字段，按商品 id 合并进 PRODUCTS。
-// 由 OVO 后台 / 88sss.top/ovo 填入并保存，前端付款后跳转加群用。
-async function loadProductQQGroups(){
-  try{
-    const rows=await sbRequest("/rest/v1/config?key=eq.products&select=data",{method:"GET",ms:4000});
-    const arr=(Array.isArray(rows)&&rows[0]&&rows[0].data)||[];
-    if(!arr.length) return;
-    const map={};arr.forEach(p=>{if(p&&p.id!=null&&p.qq) map[p.id]=p.qq;});
-    PRODUCTS.forEach(p=>{if(map[p.id]) p.qq=map[p.id];});
-  }catch(e){
-    console.warn("[Supabase] 拉取商品 QQ 群链接失败，使用本地默认",e&&e.message);
-  }
-}
-// 由订单号查商品对象的 qq 链接（先找订单 → productById → p.qq）
-function qqLinkForOrder(no){
-  const o=findOrder(no);if(!o) return "";
-  const p=productById(o.id);return (p&&p.qq)||"";
-}
 console.log("[Supabase] 直连客户端已就绪，端点:",SB_BASE_URLS.join(", "));
 const store={user:null,orders:[],coupons:[],favs:[],feedbacks:[],noticeClosed:false,homeGame:"val",cancelClearedAt:0};
 const catState={game:"val",zone:"all",sort:"default",q:""};
@@ -1220,7 +1202,7 @@ async function refreshUserDataFromCloud(){
     // 合并前快照：记录本地券ID/收藏ID，用于检测新增项
     const _couponsBefore=new Set((store.coupons||[]).map(c=>c.id));
     const _favsBefore=new Set(store.favs||[]);
-    const beforeOrders=JSON.stringify(store.orders.map(o=>o.no+":"+o.status));
+    const beforeOrders=JSON.stringify(store.orders.map(o=>o.no+":"+o.status+":"+(o.contactUrl||"")));
     // 合并：云端为主，仅保留本地「新增」项（云端已删除的不再回写）
     store.orders=mergeOrdersPull(cloudOrders,store.orders,snap.orders);
     store.coupons=mergeCouponsPull(cloudCoupons,store.coupons,snap.coupons,snap.snapTs||0);
@@ -1233,7 +1215,7 @@ async function refreshUserDataFromCloud(){
     // 检测变化：新增的券 / 新增的收藏 / 订单变化
     const newCouponIds=(store.coupons||[]).filter(c=>!_couponsBefore.has(c.id)).map(c=>c.id);
     const newFavIds=(store.favs||[]).filter(id=>!_favsBefore.has(id));
-    const ordersChanged=beforeOrders!==JSON.stringify(store.orders.map(o=>o.no+":"+o.status));
+    const ordersChanged=beforeOrders!==JSON.stringify(store.orders.map(o=>o.no+":"+o.status+":"+(o.contactUrl||"")));
     return {
       ordersChanged,
       newCouponIds,
@@ -2357,10 +2339,15 @@ function viewDetail(params){
 
 function orderActions(o){
   const btn=(cls,action,text,extra)=>'<button type="button" class="oc-btn '+cls+'" data-action="'+action+'" data-no="'+o.no+'"'+(extra||"")+'>'+text+'</button>';
+  // pending：付款后等客服在 OVO 后台填链接接单，用户此时不能联系打手
+  // ongoing：客服已接单，可点"联系打手"跳 o.contactUrl（订单级，由后台为该订单配置）
+  const contactBtn = o.contactUrl
+    ? btn("","contact-player","联系打手")
+    : '<button type="button" class="oc-btn gray" disabled>客服未配置链接</button>';
   switch(o.status){
     case "unpaid":return btn("gray","order-cancel","取消订单")+btn("solid","order-pay","去支付");
-    case "pending":return btn("gray","order-refund","申请退款")+btn("solid","join-qq","加入QQ群");
-    case "ongoing":return btn("","join-qq","加入QQ群")+btn("solid","order-complete","确认完成");
+    case "pending":return btn("gray","order-refund","申请退款")+'<button type="button" class="oc-btn gray" disabled>等待客服接单</button>';
+    case "ongoing":return contactBtn+btn("solid","order-complete","确认完成");
     case "done":return o.rating?"":btn("solid","order-rate","去评价");
     case "refunding":return '<button type="button" class="oc-btn gray" disabled>退款处理中…</button>';
     default:return btn("","detail","再次下单",' data-id="'+o.id+'"');
@@ -2991,15 +2978,11 @@ const ACTIONS={
   },
   "contact-service"(){openService();},
   "contact-player"(el){
-    // 优先跳转该商品专属 QQ 群（由 OVO 后台填入并保存到 Supabase config.products.qq）
-    const no=el&&el.dataset.no;const link=no?qqLinkForOrder(no):"";
+    // 跳该订单的联系打手链接（由客服在 OVO 后台接单时为该订单填写，存于 user_data.orders[].contactUrl）
+    const no=el&&el.dataset.no;const o=no?findOrder(no):null;
+    const link=o&&o.contactUrl;
     if(link){closeSheet();window.open(link,"_blank","noopener");return;}
-    toast("该商品暂未配置 QQ 群，请联系人工客服");
-  },
-  "join-qq"(el){
-    const no=el&&el.dataset.no;const link=no?qqLinkForOrder(no):"";
-    if(link){closeSheet();window.open(link,"_blank","noopener");return;}
-    toast("该商品暂未配置 QQ 群，请联系人工客服");
+    toast("客服未配置联系打手链接，请稍后重试或联系人工客服");
   },
   "human-service"(){
     // 改为直接跳转 QQ 客服（不再走"接入排队"假流程）
@@ -3284,23 +3267,10 @@ function queryPaid(no){
 function markPaid(o,forceJump){
   o.status="pending";o.paidAt=Date.now();
   saveStore();
-  // 支付成功后弹窗引导用户加入该商品的专属 QQ 群（链接由 OVO 后台填到 Supabase config.products.qq）
-  const p=productById(o.id);
-  const qq=(p&&p.qq)||"";
-  if(qq){
-    openSheet('<h3>支付成功，请加入专属 QQ 群</h3>'+
-      '<div class="qs-tip" style="text-align:left;line-height:1.6">'+
-        '订单号：'+esc(o.no)+'<br>'+
-        '商品：'+esc(o.title)+'<br>'+
-        '进群后由群内客服对接并安排陪玩/打手，请在群内提供订单号与时段。'+
-      '</div>'+
-      '<a class="m-btn" href="'+esc(qq)+'" target="_blank" rel="noopener" data-action="close-sheet">点击加入 QQ 群</a>'+
-      '<button type="button" class="m-btn gray" data-action="close-sheet" style="margin-top:8px">稍后加群，去订单页</button>');
-  }else{
-    toast("支付成功！订单已提交");
-  }
+  // 付款后只 toast：客服在 OVO 后台接单后，订单才进入「进行中」，那时用户才能点"联系打手"
+  toast("支付成功，订单已提交，等待客服接单");
   if(!forceJump&&parseHash().name==="orders") render(true);
-  else setTimeout(()=>go("#/orders?f=pending"),qq?1500:800);
+  else setTimeout(()=>go("#/orders?f=pending"),800);
 }
 let _pollTimer=null;
 function pollUnpaidOrders(){
@@ -3496,7 +3466,6 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
   showPageLoader();
   primeMany([IMG.banner,IMG.hot,IMG.all].concat(GAMES.map(g=>g.icon)),6,true);
   await loadSiteData();
-  loadProductQQGroups(); // 异步叠加 OVO 后台填的商品 QQ 群链接，不阻塞首屏
   migrateOrders();
   // 优化登录/支付回调体验：URL 含回调参数时优先处理，跳过图片预加载等待
   // 登录回调的 fetch 与 render 并行，避免从QQ授权回来后还要等图片预加载
@@ -3528,11 +3497,9 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
         // 版本变了，重新加载配置（包括弹窗）
         await loadSiteData();
       }
-      // 顺带刷新 OVO 后台填的 QQ 群链接（运营可能随时改）
-      loadProductQQGroups();
     }catch(e){}
   },5000);
-  // 跨浏览器实时同步：在订单/优惠券/收藏/个人页每 2 秒从云端拉取
+  // 跨浏览器实时同步：在订单/优惠券/收藏/个人页每 1 秒从云端拉取（接单状态变更响应更快）
   const SYNC_PAGES=["orders","coupons","favs","profile"];
   let _bgSync=false;
   // 初始加载未完成前不允许后台同步，防止本地旧缓存被回写云端
@@ -3569,7 +3536,7 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
       }
     }finally{ _bgSync=false; }
   }
-  setInterval(_doBgSync,2000);
+  setInterval(_doBgSync,1000);
   initPromo();
   document.querySelectorAll(".tabbar img").forEach(i=>{if(i.decode) i.decode().catch(()=>{});});
   setTimeout(()=>primeMany(restImgs(),3,false),300);
