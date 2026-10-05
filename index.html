@@ -335,25 +335,34 @@ button.pf-header:active{opacity:.8}
 .tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:460px;height:calc(var(--tab-h) + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);
   background:rgba(255,255,255,.96);backdrop-filter:blur(12px);display:flex;border-top:1px solid var(--line);z-index:25}
 .tabbar .tab{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:#9aa0c4;min-height:var(--tab-h)}
-.tabbar .tab img{object-fit:contain;transform-origin:50% 100%;transition:transform .28s var(--ease-out)}
-.tabbar .tab .t-txt{display:block;transform-origin:50% 100%}
-.tabbar .tab:active img{transform:scale(.88)}
+.tabbar .tab .t-ico{display:grid;place-items:end center;transform-origin:50% 100%;transition:transform .5s var(--ease-spring);will-change:transform}
+.tabbar .tab .t-ico img{grid-area:1/1;object-fit:contain;transition:opacity .18s var(--ease-std)}
+.tabbar .tab .t-txt{display:block;transform-origin:50% 100%;transition:transform .5s var(--ease-spring)}
+.tabbar .tab:active .t-ico{transform:scale(1.18,.76);transition:transform .12s var(--ease-out)}
+.tabbar .tab:active .t-txt{transform:scale(1.08,.86);transition:transform .12s var(--ease-out)}
 .tabbar .t-home img{width:22px;height:22px}
 .tabbar .t-cat img,.tabbar .t-me img{width:24px;height:24px}
-.tabbar .tab .ic-on{display:none}
-.tabbar .tab.on .ic-off{display:none}
-.tabbar .tab.on .ic-on{display:block}
+.tabbar .tab .ic-on{opacity:0}
+.tabbar .tab.on .ic-off{opacity:0}
+.tabbar .tab.on .ic-on{opacity:1}
 .tabbar .tab.on{color:var(--pri);font-weight:700}
-.tabbar .tab.pop .ic-on{animation:tabBob .44s both}
-.tabbar .tab.pop .t-txt{animation:tabTxt .4s both}
-@keyframes tabBob{
-  0%{transform:scale(.84);animation-timing-function:cubic-bezier(.2,.85,.3,1)}
-  50%{transform:translate3d(0,-3px,0) scale(1.07);animation-timing-function:cubic-bezier(.4,0,.3,1)}
+.tabbar .tab.pop .t-ico{animation:tabJelly .8s cubic-bezier(.3,.7,.4,1) both}
+.tabbar .tab.pop .t-txt{animation:tabTxt .65s cubic-bezier(.3,.7,.4,1) both}
+@keyframes tabJelly{
+  0%{transform:scale(1.2,.74)}
+  16%{transform:translate3d(0,-8px,0) scale(.84,1.22)}
+  34%{transform:translate3d(0,0,0) scale(1.16,.84)}
+  52%{transform:translate3d(0,-3px,0) scale(.94,1.08)}
+  70%{transform:translate3d(0,0,0) scale(1.04,.97)}
+  86%{transform:scale(.99,1.01)}
   100%{transform:none}
 }
 @keyframes tabTxt{
-  0%{transform:translate3d(0,2px,0);opacity:.55;animation-timing-function:cubic-bezier(.2,.85,.3,1)}
-  100%{transform:none;opacity:1}
+  0%{transform:scale(1.1,.84)}
+  24%{transform:translate3d(0,-2px,0) scale(.95,1.1)}
+  50%{transform:scale(1.04,.96)}
+  76%{transform:scale(.99,1.02)}
+  100%{transform:none}
 }
 .tabbar.hide{display:none}
 html.fx-run .c-shine,html.fx-run .bs-url{animation-play-state:paused}
@@ -361,8 +370,8 @@ html.fx-run .c-shine,html.fx-run .bs-url{animation-play-state:paused}
 @keyframes swapIn{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}
 
 /* View Transitions：快照合成，不占主线程 */
-html.vt-tab .tabbar,html.vt-open .tabbar,html.vt-close .tabbar{view-transition-name:vt-tabbar}
-html.vt-tab .fab{view-transition-name:vt-fab}
+html.vt-tab .tabbar,html.vt-open .tabbar,html.vt-close .tabbar,html.vt-local .tabbar{view-transition-name:vt-tabbar}
+html.vt-tab .fab,html.vt-local .fab{view-transition-name:vt-fab}
 ::view-transition-group(vt-tabbar),::view-transition-group(vt-fab){animation:none}
 ::view-transition-old(vt-tabbar),::view-transition-old(vt-fab){display:none}
 ::view-transition-new(vt-tabbar),::view-transition-new(vt-fab){animation:none}
@@ -625,13 +634,13 @@ setTimeout(function(){try{hidePageLoader()}catch(e){var p=document.getElementByI
 
   <nav class="tabbar" id="tabbar">
     <button type="button" class="tab t-home" data-action="route" data-route="home">
-      <img class="ic-off" src="tab-home-off.webp" alt="首页" decoding="async" fetchpriority="high"><img class="ic-on" src="tab-home-on.webp" alt="首页" decoding="async" fetchpriority="high"><span class="t-txt">首页</span>
+      <span class="t-ico"><img class="ic-off" src="tab-home-off.webp" alt="首页" decoding="async" fetchpriority="high"><img class="ic-on" src="tab-home-on.webp" alt="首页" decoding="async" fetchpriority="high"></span><span class="t-txt">首页</span>
     </button>
     <button type="button" class="tab t-cat" data-action="route" data-route="category">
-      <img class="ic-off" src="tab-cat-off.webp" alt="分类" decoding="async" fetchpriority="high"><img class="ic-on" src="tab-cat-on.webp" alt="分类" decoding="async" fetchpriority="high"><span class="t-txt">分类</span>
+      <span class="t-ico"><img class="ic-off" src="tab-cat-off.webp" alt="分类" decoding="async" fetchpriority="high"><img class="ic-on" src="tab-cat-on.webp" alt="分类" decoding="async" fetchpriority="high"></span><span class="t-txt">分类</span>
     </button>
     <button type="button" class="tab t-me" data-action="route" data-route="profile">
-      <img class="ic-off" src="tab-me-off.webp" alt="我的" decoding="async" fetchpriority="high"><img class="ic-on" src="tab-me-on.webp" alt="我的" decoding="async" fetchpriority="high"><span class="t-txt">我的</span>
+      <span class="t-ico"><img class="ic-off" src="tab-me-off.webp" alt="我的" decoding="async" fetchpriority="high"><img class="ic-on" src="tab-me-on.webp" alt="我的" decoding="async" fetchpriority="high"></span><span class="t-txt">我的</span>
     </button>
   </nav>
 
@@ -847,9 +856,11 @@ function restImgs(){
   store.orders.forEach(o=>list.push(o.img));
   return list;
 }
+function _imgHot(url){const k=_imgKeep.get(url);return !!(k&&k.el);}
 function imgTag(url,alt,extra){
   if(!url) return "";
-  return '<img class="im" src="'+esc(srcOf(url))+'" alt="'+esc(alt)+'" decoding="async"'+(extra||"")+' onload="if(!this.classList.contains(\'ok\'))this.className+=\' ok fade\'">';
+  const hot=_imgHot(url);
+  return '<img class="im'+(hot?' ok':'')+'" src="'+esc(srcOf(url))+'" alt="'+esc(alt)+'" decoding="'+(hot?'sync':'async')+'"'+(extra||"")+' onload="if(!this.classList.contains(\'ok\'))this.className+=\' ok fade\'">';
 }
 function imgPlain(url,alt,extra){
   if(!url) return "";
@@ -1806,7 +1817,7 @@ function tabPop(t){
   void t.offsetWidth;
   t.classList.add("pop");
   clearTimeout(t._pt);
-  t._pt=setTimeout(()=>t.classList.remove("pop"),700);
+  t._pt=setTimeout(()=>t.classList.remove("pop"),850);
 }
 
 function centerOrderTab(smooth){
@@ -2024,6 +2035,26 @@ function vtClose(prev){
   root.animate([{transform:"scale(.95)",opacity:.4},{transform:"none",opacity:1}],
     {duration:dur,easing:"cubic-bezier(.32,.72,0,1)",pseudoElement:"::view-transition-new(root)",fill:"both"});
 }
+function routeImgs(r){
+  const n=r.name,list=[];
+  if(n==="home"){
+    const hg=store.homeGame||"val";
+    list.push(IMG.banner,IMG.hot,IMG.all);
+    GAMES.forEach(g=>list.push(g.icon));
+    PRODUCTS.filter(p=>p.game===hg).forEach(p=>list.push(p.img));
+  }else if(n==="category"){
+    GAMES.forEach(g=>list.push(g.icon));
+    filterProducts().slice(0,12).forEach(p=>list.push(p.img));
+  }else if(n==="profile"){
+    const u=store.user;
+    list.push(u&&u.aze&&u.aze.avatar?u.aze.avatar:IMG.avatar);
+  }else if(n==="orders"){
+    store.orders.forEach(o=>list.push(o.img));
+  }else if(n==="favs"){
+    PRODUCTS.filter(p=>store.favs.includes(p.id)).forEach(p=>list.push(p.img));
+  }
+  return list.filter(Boolean);
+}
 function render(keepScroll){
   const r=parseHash(),prev=lastRoute;
   const ok=vtOK()&&prev&&prev!=="detail"&&r.name!=="detail"&&prev!==r.name&&VIEWS[r.name]&&(store.user||!AUTH_ROUTES.includes(r.name));
@@ -2033,7 +2064,8 @@ function render(keepScroll){
   if(SUB_ACT[r.name]&&prev==="profile"&&rc&&Date.now()-rc.t<1500){mode="open";after=()=>vtOpen(rc);}
   else if(SUB_ACT[prev]&&r.name==="profile"){mode="close";after=()=>vtClose(prev);}
   window._vtRect=null;
-  vtStart(mode,()=>renderNow(keepScroll),after);
+  const pre=routeImgs(r);
+  vtStart(mode,()=>pre.length?Promise.race([primeMany(pre,6),new Promise(res=>setTimeout(res,160))]).then(()=>renderNow(keepScroll)):renderNow(keepScroll),after);
 }
 function bounceIcon(el){
   if(!el) return;
@@ -3450,8 +3482,7 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
   setInterval(_doBgSync,2000);
   initPromo();
   document.querySelectorAll(".tabbar img").forEach(i=>{if(i.decode) i.decode().catch(()=>{});});
-  if(window.requestIdleCallback) requestIdleCallback(()=>primeMany(restImgs(),3),{timeout:2500});
-  else setTimeout(()=>primeMany(restImgs(),3),600);
+  setTimeout(()=>primeMany(restImgs(),4),250);
 })();
 
 </script>
