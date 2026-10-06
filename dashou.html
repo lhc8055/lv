@@ -914,12 +914,14 @@ if(saved){enter(saved,true)}
 
 /* ===================== 订单聊天房间 ===================== */
 const CHAT_UID='xy_chat_messages';
-let chatOrderNo='',chatSubIndex=1,chatPollTimer=null;
+let chatOrderNo='',chatSubIndex=1,chatPollTimer=null,_chatCache=[];
 async function getMessages(){
   const row=await sbSelectOne(CHAT_UID);
-  return (row&&Array.isArray(row.orders))?row.orders:[];
+  _chatCache=(row&&Array.isArray(row.orders))?row.orders:[];
+  return _chatCache;
 }
 async function saveMessages(list){
+  _chatCache=list;
   await sbUpsert({uid:CHAT_UID,orders:list});
 }
 // 打手在房间中的显示名：打手1、打手2...
@@ -927,22 +929,18 @@ function chatDisplayName(){return '打手'+chatSubIndex;}
 async function sendChat(content){
   if(!content.trim())return;
   const msg={id:'M'+Date.now()+Math.floor(Math.random()*1000),from:chatDisplayName(),fromRole:'booster',to:'all',toRole:'all',content:content.trim(),ts:Date.now(),orderNo:chatOrderNo,readBy:[],sending:true};
-  // 乐观显示：立即渲染，带加载状态
-  let list=await getMessages();
-  list.push(msg);
-  renderChat(list);
+  _chatCache.push(msg);
+  renderChat(_chatCache);
   try{
-    // 保存时去掉本地临时字段 sending/failed
-    const toSave=list.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+    const toSave=_chatCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
     await saveMessages(toSave);
-    // 发送成功，去掉 loading 标记
     msg.sending=false;
-    renderChat(list);
+    renderChat(_chatCache);
   }catch(e){
     console.error(e);
     msg.sending=false;
     msg.failed=true;
-    renderChat(list);
+    renderChat(_chatCache);
     toast('发送失败：'+(e.message||'网络错误'));
   }
 }
@@ -968,24 +966,24 @@ function renderChat(list){
 }
 async function pollChat(){
   try{
-    const list=await getMessages();
+    await getMessages();
     // 云端消息已保存，清除临时 sending 字段
     let hasSending=false;
-    list.forEach(m=>{if(m.sending!==undefined){hasSending=true;delete m.sending;}});
+    _chatCache.forEach(m=>{if(m.sending!==undefined){hasSending=true;delete m.sending;}});
     // 标记当前房间**别人发的**消息为已读（自己发的不算）
     const me=chatDisplayName();
     let changed=hasSending;
-    list.forEach(m=>{
+    _chatCache.forEach(m=>{
       if(m.orderNo===chatOrderNo&&m.from!==me){
         if(!m.readBy)m.readBy=[];
         if(!m.readBy.includes(me)){m.readBy.push(me);changed=true;}
       }
     });
     if(changed){
-      const toSave=list.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+      const toSave=_chatCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
       await saveMessages(toSave);
     }
-    renderChat(list);
+    renderChat(_chatCache);
   }catch(e){}
 }
 function openOrderChat(orderNo,subIndex){

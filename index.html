@@ -3675,32 +3675,35 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
 
 /* ===================== 订单聊天房间（老板端） ===================== */
 const CHAT_UID='xy_chat_messages';
-let _chatOrderNo='',_chatTimer=null;
+let _chatOrderNo='',_chatTimer=null,_chatCache=[];
 async function _getChatMsgs(){
   try{
     const res=await fetch(SB_BASE_URLS[0]+"/rest/v1/"+SB_TABLE+"?uid=eq."+CHAT_UID+"&select=*",{headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON}});
     const rows=await res.json();
-    return (rows&&rows[0]&&Array.isArray(rows[0].orders))?rows[0].orders:[];
+    _chatCache=(rows&&rows[0]&&Array.isArray(rows[0].orders))?rows[0].orders:[];
+    return _chatCache;
   }catch(e){return [];}
 }
 async function _saveChatMsgs(list){
+  _chatCache=list;
   await fetch(SB_BASE_URLS[0]+"/rest/v1/"+SB_TABLE+"?uid=eq."+CHAT_UID,{method:"PATCH",headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON,"Content-Type":"application/json"},body:JSON.stringify({orders:list})});
 }
+function _fmtHMS(ts){try{const d=new Date(ts);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0");}catch(e){return "";}}
 // 老板在房间中的显示名
 function _chatName(){return "老板";}
 async function sendChatMsg(){
   const inp=document.getElementById("chatInput");if(!inp)return;
   const content=inp.value.trim();if(!content)return;
   const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:_chatName(),fromRole:"customer",to:"all",toRole:"all",content,ts:Date.now(),orderNo:_chatOrderNo,readBy:[],sending:true};
-  let list=await _getChatMsgs();list.push(msg);renderChatMsgs(list);
+  _chatCache.push(msg);renderChatMsgs(_chatCache);
   try{
-    const toSave=list.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+    const toSave=_chatCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
     await _saveChatMsgs(toSave);
     msg.sending=false;
-    renderChatMsgs(list);
+    renderChatMsgs(_chatCache);
   }catch(e){
     msg.sending=false;msg.failed=true;
-    renderChatMsgs(list);
+    renderChatMsgs(_chatCache);
   }
   inp.value="";
 }
@@ -3713,32 +3716,32 @@ function renderChatMsgs(list){
     const readCount=(m.readBy||[]).filter(r=>r!==m.from).length;
     let readTxt='';
     if(isMe&&!m.sending){
-      if(readCount>=3)readTxt='<span style="margin-left:6px;color:var(--pri);font-size:10px">三人已读</span>';
-      else if(readCount===2)readTxt='<span style="margin-left:6px;color:var(--pri);font-size:10px">两人已读</span>';
-      else if(readCount===1)readTxt='<span style="margin-left:6px;color:var(--pri);font-size:10px">已读</span>';
+      if(readCount>=3)readTxt='<span style="margin-left:6px;color:var(--pri)">三人已读</span>';
+      else if(readCount===2)readTxt='<span style="margin-left:6px;color:var(--pri)">两人已读</span>';
+      else if(readCount===1)readTxt='<span style="margin-left:6px;color:var(--pri)">已读</span>';
     }
     const spinner=m.sending?'<span style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-left:6px;vertical-align:middle"></span>':'';
-    return '<div class="chat-msg '+(isMe?"me":"them")+'"><div class="chat-name">'+esc(m.from)+'</div><div class="chat-bubble">'+esc(m.content)+spinner+'</div><div class="chat-time">'+readTxt+(m.failed?'<span style="margin-left:6px;color:#ff3b30;font-size:10px">发送失败</span>':'')+'</div></div>';
+    return '<div class="chat-msg '+(isMe?"me":"them")+'"><div class="chat-name">'+esc(m.from)+'</div><div class="chat-bubble">'+esc(m.content)+spinner+'</div><div class="chat-time">'+_fmtHMS(m.ts)+readTxt+(m.failed?'<span style="margin-left:6px;color:#ff3b30">发送失败</span>':'')+'</div></div>';
   }).join("");
   box.scrollTop=box.scrollHeight;
 }
 async function pollChatMsgs(){
-  const list=await _getChatMsgs();
-  list.forEach(m=>{delete m.sending;});
+  await _getChatMsgs();
+  _chatCache.forEach(m=>{delete m.sending;});
   // 标记已读（只标记别人发的）
   const me=_chatName();
   let changed=false;
-  list.forEach(m=>{
+  _chatCache.forEach(m=>{
     if(m.orderNo===_chatOrderNo&&m.from!==me){
       if(!m.readBy)m.readBy=[];
       if(!m.readBy.includes(me)){m.readBy.push(me);changed=true;}
     }
   });
   if(changed){
-    const toSave=list.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+    const toSave=_chatCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
     await _saveChatMsgs(toSave);
   }
-  renderChatMsgs(list);
+  renderChatMsgs(_chatCache);
 }
 function openChat(orderNo){
   _chatOrderNo=orderNo||"";

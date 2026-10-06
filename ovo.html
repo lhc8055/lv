@@ -958,7 +958,7 @@ function go(){
   if(p==='orders'){shown=PAGE;renderOrders();}
   if(p==='products')renderProducts();
   if(p==='feedback')renderFeedback();
-  if(p==='service')loadChatRooms();
+  if(p==='service'){loadChatRooms();startChatPoll();}
   if(p==='home'){renderStats();renderHomeStatic();}
   window.scrollTo(0,0);
 }
@@ -1009,7 +1009,7 @@ async function init(){
 
 /* ============ 订单聊天房间（客服端） ============ */
 const CHAT_UID="xy_chat_messages";
-let _curOrderNo=null,_chatTimer=null;
+let _curOrderNo=null,_chatTimer=null,_msgCache=[];
 async function chatGetAll(){
   try{
     const path="/rest/v1/user_data?uid=eq."+CHAT_UID+"&select=*";
@@ -1046,34 +1046,48 @@ async function chatSaveAll(list){
     }catch(e){}
   }
 }
+function fmtTime(ts){
+  try{const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());}catch(e){return '';}
+}
 async function loadChatRooms(){
-  const list=await chatGetAll();
+  _msgCache=await chatGetAll();
   const rooms={};
-  list.forEach(m=>{
+  _msgCache.forEach(m=>{
     const on=m.orderNo||"通用";
     if(!rooms[on])rooms[on]={orderNo:on,last:m.ts,count:1};
     else{rooms[on].last=Math.max(rooms[on].last,m.ts);rooms[on].count++;}
   });
   const arr=Object.values(rooms).sort((a,b)=>b.last-a.last);
   $("#chatUsers").innerHTML=arr.map(r=>'<div data-no="'+esc(r.orderNo)+'" style="padding:14px;border-bottom:1px solid #eee;cursor:pointer;'+(_curOrderNo===r.orderNo?'background:#e8f0fe':'')+'"><div style="font-weight:600;font-size:14px">'+esc(r.orderNo)+'</div><div style="font-size:12px;color:#888;margin-top:2px">'+r.count+'条消息</div></div>').join("")||'<div style="padding:30px;text-align:center;color:#999;font-size:14px">暂无聊天</div>';
-  $$("#chatUsers > div").forEach(el=>el.onclick=()=>{_curOrderNo=el.dataset.no;loadChatRooms();renderChatRoom();});
+  $$("#chatUsers > div").forEach(el=>el.onclick=()=>{_curOrderNo=el.dataset.no;_renderRoomsOnly();renderChatRoom();});
   if(_curOrderNo)renderChatRoom();
-  if(_chatTimer)clearInterval(_chatTimer);
-  _chatTimer=setInterval(()=>{loadChatRooms();if(_curOrderNo)renderChatRoom();},5000);
+}
+function _renderRoomsOnly(){
+  const rooms={};
+  _msgCache.forEach(m=>{
+    const on=m.orderNo||"通用";
+    if(!rooms[on])rooms[on]={orderNo:on,last:m.ts,count:1};
+    else{rooms[on].last=Math.max(rooms[on].last,m.ts);rooms[on].count++;}
+  });
+  const arr=Object.values(rooms).sort((a,b)=>b.last-a.last);
+  $("#chatUsers").innerHTML=arr.map(r=>'<div data-no="'+esc(r.orderNo)+'" style="padding:14px;border-bottom:1px solid #eee;cursor:pointer;'+(_curOrderNo===r.orderNo?'background:#e8f0fe':'')+'"><div style="font-weight:600;font-size:14px">'+esc(r.orderNo)+'</div><div style="font-size:12px;color:#888;margin-top:2px">'+r.count+'条消息</div></div>').join("")||'<div style="padding:30px;text-align:center;color:#999;font-size:14px">暂无聊天</div>';
+  $$("#chatUsers > div").forEach(el=>el.onclick=()=>{_curOrderNo=el.dataset.no;_renderRoomsOnly();renderChatRoom();});
 }
 async function renderChatRoom(){
   if(!_curOrderNo)return;
-  let list=await chatGetAll();
-  // 客服标记已读（只标记别人发的）
+  // 客服标记已读（只标记别人发的），用缓存避免重复请求
   let changed=false;
-  list.forEach(m=>{
+  _msgCache.forEach(m=>{
     if((m.orderNo||"通用")===_curOrderNo&&m.from!=="客服"){
       if(!m.readBy)m.readBy=[];
       if(!m.readBy.includes("客服")){m.readBy.push("客服");changed=true;}
     }
   });
-  if(changed){await chatSaveAll(list);list=await chatGetAll();}
-  const mine=list.filter(m=>(m.orderNo||"通用")===_curOrderNo);
+  if(changed){
+    const toSave=_msgCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+    await chatSaveAll(toSave);
+  }
+  const mine=_msgCache.filter(m=>(m.orderNo||"通用")===_curOrderNo);
   mine.sort((a,b)=>a.ts-b.ts);
   $("#chatHead").textContent="订单 "+_curOrderNo+" · 客服";
   $("#chatMsgs").innerHTML=mine.map(m=>{
@@ -1081,22 +1095,43 @@ async function renderChatRoom(){
     const readCount=(m.readBy||[]).filter(r=>r!==m.from).length;
     let readTxt='';
     if(isMe&&!m.sending){
-      if(readCount>=3)readTxt='<span style="margin-left:6px;color:#4f6ef7;font-size:10px">三人已读</span>';
-      else if(readCount===2)readTxt='<span style="margin-left:6px;color:#4f6ef7;font-size:10px">两人已读</span>';
-      else if(readCount===1)readTxt='<span style="margin-left:6px;color:#4f6ef7;font-size:10px">已读</span>';
+      if(readCount>=3)readTxt='<span style="margin-left:6px;color:#4f6ef7">三人已读</span>';
+      else if(readCount===2)readTxt='<span style="margin-left:6px;color:#4f6ef7">两人已读</span>';
+      else if(readCount===1)readTxt='<span style="margin-left:6px;color:#4f6ef7">已读</span>';
     }
-    return '<div style="max-width:75%;align-self:'+(isMe?"flex-end":"flex-start")+'"><div style="font-size:11px;color:#999;margin-bottom:3px;text-align:'+(isMe?"right":"left")+'">'+esc(m.from)+'</div><div style="padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5;'+(isMe?"background:var(--blue,#4f6ef7);color:#fff":"background:#f0f0f5;color:#333")+'">'+esc(m.content)+'</div><div style="font-size:10px;color:#999;margin-top:3px;text-align:'+(isMe?"right":"left")+'">'+readTxt+'</div></div>';
+    const spinner=m.sending?'<span style="display:inline-block;width:10px;height:10px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-left:6px;vertical-align:middle"></span>':'';
+    return '<div style="max-width:75%;align-self:'+(isMe?"flex-end":"flex-start")+'"><div style="font-size:11px;color:#999;margin-bottom:3px;text-align:'+(isMe?"right":"left")+'">'+esc(m.from)+'</div><div style="padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5;'+(isMe?"background:var(--blue,#4f6ef7);color:#fff":"background:#f0f0f5;color:#333")+'">'+esc(m.content)+spinner+'</div><div style="font-size:10px;color:#999;margin-top:3px;text-align:'+(isMe?"right":"left")+'">'+fmtTime(m.ts)+readTxt+(m.failed?'<span style="margin-left:6px;color:#ff3b30">发送失败</span>':'')+'</div></div>';
   }).join("");
   $("#chatMsgs").scrollTop=$("#chatMsgs").scrollHeight;
 }
 $("#chatSendBtn").addEventListener("click",async()=>{
   if(!_curOrderNo){toast("请先选择订单");return;}
   const inp=$("#chatReply");const content=inp.value.trim();if(!content)return;
-  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:"客服",fromRole:"service",to:"all",toRole:"all",content,ts:Date.now(),orderNo:_curOrderNo};
-  const list=await chatGetAll();list.push(msg);await chatSaveAll(list);
-  inp.value="";renderChatRoom();
+  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:"客服",fromRole:"service",to:"all",toRole:"all",content,ts:Date.now(),orderNo:_curOrderNo,readBy:[],sending:true};
+  _msgCache.push(msg);
+  inp.value="";
+  renderChatRoom();
+  try{
+    const toSave=_msgCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+    await chatSaveAll(toSave);
+    msg.sending=false;
+    renderChatRoom();
+  }catch(e){
+    msg.sending=false;msg.failed=true;
+    renderChatRoom();
+    toast("发送失败");
+  }
 });
 $("#chatReply").addEventListener("keydown",e=>{if(e.key==="Enter")$("#chatSendBtn").click();});
+// 只启动一次轮询，不在 loadChatRooms 里反复重置
+function startChatPoll(){
+  if(_chatTimer)return;
+  _chatTimer=setInterval(async()=>{
+    _msgCache=await chatGetAll();
+    _renderRoomsOnly();
+    if(_curOrderNo)renderChatRoom();
+  },5000);
+}
 })();
 </script>
 </body>

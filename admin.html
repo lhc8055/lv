@@ -225,6 +225,7 @@ input[type=file]{display:none}
 #toastRoot{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;pointer-events:none}
 .toast{background:rgba(20,22,50,.92);color:#fff;font-size:12.5px;padding:10px 18px;border-radius:999px;box-shadow:0 10px 24px rgba(0,0,0,.25);animation:toastIn .2s ease}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* ============================================================
    8. 管理员登录门禁
@@ -658,12 +659,12 @@ $("#tabnav").addEventListener("click", e => {
   $$("#tabnav button").forEach(b => b.classList.toggle("on", b === btn));
   $$(".panel").forEach(p => p.classList.toggle("on", p.id === "panel-" + btn.dataset.tab));
   if(btn.dataset.tab === "export") refreshExportPreview();
-  if(btn.dataset.tab === "chat") loadChatUsers();
+  if(btn.dataset.tab === "chat"){loadChatUsers();startAdminChatPoll();}
 });
 
 /* ---------- 客服聊天（订单房间模式） ---------- */
 const CHAT_UID="xy_chat_messages";
-let _curOrderNo=null,_chatTimer=null;
+let _curOrderNo=null,_chatTimer=null,_msgCache=[];
 function sbTable(){return ($("#sbTable")&&$("#sbTable").value.trim())||"user_data";}
 function sbKey(){const v=$("#sbKey")&&$("#sbKey").value.trim();return (v&&v.split(".").length===3)?v:SB_ANON_DEFAULT;}
 async function _adminGetMsgs(){
@@ -676,35 +677,37 @@ async function _adminGetMsgs(){
 async function _adminSaveMsgs(list){
   await fetch(SB_URL+"/rest/v1/"+sbTable()+"?uid=eq."+CHAT_UID,{method:"PATCH",headers:{apikey:sbKey(),Authorization:"Bearer "+sbKey(),"Content-Type":"application/json"},body:JSON.stringify({orders:list})});
 }
+function fmtHMS(ts){try{const d=new Date(ts);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0");}catch(e){return "";}}
 async function loadChatUsers(){
-  const list=await _adminGetMsgs();
-  // 按订单号分组（房间）
+  _msgCache=await _adminGetMsgs();
+  _renderRoomsOnly();
+  if(_curOrderNo)renderAdminChat();
+}
+function _renderRoomsOnly(){
   const rooms={};
-  list.forEach(m=>{
+  _msgCache.forEach(m=>{
     const on=m.orderNo||"通用";
-    if(!rooms[on]) rooms[on]={orderNo:on,last:m.ts,count:1};
+    if(!rooms[on])rooms[on]={orderNo:on,last:m.ts,count:1};
     else{rooms[on].last=Math.max(rooms[on].last,m.ts);rooms[on].count++;}
   });
   const arr=Object.values(rooms).sort((a,b)=>b.last-a.last);
   $("#chatUsers").innerHTML=arr.map(r=>'<div class="chat-user-item" data-no="'+esc(r.orderNo)+'" style="padding:12px;border-bottom:1px solid #eee;cursor:pointer'+(_curOrderNo===r.orderNo?";background:#e8f0fe":"")+'"><div style="font-weight:600">'+esc(r.orderNo)+'</div><div style="font-size:11px;color:#888">'+r.count+'条消息</div></div>').join("")||'<div style="padding:20px;text-align:center;color:#999">暂无聊天</div>';
-  $$(".chat-user-item").forEach(el=>el.onclick=()=>{_curOrderNo=el.dataset.no;loadChatUsers();renderAdminChat();});
-  if(_curOrderNo) renderAdminChat();
-  if(_chatTimer)clearInterval(_chatTimer);
-  _chatTimer=setInterval(()=>{loadChatUsers();if(_curOrderNo)renderAdminChat();},5000);
+  $$(".chat-user-item").forEach(el=>el.onclick=()=>{_curOrderNo=el.dataset.no;_renderRoomsOnly();renderAdminChat();});
 }
 async function renderAdminChat(){
   if(!_curOrderNo)return;
-  let list=await _adminGetMsgs();
-  // 客服标记已读（只标记别人发的）
   let changed=false;
-  list.forEach(m=>{
+  _msgCache.forEach(m=>{
     if((m.orderNo||"通用")===_curOrderNo&&m.from!=="客服"){
       if(!m.readBy)m.readBy=[];
       if(!m.readBy.includes("客服")){m.readBy.push("客服");changed=true;}
     }
   });
-  if(changed){await _adminSaveMsgs(list);list=await _adminGetMsgs();}
-  const mine=list.filter(m=>(m.orderNo||"通用")===_curOrderNo);
+  if(changed){
+    const toSave=_msgCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+    await _adminSaveMsgs(toSave);
+  }
+  const mine=_msgCache.filter(m=>(m.orderNo||"通用")===_curOrderNo);
   mine.sort((a,b)=>a.ts-b.ts);
   $("#chatHead").textContent="订单 "+_curOrderNo+" · 客服";
   $("#chatMsgs").innerHTML=mine.map(m=>{
@@ -712,21 +715,42 @@ async function renderAdminChat(){
     const readCount=(m.readBy||[]).filter(r=>r!==m.from).length;
     let readTxt='';
     if(isMe&&!m.sending){
-      if(readCount>=3)readTxt='<span style="margin-left:6px;color:#4f6ef7;font-size:10px">三人已读</span>';
-      else if(readCount===2)readTxt='<span style="margin-left:6px;color:#4f6ef7;font-size:10px">两人已读</span>';
-      else if(readCount===1)readTxt='<span style="margin-left:6px;color:#4f6ef7;font-size:10px">已读</span>';
+      if(readCount>=3)readTxt='<span style="margin-left:6px;color:#4f6ef7">三人已读</span>';
+      else if(readCount===2)readTxt='<span style="margin-left:6px;color:#4f6ef7">两人已读</span>';
+      else if(readCount===1)readTxt='<span style="margin-left:6px;color:#4f6ef7">已读</span>';
     }
-    return '<div style="max-width:75%;align-self:'+(isMe?"flex-end":"flex-start")+'"><div style="font-size:11px;color:#999;margin-bottom:3px;text-align:'+(isMe?"right":"left")+'">'+esc(m.from)+'</div><div style="padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5;'+(isMe?"background:var(--pri,#4f6ef7);color:#fff":"background:#f0f0f5;color:#333")+'">'+esc(m.content)+'</div><div style="font-size:10px;color:#999;margin-top:3px;text-align:'+(isMe?"right":"left")+'">'+readTxt+'</div></div>';
+    const spinner=m.sending?'<span style="display:inline-block;width:10px;height:10px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-left:6px;vertical-align:middle"></span>':'';
+    return '<div style="max-width:75%;align-self:'+(isMe?"flex-end":"flex-start")+'"><div style="font-size:11px;color:#999;margin-bottom:3px;text-align:'+(isMe?"right":"left")+'">'+esc(m.from)+'</div><div style="padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5;'+(isMe?"background:var(--pri,#4f6ef7);color:#fff":"background:#f0f0f5;color:#333")+'">'+esc(m.content)+spinner+'</div><div style="font-size:10px;color:#999;margin-top:3px;text-align:'+(isMe?"right":"left")+'">'+fmtHMS(m.ts)+readTxt+(m.failed?'<span style="margin-left:6px;color:#ff3b30">发送失败</span>':'')+'</div></div>';
   }).join("");
   $("#chatMsgs").scrollTop=$("#chatMsgs").scrollHeight;
 }
 $("#chatSendBtn").addEventListener("click",async()=>{
   if(!_curOrderNo){toast("请先选择订单房间");return;}
   const inp=$("#chatReply");const content=inp.value.trim();if(!content)return;
-  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:"客服",fromRole:"service",to:"all",toRole:"all",content,ts:Date.now(),orderNo:_curOrderNo};
-  const list=await _adminGetMsgs();list.push(msg);await _adminSaveMsgs(list);
-  inp.value="";renderAdminChat();
+  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:"客服",fromRole:"service",to:"all",toRole:"all",content,ts:Date.now(),orderNo:_curOrderNo,readBy:[],sending:true};
+  _msgCache.push(msg);
+  inp.value="";
+  renderAdminChat();
+  try{
+    const toSave=_msgCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+    await _adminSaveMsgs(toSave);
+    msg.sending=false;
+    renderAdminChat();
+  }catch(e){
+    msg.sending=false;msg.failed=true;
+    renderAdminChat();
+    toast("发送失败");
+  }
 });
+// 启动轮询（只一次）
+function startAdminChatPoll(){
+  if(_chatTimer)return;
+  _chatTimer=setInterval(async()=>{
+    _msgCache=await _adminGetMsgs();
+    _renderRoomsOnly();
+    if(_curOrderNo)renderAdminChat();
+  },5000);
+}
 
 /* ================================================================
    4. 图片选择器组件（上传 或 链接 二选一，通用于 Banner / 游戏图标 / 商品图片）
