@@ -271,6 +271,7 @@ input[type=file]{display:none}
   <button data-tab="coupons">优惠券模板</button>
   <button data-tab="usercoupons">用户优惠券</button>
   <button data-tab="popups">弹窗管理</button>
+  <button data-tab="chat">客服聊天</button>
   <button data-tab="export">数据导出/导入</button>
 </nav>
 
@@ -415,6 +416,27 @@ input[type=file]{display:none}
         <label>图片列表</label>
         <div id="popupImgList"></div>
         <button class="btn ghost" id="addPopupImg" style="margin-top:8px">+ 添加图片</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       面板：客服聊天
+       ============================================================ -->
+  <section class="panel" id="panel-chat">
+    <div class="card">
+      <h2>客服聊天</h2>
+      <p class="hint">查看并回复老板和打手的咨询消息</p>
+      <div id="chatLayout" style="display:flex;gap:12px;margin-top:12px;height:500px">
+        <div id="chatUsers" style="width:200px;border:1px solid #e5e5ea;border-radius:10px;overflow-y:auto;background:#f9f9fb"></div>
+        <div style="flex:1;display:flex;flex-direction:column;border:1px solid #e5e5ea;border-radius:10px;background:#fff">
+          <div id="chatHead" style="padding:12px;border-bottom:1px solid #e5e5ea;font-weight:700">请选择左侧用户</div>
+          <div id="chatMsgs" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div>
+          <div style="display:flex;gap:8px;padding:12px;border-top:1px solid #e5e5ea">
+            <input id="chatReply" placeholder="输入回复内容…" maxlength="500" style="flex:1;padding:10px;border:1px solid #e5e5ea;border-radius:20px;outline:none">
+            <button class="btn primary" id="chatSendBtn" style="border-radius:20px;padding:0 24px">发送</button>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -636,6 +658,60 @@ $("#tabnav").addEventListener("click", e => {
   $$("#tabnav button").forEach(b => b.classList.toggle("on", b === btn));
   $$(".panel").forEach(p => p.classList.toggle("on", p.id === "panel-" + btn.dataset.tab));
   if(btn.dataset.tab === "export") refreshExportPreview();
+  if(btn.dataset.tab === "chat") loadChatUsers();
+});
+
+/* ---------- 客服聊天 ---------- */
+const CHAT_UID="xy_chat_messages";
+let _curChatUser=null,_curChatRole=null,_chatTimer=null;
+function sbTable(){return ($("#sbTable")&&$("#sbTable").value.trim())||"user_data";}
+function sbKey(){const v=$("#sbKey")&&$("#sbKey").value.trim();return (v&&v.split(".").length===3)?v:SB_ANON_DEFAULT;}
+async function _adminGetMsgs(){
+  try{
+    const res=await fetch(SB_URL+"/rest/v1/"+sbTable()+"?uid=eq."+CHAT_UID+"&select=*",{headers:{apikey:sbKey(),Authorization:"Bearer "+sbKey()}});
+    const rows=await res.json();
+    return (rows&&rows[0]&&Array.isArray(rows[0].orders))?rows[0].orders:[];
+  }catch(e){return [];}
+}
+async function _adminSaveMsgs(list){
+  await fetch(SB_URL+"/rest/v1/"+sbTable()+"?uid=eq."+CHAT_UID,{method:"PATCH",headers:{apikey:sbKey(),Authorization:"Bearer "+sbKey(),"Content-Type":"application/json"},body:JSON.stringify({orders:list})});
+}
+async function loadChatUsers(){
+  const list=await _adminGetMsgs();
+  // 按用户分组（from/to + fromRole/toRole）
+  const users={};
+  list.forEach(m=>{
+    const key=m.fromRole+"|"+m.from;
+    if(!users[key]) users[key]={name:m.from,role:m.fromRole,last:m.ts};
+    else users[key].last=Math.max(users[key].last,m.ts);
+  });
+  const arr=Object.values(users).sort((a,b)=>b.last-a.last);
+  const roleName={customer:"老板",booster:"打手",service:"客服"};
+  $("#chatUsers").innerHTML=arr.map(u=>'<div class="chat-user-item" data-name="'+esc(u.name)+'" data-role="'+u.role+'" style="padding:12px;border-bottom:1px solid #eee;cursor:pointer'+(_curChatUser===u.name?";background:#e8f0fe":"")+'"><div style="font-weight:600">'+esc(u.name)+'</div><div style="font-size:11px;color:#888">'+roleName[u.role]+'</div></div>').join("")||'<div style="padding:20px;text-align:center;color:#999">暂无消息</div>';
+  $$(".chat-user-item").forEach(el=>el.onclick=()=>{_curChatUser=el.dataset.name;_curChatRole=el.dataset.role;loadChatUsers();renderAdminChat();});
+  if(_curChatUser) renderAdminChat();
+  if(_chatTimer)clearInterval(_chatTimer);
+  _chatTimer=setInterval(()=>{loadChatUsers();if(_curChatUser)renderAdminChat();},5000);
+}
+async function renderAdminChat(){
+  if(!_curChatUser)return;
+  const list=await _adminGetMsgs();
+  const mine=list.filter(m=>(m.from===_curChatUser&&m.fromRole===_curChatRole)||(m.to===_curChatUser&&m.toRole===_curChatRole));
+  mine.sort((a,b)=>a.ts-b.ts);
+  const roleName={customer:"老板",booster:"打手"};
+  $("#chatHead").textContent=_curChatUser+"（"+(roleName[_curChatRole]||"")+"）";
+  $("#chatMsgs").innerHTML=mine.map(m=>{
+    const isMe=m.fromRole==="service";
+    return '<div style="max-width:75%;align-self:'+(isMe?"flex-end":"flex-start")+'"><div style="padding:10px 14px;border-radius:14px;font-size:14px;'+(isMe?"background:var(--pri,#4f6ef7);color:#fff":"background:#f0f0f5;color:#333")+'">'+esc(m.content)+'</div></div>';
+  }).join("");
+  $("#chatMsgs").scrollTop=$("#chatMsgs").scrollHeight;
+}
+$("#chatSendBtn").addEventListener("click",async()=>{
+  if(!_curChatUser){toast("请先选择用户");return;}
+  const inp=$("#chatReply");const content=inp.value.trim();if(!content)return;
+  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:"客服",fromRole:"service",to:_curChatUser,toRole:_curChatRole,content,ts:Date.now()};
+  const list=await _adminGetMsgs();list.push(msg);await _adminSaveMsgs(list);
+  inp.value="";renderAdminChat();
 });
 
 /* ================================================================
