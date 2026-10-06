@@ -336,9 +336,8 @@ const p2=n=>String(n).padStart(2,'0');
 const fmt=t=>{const d=new Date(t);return p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds())};
 const sameDay=t=>!!t&&new Date(t).toDateString()===new Date().toDateString();
 const ic=(id,c)=>`<svg class="ic ${c||''}" aria-hidden="true"><use href="#${id}"/></svg>`;
-// 联系类型判断：纯数字 5-11 位视为 QQ，否则微信
-const contactType=c=>/^\d{5,11}$/.test(c?'':c)?'qq':'wx';
-const contactLabel=c=>contactType(c)==='qq'?'QQ号':'微信号';
+// 区服判定：QQ区 → qq，微信区 → wx
+const zoneOf=s=>/微信/.test(s||'')?'wx':'qq';
 const store={
   get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
   set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
@@ -351,7 +350,7 @@ let toastTimer=0,_pollTimer=null,_svcTimer=null;
 /* ===================== 用户订单 → 打手订单映射 ===================== */
 function mapOrder(o,ownerUid){
   const zone=GAME_TO_ZONE[o.game]||'val';
-  const im=contactType(o.customerContact);
+  const im=zoneOf(o.server);
   // 标题：优先用 cat+rank，否则 title
   let title=o.title||o.cat||'';
   if(o.rank&&!title.includes(o.rank)) title=(o.cat||'')+' · '+o.rank;
@@ -369,7 +368,7 @@ function mapOrder(o,ownerUid){
     desc,
     price:Math.round(Number(o.total)||0),
     im,
-    os:'ios',
+    os:o.platform||null,
     contact:o.customerContact||o.qq||'',
     gameId:o.gameId||'',
     customerName:o.customerName||'客户',
@@ -382,7 +381,16 @@ function mapOrder(o,ownerUid){
 }
 
 /* ===================== 卡片渲染 ===================== */
-const chips=o=>`<span class="chip">${ic(o.im==='qq'?'i-qq':'i-wechat','im '+o.im)}${o.im==='qq'?'QQ':'微信'}</span>`;
+// 底部标签：区服图标（QQ/微信）+ 系统图标（安卓/苹果，仅王者荣耀）
+function chips(o){
+  const zoneChip=`<span class="chip">${ic(o.im==='qq'?'i-qq':'i-wechat','im '+o.im)}${o.im==='qq'?'QQ':'微信'}</span>`;
+  let osChip='';
+  if(o.zone==='wzry'&&o.os){
+    const isIos=o.os==='ios';
+    osChip=`<span class="chip">${ic(isIos?'i-apple':'i-android','os '+o.os)}${isIos?'仅苹果可接':'仅安卓可接'}</span>`;
+  }
+  return zoneChip+osChip;
+}
 function hallCard(o){
   const fresh=Date.now()-o.ct<10000;
   return `<article class="card glass rim${fresh?' fresh':''}" data-id="${o.id}" data-zone="${o.zone}">
@@ -398,8 +406,8 @@ function mineCard(o){
 <div class="c-top"><span class="mode">${o.mode}</span><span class="znm">${ZN[o.zone]}</span><span class="st ${done?'done':'doing'}">${done?'已完成':'进行中'}</span></div>
 <h3>${o.title}</h3><p class="desc">${o.desc}</p>
 <div class="info"><div><span>订单号</span><b>${o.id}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>抢单时间</span><b>${fmt(o.gt)}</b></div><div><span>订单金额</span><b>¥${o.price}</b></div></div>
-${o.gameId?`<div class="contact">${ic('i-qq','im qq')}<div><span>游戏ID</span><b>${o.gameId}</b></div><button class="mini" data-act="copy" data-v="${o.gameId}">复制</button></div>`:''}
-<div class="contact">${ic(o.im==='qq'?'i-qq':'i-wechat','im '+o.im)}<div><span>${contactLabel(o.contact)}</span><b>${o.contact||'未提供'}</b></div>${o.contact?`<button class="mini" data-act="copy" data-v="${o.contact}">复制</button>`:''}</div>
+${o.gameId?`<div class="contact"><div><span>游戏ID</span><b>${o.gameId}</b></div><button class="mini" data-act="copy" data-v="${o.gameId}">复制</button></div>`:''}
+<div class="contact"><div><span>联系方式</span><b>${o.contact||'未提供'}</b></div>${o.contact?`<button class="mini" data-act="copy" data-v="${o.contact}">复制</button>`:''}</div>
 <div class="c-foot"><div class="chips">${chips(o)}</div>${done?'':`<button class="grab" data-act="done" data-id="${o.id}">完成订单</button>`}</div>
 </article>`;
 }

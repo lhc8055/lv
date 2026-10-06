@@ -687,9 +687,9 @@ const HOME_QUICK={
 };
 
 const DEFAULT_GAMES=[
-  {id:"val",name:"瓦手",alias:["无畏契约","无畏契约手游","valorant"],cls:"",icon:"imgs/g-val.webp",servers:["QQ区","微信区","全区可接"]},
-  {id:"df",name:"三角洲行动",alias:["三角洲","delta"],cls:"",icon:"imgs/g-df.webp",servers:["QQ区","微信区","全区可接"]},
-  {id:"wz",name:"王者荣耀",alias:["王者","农药"],cls:"",icon:"imgs/g-wz.webp",servers:["微信区","QQ区","全区可接"]}
+  {id:"val",name:"瓦手",alias:["无畏契约","无畏契约手游","valorant"],cls:"",icon:"imgs/g-val.webp",servers:["QQ区","微信区"]},
+  {id:"df",name:"三角洲行动",alias:["三角洲","delta"],cls:"",icon:"imgs/g-df.webp",servers:["QQ区","微信区"]},
+  {id:"wz",name:"王者荣耀",alias:["王者","农药"],cls:"",icon:"imgs/g-wz.webp",servers:["微信区","QQ区"]}
 ];
 const ALL_GAME={id:"all",name:"全部",cls:"all"};
 let GAMES=DEFAULT_GAMES.map(g=>({...g,alias:(g.alias||[]).slice(),servers:(g.servers||[]).slice()}));
@@ -931,7 +931,8 @@ async function loadSiteData(){
     }
     if(Array.isArray(d.games)&&d.games.length){
       GAMES=d.games.slice().sort((a,b)=>(a.sort||0)-(b.sort||0)).map(g=>({
-        id:g.id, name:g.name, alias:(g.alias||[]).slice(), cls:g.cls||"", icon:g.icon, servers:(g.servers||[]).slice()
+        id:g.id, name:g.name, alias:(g.alias||[]).slice(), cls:g.cls||"", icon:g.icon,
+        servers:(g.servers||[]).filter(s=>s!=="全区可接").slice()
       }));
     }
     if(Array.isArray(d.zones)&&d.zones.length){
@@ -2248,7 +2249,6 @@ function viewProfile(){
     {ico:"gift",cls:"f-orange",label:"邀请有礼",action:"invite"},
     {ico:"message",cls:"f-purple",label:"反馈记录",action:"go-feedbacks",badge:store.feedbacks.length||null},
     {ico:"headset",cls:"f-purple",label:"联系客服",action:"contact-service"},
-    {ico:"order",cls:"f-blue",label:"打手接单",action:"go-dashou"},
     {ico:u?"logout":"user",cls:u?"f-gray":"f-blue",label:u?"退出登录":"登录",action:u?"logout":"login"}
   ].map(f=>'<button type="button" class="pf-item" data-action="'+f.action+'"'+(f.f?' data-f="'+f.f+'"':'')+'>'+
     '<span class="pf-ico '+f.cls+'">'+icon(f.ico)+'</span>'+(f.badge?'<span class="pf-badge">'+f.badge+'</span>':'')+
@@ -2387,7 +2387,7 @@ function ordersBodyHtml(){
       return '<div class="order-card" style="--i:'+Math.min(i,6)+'"><div class="oc-top"><span>订单号 '+esc(o.no)+'</span><span class="oc-status '+st.cls+'">'+st.text+'</span></div>'+
         '<div class="oc-body"><div class="oc-img">'+imgPlain(o.img,"")+'</div>'+
         '<div class="oc-info"><div class="oc-name">'+esc(o.title)+'</div>'+
-        '<div class="oc-meta">'+esc(o.gameName)+' · '+esc(o.server)+' · ×'+o.qty+o.unit+(o.gameId?'<br>游戏ID：'+esc(o.gameId):"")+(o.qq?' · QQ：'+esc(o.qq):"")+(o.note?'<br>备注：'+esc(o.note):"")+'<br>'+fmtTime(o.ts)+'</div></div>'+
+        '<div class="oc-meta">'+esc(o.gameName)+' · '+esc(o.server)+(o.platform?' · '+(o.platform==="android"?"安卓":"苹果"):"")+' · ×'+o.qty+o.unit+(o.gameId?'<br>游戏ID：'+esc(o.gameId):"")+(o.qq?' · QQ：'+esc(o.qq):"")+(o.note?'<br>备注：'+esc(o.note):"")+'<br>'+fmtTime(o.ts)+'</div></div>'+
         '<div class="oc-right">¥'+o.price+'/'+o.unit+'</div></div>'+couponLine+rate+
         '<div class="oc-foot"><span class="oc-total">合计 <b>¥'+totalAmt+'</b></span><span class="oc-actions">'+orderActions(o)+'</span></div></div>';
     }).join("")+'</div><div class="no-more">没有更多了</div>';
@@ -2583,9 +2583,14 @@ function openBuy(p){
   const curServer=detailSel?detailSel.value:g.servers[0];
   const qty=parseInt(($("#qtyNum")&&$("#qtyNum").textContent)||"1",10);
   const opts=g.servers.map(s=>'<option'+(s===curServer?" selected":"")+'>'+s+'</option>').join("");
+  // 王者荣耀需要选择系统（安卓/苹果），其他游戏互通不需要
+  const isWz=p.game==="wz";
+  const platformLine=isWz?
+    '<div class="confirm-line"><span>游戏系统</span><select id="cfPlatform" class="cf-select"><option value="android">安卓</option><option value="ios">苹果</option></select></div>':"";
   openSheet('<h3>确认订单</h3>'+
     '<div class="confirm-goods">'+imgPlain(p.img,"")+'<div style="min-width:0"><div class="cg-name">'+esc(p.title)+'</div><div class="cg-price">¥'+p.price+'/'+p.unit+'</div></div></div>'+
     '<div class="confirm-line"><span>游戏区服</span><select id="cfServer" class="cf-select">'+opts+'</select></div>'+
+    platformLine+
     '<div class="confirm-line"><span>购买'+(p.unit==="局"?"局数":"时长")+'</span><div class="stepper"><button data-action="cf-minus">−</button><span class="q-num" id="cfQty">'+qty+'</span><button data-action="cf-plus">+</button></div></div>'+
     '<div class="field" style="margin:6px 0 0"><input id="cfGameId" maxlength="30" placeholder="游戏ID / 昵称（必填，打手加你用）"></div>'+
     '<div class="field" style="margin:6px 0 0"><input id="cfQQ" maxlength="11" inputmode="numeric" placeholder="QQ号（必填，打手直接联系你）"></div>'+
@@ -2991,7 +2996,6 @@ const ACTIONS={
     toast("反馈已提交，客服会在10分钟内处理");
   },
   "contact-service"(){openService();},
-  "go-dashou"(){window.open("dashou.html","_blank","noopener");},
   "contact-player"(el){
     // 已改为打手直接通过 QQ 联系老板，不再需要人工配置群链接
     toast("打手接单后会通过QQ直接联系你，请保持QQ畅通");
@@ -3191,6 +3195,7 @@ const ACTIONS={
         total:r.total,ts:Date.now(),status:"unpaid",payType,couponId:r.coupon?r.coupon.id:null,
         rank:p.rank||"",tags:(p.tags||[]).slice(),desc:p.desc||"",cat:p.cat||"",game:p.game,
         gameId,qq,
+        platform:p.game==="wz"?(($("#cfPlatform")&&$("#cfPlatform").value)||"android"):null,
         customerName:(store.user&&store.user.name)||"",customerContact:qq
       };
       if(r.coupon){

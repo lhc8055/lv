@@ -546,9 +546,9 @@ function defaultState(){
       quickAll:{img:IMG.all,title:"全部商品",btn:"查看商品"}
     },
     games:[
-      {id:"val",name:"瓦手",icon:"https://aka.doubaocdn.com/s/0oOCkBhb9J",servers:["QQ区","微信区","全区可接"],sort:10},
-      {id:"df", name:"三角洲行动",icon:"https://aka.doubaocdn.com/s/NDn5woVxJC",servers:["QQ区","微信区","全区可接"],sort:20},
-      {id:"wz", name:"王者荣耀",icon:"https://aka.doubaocdn.com/s/y7SpdNXCiT",servers:["微信区","QQ区","全区可接"],sort:30}
+      {id:"val",name:"瓦手",icon:"https://aka.doubaocdn.com/s/0oOCkBhb9J",servers:["QQ区","微信区"],sort:10},
+      {id:"df", name:"三角洲行动",icon:"https://aka.doubaocdn.com/s/NDn5woVxJC",servers:["QQ区","微信区"],sort:20},
+      {id:"wz", name:"王者荣耀",icon:"https://aka.doubaocdn.com/s/y7SpdNXCiT",servers:["微信区","QQ区"],sort:30}
     ],
     zones:[
       {id:"tech",name:"技术单局区",sort:10},
@@ -842,7 +842,7 @@ $("#addGameBtn").addEventListener("click", () => openGameModal(null));
 
 function openGameModal(game){
   const isNew = !game;
-  const draft = isNew ? {id:uid("game"),name:"",icon:"",servers:["QQ区","微信区","全区可接"],sort:(state.games.length+1)*10} : JSON.parse(JSON.stringify(game));
+  const draft = isNew ? {id:uid("game"),name:"",icon:"",servers:["QQ区","微信区"],sort:(state.games.length+1)*10} : JSON.parse(JSON.stringify(game));
   const root = $("#modalRoot");
   root.innerHTML =
     '<div class="mask" id="gameMask"><div class="sheet">'+
