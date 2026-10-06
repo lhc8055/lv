@@ -363,6 +363,7 @@ async function sbPatch(uid,fields){
 
 /* ===================== 工具 ===================== */
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const p2=n=>String(n).padStart(2,'0');
 const fmt=t=>{const d=new Date(t);return p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds())};
 const sameDay=t=>!!t&&new Date(t).toDateString()===new Date().toDateString();
@@ -922,10 +923,15 @@ function chatDisplayName(){return '打手'+chatSubIndex;}
 async function sendChat(content){
   if(!content.trim())return;
   const msg={id:'M'+Date.now()+Math.floor(Math.random()*1000),from:chatDisplayName(),fromRole:'booster',to:'all',toRole:'all',content:content.trim(),ts:Date.now(),orderNo:chatOrderNo};
-  const list=await getMessages();
-  list.push(msg);
-  await saveMessages(list);
-  renderChat(list);
+  try{
+    const list=await getMessages();
+    list.push(msg);
+    await saveMessages(list);
+    renderChat(list);
+  }catch(e){
+    console.error(e);
+    toast('发送失败：'+(e.message||'网络错误'));
+  }
 }
 function renderChat(list){
   const box=$('#chatBox');if(!box)return;
