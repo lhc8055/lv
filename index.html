@@ -347,26 +347,29 @@ button.pf-header:active{opacity:.8}
 .detail-bar .db-buy:active{transform:scale(.97)}
 
 .tabbar{position:fixed;left:50%;transform:translate3d(-50%,0,0);backface-visibility:hidden;bottom:0;width:100%;max-width:460px;height:calc(var(--tab-h) + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);
-  background:rgba(255,255,255,.92);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);display:flex;border-top:1px solid var(--line);z-index:25;contain:layout paint}
-.tabbar .tab{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:#b0a08a;min-height:var(--tab-h);touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;contain:layout style paint;transition:color .32s var(--ease-std),transform .18s var(--ease-std)}
+  background:rgba(255,255,255,.88);-webkit-backdrop-filter:saturate(180%) blur(24px);backdrop-filter:saturate(180%) blur(24px);display:flex;border-top:1px solid var(--line);z-index:25;contain:layout paint}
+.tabbar .tab-ind{position:absolute;top:7px;bottom:calc(7px + env(safe-area-inset-bottom,0px));left:0;width:33.3333%;border-radius:18px;background:linear-gradient(135deg,rgba(91,108,240,.10),rgba(138,99,255,.10));z-index:0;pointer-events:none;will-change:transform;transition:transform .46s cubic-bezier(.34,1.4,.5,1),background-color .3s var(--ease-std);transform:translate3d(calc(var(--tab-idx,0) * 100%),0,0)}
+.tabbar .tab{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:#b0a08a;min-height:var(--tab-h);touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;contain:layout style paint;transition:color .34s var(--ease-std),transform .16s var(--ease-std)}
 .tabbar .tab:active{transform:scale(.9)}
-.tabbar .tab .t-ico{display:grid;place-items:end center;transform-origin:50% 100%;will-change:transform;transition:transform .28s var(--ease-spring)}
-.tabbar .tab .t-ico img{grid-area:1/1;object-fit:contain;pointer-events:none;-webkit-user-drag:none;transition:opacity .3s var(--ease-std)}
-.tabbar .tab .t-txt{display:block;transform-origin:50% 100%;transition:transform .28s var(--ease-spring)}
+.tabbar .tab .t-ico{display:grid;place-items:end center;transform-origin:50% 100%;will-change:transform;transition:transform .34s cubic-bezier(.34,1.4,.5,1)}
+.tabbar .tab .t-ico img{grid-area:1/1;object-fit:contain;pointer-events:none;-webkit-user-drag:none;transition:opacity .34s var(--ease-std)}
+.tabbar .tab .t-txt{display:block;transform-origin:50% 100%;transition:transform .34s cubic-bezier(.34,1.4,.5,1),color .34s var(--ease-std);font-weight:500}
 .tabbar .t-home img{width:22px;height:22px}
 .tabbar .t-cat img,.tabbar .t-me img{width:24px;height:24px}
 .tabbar .tab .ic-on{opacity:0}
 .tabbar .tab.on .ic-off{opacity:0}
 .tabbar .tab.on .ic-on{opacity:1}
-.tabbar .tab.on{color:var(--pri);font-weight:700}
-.tabbar .tab.on .t-ico{transform:translate3d(0,-2px,0) scale(1.06)}
-.tabbar .tab.pop .t-ico{animation:tabPop .45s var(--ease-spring) both}
+.tabbar .tab.on{color:var(--pri)}
+.tabbar .tab.on .t-txt{font-weight:700;transform:translate3d(0,-1px,0)}
+.tabbar .tab.on .t-ico{transform:translate3d(0,-3px,0) scale(1.05)}
+.tabbar .tab.pop .t-ico{animation:tabPop .5s cubic-bezier(.34,1.56,.64,1) both}
 @keyframes tabPop{
-  0%{transform:translate3d(0,-2px,0) scale(1.06)}
-  40%{transform:translate3d(0,-7px,0) scale(1.12)}
-  100%{transform:translate3d(0,-2px,0) scale(1.06)}
+  0%{transform:translate3d(0,-3px,0) scale(1.05)}
+  35%{transform:translate3d(0,-8px,0) scale(1.1)}
+  70%{transform:translate3d(0,-2px,0) scale(1.03)}
+  100%{transform:translate3d(0,-3px,0) scale(1.05)}
 }
-@media(prefers-reduced-motion:reduce){.tabbar .tab.pop .t-ico{animation:none}.tabbar .tab.on .t-ico{transform:none}.tabbar .tab .t-ico,.tabbar .tab .t-txt{transition:none}}
+@media(prefers-reduced-motion:reduce){.tabbar .tab-ind{transition:none}.tabbar .tab.pop .t-ico{animation:none}.tabbar .tab.on .t-ico,.tabbar .tab.on .t-txt{transform:none}.tabbar .tab .t-ico,.tabbar .tab .t-txt{transition:none}}
 .tabbar.hide{display:none}
 html.fx-run .c-shine,html.fx-run .bs-url{animation-play-state:paused}
 .swap-in{animation:swapIn .26s var(--ease-out) both}
@@ -518,6 +521,7 @@ img.im.im-err{opacity:1;background:#eef0fb}
 .view-ghost .page-head,.view-ghost .detail-bar{backdrop-filter:none;-webkit-backdrop-filter:none}
 .view-ghost .home-follow{will-change:auto}
 html.fx-run .tabbar,html.fx-run .page-head{backdrop-filter:none;-webkit-backdrop-filter:none}
+html.fx-run .tabbar .tab-ind{transition:none}
 .hero-fly{position:fixed;left:0;top:0;z-index:22;pointer-events:none;transform-origin:0 0;will-change:transform;backface-visibility:hidden;contain:layout style}
 .hero-clip{position:absolute;inset:0;overflow:hidden;background:#e3e9ff;transform:translateZ(0)}
 .hero-clip img{display:block;width:100%;height:100%;object-fit:cover}
@@ -666,6 +670,7 @@ setTimeout(function(){try{hidePageLoader()}catch(e){var p=document.getElementByI
     <button type="button" class="tab t-me" data-action="route" data-route="profile">
       <span class="t-ico"><img class="ic-off" src="tab-me-off.webp" alt="我的" decoding="async" fetchpriority="high"><img class="ic-on" src="tab-me-on.webp" alt="我的" decoding="async" fetchpriority="high"></span><span class="t-txt">我的</span>
     </button>
+    <span class="tab-ind" aria-hidden="true"></span>
   </nav>
 
   <div id="modalRoot"></div>
@@ -1903,12 +1908,14 @@ function renderNow(keepScroll){
     needLogin=true;
   }
   if(!VIEWS[r.name]){location.hash="#/home";return;}
-  document.querySelectorAll(".tabbar .tab").forEach(t=>{
+  document.querySelectorAll(".tabbar .tab").forEach((t,i)=>{
     const on=t.dataset.route===TAB_OF[r.name];
     const was=t.classList.contains("on");
     t.classList.toggle("on",on);
-    // tab 从非激活变为激活时播放弹跳，与页面切换同步（在 view-transition update 阶段触发）
-    if(on&&!was) tabPop(t);
+    if(on){
+      t.closest(".tabbar").style.setProperty("--tab-idx",i);
+      if(!was) tabPop(t);
+    }
   });
   const y=window.scrollY;
   const prev=lastRoute,leftId=curDetailId;
