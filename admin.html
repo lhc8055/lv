@@ -968,7 +968,7 @@ function productRow(p){
   row.innerHTML =
     '<div class="li-thumb">'+(p.img?'<img src="'+esc(p.img)+'">':'')+'</div>'+
     '<div class="li-body"><div class="li-title">【'+esc(p.cat)+'】'+esc(p.name)+'</div>'+
-    '<div class="li-sub">¥'+p.price+'/'+esc(p.unit)+' · 角标：'+esc(corner||"无")+' · 优惠券：'+(p.couponEnabled?"可用":"不可用")+'</div></div>'+
+    '<div class="li-sub">¥'+p.price+'/'+esc(p.unit)+' · 打手数：'+(p.boosterCount||1)+' · 角标：'+esc(corner||"无")+' · 优惠券：'+(p.couponEnabled?"可用":"不可用")+'</div></div>'+
     '<input type="number" class="li-sort" value="'+p.sort+'" data-id="'+p.id+'">'+
     '<div class="li-actions"><button class="edit" data-act="edit" data-id="'+p.id+'">'+ICONS.edit+'</button><button class="del" data-act="del" data-id="'+p.id+'">'+ICONS.del+'</button></div>';
   return row;
@@ -1029,9 +1029,10 @@ function openProductModal(product){
       '<div class="row3">'+
         '<div class="field"><label>价格（元）</label><input type="number" step="0.01" id="pPrice" value="'+draft.price+'"></div>'+
         '<div class="field"><label>计价单位</label><input type="text" id="pUnit" value="'+esc(draft.unit)+'" placeholder="局 / 小时"></div>'+
-        '<div class="field"><label>排序数字</label><input type="number" id="pSort" value="'+draft.sort+'"></div>'+
+        '<div class="field"><label>需要打手数</label><input type="number" min="1" max="10" id="pBoosters" value="'+(draft.boosterCount||1)+'"></div>'+
       '</div>'+
-      '<div class="row2">'+
+      '<div class="row3">'+
+        '<div class="field"><label>排序数字</label><input type="number" id="pSort" value="'+draft.sort+'"></div>'+
         '<div class="field"><label>热度（选填，展示用）</label><input type="number" id="pHeat" value="'+draft.heat+'"></div>'+
         '<div class="field"><label>已售数量（选填，展示用）</label><input type="number" id="pSales" value="'+draft.sales+'"></div>'+
       '</div>'+
@@ -1137,6 +1138,7 @@ function openProductModal(product){
     draft.rank = $("#pRank").value.trim();
     draft.price = parseFloat($("#pPrice").value) || 0;
     draft.unit = $("#pUnit").value.trim() || "局";
+    draft.boosterCount = parseInt($("#pBoosters").value, 10) || 1;
     draft.sort = parseInt($("#pSort").value, 10) || 0;
     draft.heat = parseInt($("#pHeat").value, 10) || 0;
     draft.sales = parseInt($("#pSales").value, 10) || 0;

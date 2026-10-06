@@ -373,23 +373,30 @@ function mapOrder(o,ownerUid){
   if(o.server) parts.push('区服：'+o.server);
   if(o.gameId) parts.push('游戏ID：'+o.gameId);
   const desc=parts.join('　')||'暂无描述';
-  return {
-    id:o.no, zone,
-    mode:o.cat||'陪玩',
-    title:title||o.cat||'陪玩订单',
-    desc,
-    price:Math.round(Number(o.total)||0),
-    im,
-    os:o.platform||null,
+  const base={
+    zone, mode:o.cat||'陪玩', title:title||o.cat||'陪玩订单', desc,
+    im, os:o.platform||null,
     contact:o.customerContact||o.qq||'',
     gameId:o.gameId||'',
     customerName:o.customerName||'客户',
-    ct:o.ts||Date.now(),
-    ownerUid,
-    status:'pending',
-    qty:o.qty||1,
-    unit:o.unit||''
+    ct:o.ts||Date.now(), ownerUid,
+    qty:o.qty||1, unit:o.unit||'',
+    parentNo:o.no,
+    boosterCount:o.boosterCount||1,
+    commissionEach:o.commissionEach||o.total||0
   };
+  // 多打手订单：展开为多个子单卡片
+  const subs=o.subOrders&&o.subOrders.length?o.subOrders:[{index:1,status:o.status,grabbedBy:o.grabbedBy,grabbedAt:o.grabbedAt}];
+  return subs.map(sub=>({
+    ...base,
+    id:o.no+'_'+sub.index,
+    subIndex:sub.index,
+    price:o.commissionEach||o.total||0,
+    status:sub.status||o.status,
+    grabbedBy:sub.grabbedBy||null,
+    grabbedAt:sub.grabbedAt||null,
+    doneAt:sub.doneAt||null
+  }));
 }
 
 /* ===================== 卡片渲染 ===================== */
@@ -409,21 +416,23 @@ function chips(o){
 }
 function hallCard(o){
   const fresh=Date.now()-o.ct<10000;
+  const boosterTag=o.boosterCount>1?`<span class="new">${o.subIndex}/${o.boosterCount}名额</span>`:'';
   return `<article class="card glass rim${fresh?' fresh':''}" data-id="${o.id}" data-zone="${o.zone}">
-<div class="c-top"><span class="mode">${o.mode}</span><span class="new">新单</span><span class="znm">${ZN[o.zone]}</span></div>
+<div class="c-top"><span class="mode">${o.mode}</span>${boosterTag}<span class="znm">${ZN[o.zone]}</span></div>
 <h3>${o.title}</h3><p class="desc">${o.desc}</p>
-<div class="info"><div><span>订单号</span><b>${o.id}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>数量</span><b>${o.qty}${o.unit}</b></div><div><span>游戏ID</span><b>${o.gameId||'未填'}</b></div></div>
+<div class="info"><div><span>订单号</span><b>${o.parentNo}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>数量</span><b>${o.qty}${o.unit}</b></div><div><span>游戏ID</span><b>${o.gameId||'未填'}</b></div></div>
 <div class="c-foot"><div class="chips">${chips(o)}</div><div class="act"><div class="price"><small>¥</small>${o.price}</div><button class="grab" data-act="grab" data-id="${o.id}">抢单</button></div></div>
 </article>`;
 }
 function mineCard(o){
   const done=o.status==='done';
+  const boosterTag=o.boosterCount>1?`<span class="new">${o.subIndex}/${o.boosterCount}名额</span>`:'';
   return `<article class="card glass rim" data-id="${o.id}" data-zone="${o.zone}">
-<div class="c-top"><span class="mode">${o.mode}</span><span class="znm">${ZN[o.zone]}</span><span class="st ${done?'done':'doing'}">${done?'已完成':'进行中'}</span></div>
+<div class="c-top"><span class="mode">${o.mode}</span>${boosterTag}<span class="znm">${ZN[o.zone]}</span><span class="st ${done?'done':'doing'}">${done?'已完成':'进行中'}</span></div>
 <h3>${o.title}</h3><p class="desc">${o.desc}</p>
-<div class="info"><div><span>订单号</span><b>${o.id}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>抢单时间</span><b>${fmt(o.gt)}</b></div><div><span>订单金额</span><b>¥${o.price}</b></div></div>
+<div class="info"><div><span>订单号</span><b>${o.parentNo}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>抢单时间</span><b>${fmt(o.gt)}</b></div><div><span>我的佣金</span><b>¥${o.price}</b></div></div>
 ${o.gameId?`<div class="contact"><div><span>游戏ID</span><b>${o.gameId}</b></div><button class="mini" data-act="copy" data-v="${o.gameId}">复制</button></div>`:''}
-<div class="contact"><div><span>联系方式</span><b>${o.contact||'未提供'}</b></div>${o.contact?`<button class="mini" data-act="copy" data-v="${o.contact}">复制</button>`:''}</div>
+<div class="contact"><div><span>联系方式</span><b>接单后由客服提供</b></div></div>
 <div class="c-foot"><div class="chips">${chips(o)}</div>${done?'':`<button class="grab" data-act="done" data-id="${o.id}">完成订单</button>`}</div>
 </article>`;
 }
@@ -505,11 +514,21 @@ async function grab(id,btn){
   if(!state.online){toast('当前为休息状态，请先开启接单');return}
   o.busy=true;btn.disabled=true;btn.textContent='抢单中…';
   try{
-    // 先读云端确认订单仍为 pending（防止并发抢单）
+    // 解析子单：id = parentNo_index
+    const parts=id.split('_');
+    const parentNo=parts.slice(0,-1).join('_');
+    const subIndex=parseInt(parts[parts.length-1],10);
+    // 先读云端确认对应子单仍为 pending（防止并发抢单）
     const row=await sbSelectOne(o.ownerUid);
-    const cloudOrder=row&&Array.isArray(row.orders)?row.orders.find(x=>x.no===o.id):null;
+    const cloudOrder=row&&Array.isArray(row.orders)?row.orders.find(x=>x.no===parentNo):null;
     if(!cloudOrder||cloudOrder.status!=='pending'){
       toast('手慢了，订单已被抢走');
+      removeHall(o);
+      return;
+    }
+    const sub=(cloudOrder.subOrders||[]).find(s=>s.index===subIndex);
+    if(!sub||sub.status!=='pending'){
+      toast('手慢了，该名额已被抢走');
       removeHall(o);
       return;
     }
@@ -521,19 +540,21 @@ async function grab(id,btn){
     if(state.tab==='mine')renderMine();
     // 从大厅移除
     removeHall(o);
-    // 回写云端：把该用户订单状态改为 ongoing
+    // 回写云端：把对应子单状态改为 ongoing
     let alreadyTaken=false;
-    const ok=await updateOwnerOrder(o.ownerUid,o.id,(od)=>{
+    const ok=await updateOwnerOrder(o.ownerUid,parentNo,(od)=>{
       if(od.status!=='pending'){ alreadyTaken=true; return; }
-      od.status='ongoing';
-      od.grabbedBy=state.user;
-      od.grabbedAt=Date.now();
+      const s=(od.subOrders||[]).find(x=>x.index===subIndex);
+      if(!s||s.status!=='pending'){ alreadyTaken=true; return; }
+      s.status='ongoing';
+      s.grabbedBy=state.user;
+      s.grabbedAt=Date.now();
     });
     if(ok && !alreadyTaken){
-      toast('抢单成功，联系方式已放入「我的订单」');
+      toast('抢单成功，请等待客服提供联系方式');
       if(navigator.vibrate)navigator.vibrate(12);
     }else{
-      toast('手慢了，订单已被抢走');
+      toast('手慢了，该名额已被抢走');
       // 回滚：从我的订单移除
       state.mine=state.mine.filter(x=>x.id!==o.id);
       saveMine();updateCounts();
@@ -554,9 +575,13 @@ async function grab(id,btn){
 async function complete(id){
   const o=state.mine.find(x=>x.id===id);if(!o)return;
   try{
-    const ok=await updateOwnerOrder(o.ownerUid,o.id,(od)=>{
-      od.status='done';
-      od.doneAt=Date.now();
+    const parts=id.split('_');
+    const parentNo=parts.slice(0,-1).join('_');
+    const subIndex=parseInt(parts[parts.length-1],10);
+    const ok=await updateOwnerOrder(o.ownerUid,parentNo,(od)=>{
+      const s=(od.subOrders||[]).find(x=>x.index===subIndex);
+      if(s){ s.status='done'; s.doneAt=Date.now(); }
+      else { od.status='done'; od.doneAt=Date.now(); }
     });
     if(!ok){toast('操作失败：订单不存在');return}
     o.status='done';o.doneAt=Date.now();
@@ -597,9 +622,12 @@ async function fetchPendingOrders(){
       if(!row||!row.uid||!Array.isArray(row.orders)) continue;
       for(const o of row.orders){
         if(!o||o.status!=='pending') continue;
-        if(seen.has(o.no)) continue;
-        const m=mapOrder(o,row.uid);
-        all[m.zone].push(m);
+        const subs=mapOrder(o,row.uid);
+        for(const m of subs){
+          if(seen.has(m.id)) continue;
+          if(m.status!=='pending') continue; // 子单已被抢则跳过
+          all[m.zone].push(m);
+        }
       }
     }
     // 按下单时间倒序

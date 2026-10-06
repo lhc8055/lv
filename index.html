@@ -2365,14 +2365,30 @@ function ordersBodyHtml(){
   const list=store.orders.slice().reverse().filter(o=>{
     if(orderFilter==="all") return true;
     if(orderFilter==="after") return o.status==="refunding"||o.status==="refunded";
-    // 显示状态过滤：ongoing 但无打手接单时归到"待接单"筛选
-    const ds=(o.status==='ongoing'&&!o.grabbedBy)?'pending':o.status;
+    // 多打手订单：根据子单状态判断显示状态
+    const subs=o.subOrders||[];
+    const boosterCount=o.boosterCount||1;
+    const takenCount=subs.filter(s=>s.status==='ongoing'||s.status==='done').length;
+    const doneCount=subs.filter(s=>s.status==='done').length;
+    let ds=o.status;
+    if(o.status==='pending'&&subs.length){
+      if(doneCount===boosterCount) ds='done';
+      else if(takenCount>0) ds='ongoing';
+    }
     return ds===orderFilter;
   });
   if(list){
     return '<div class="order-list">'+list.map((o,i)=>{
-      // 显示状态：ongoing 但无打手接单时仍按"待接单"显示
-      const dispStatus=(o.status==='ongoing'&&!o.grabbedBy)?'pending':o.status;
+      // 多打手订单：根据子单状态计算整体状态
+      const subs=o.subOrders||[];
+      const boosterCount=o.boosterCount||1;
+      const takenCount=subs.filter(s=>s.status==='ongoing'||s.status==='done').length;
+      const doneCount=subs.filter(s=>s.status==='done').length;
+      let dispStatus=o.status;
+      if(o.status==='pending'&&subs.length){
+        if(doneCount===boosterCount) dispStatus='done';
+        else if(takenCount>0) dispStatus='ongoing';
+      }
       const st=STATUS[dispStatus]||{text:o.status,cls:""};
       const rate=o.rating?'<div class="oc-rate">我的评价 <span class="stars-mini">'+"★".repeat(o.rating.star)+"☆".repeat(5-o.rating.star)+'</span> '+esc(o.rating.text||"")+'</div>':"";
       const rawAmt=(Number(o.price)||0)*(Number(o.qty)||1);
@@ -2384,10 +2400,11 @@ function ordersBodyHtml(){
         const amt=ded>0?" -¥"+ded:(def?" -¥"+round2(Math.min(def.minus,Math.max(0,rawAmt-0.01))):"");
         return '<div class="oc-coupon">🎟 已使用「'+esc(name)+'」'+amt+'</div>';
       })():"";
+      const boosterLine=boosterCount>1?`<div class="oc-meta" style="color:var(--pri)">需要 ${boosterCount} 位打手 · 已接 ${takenCount}/${boosterCount} · 每位佣金 ¥${(o.commissionEach||0).toFixed(2)}</div>`:"";
       return '<div class="order-card" style="--i:'+Math.min(i,6)+'"><div class="oc-top"><span>订单号 '+esc(o.no)+'</span><span class="oc-status '+st.cls+'">'+st.text+'</span></div>'+
         '<div class="oc-body"><div class="oc-img">'+imgPlain(o.img,"")+'</div>'+
         '<div class="oc-info"><div class="oc-name">'+esc(o.title)+'</div>'+
-        '<div class="oc-meta">'+esc(o.gameName)+' · '+esc(o.server)+(o.platform?' · '+(o.platform==="android"?"安卓":"苹果"):"")+' · ×'+o.qty+o.unit+(o.gameId?'<br>游戏ID：'+esc(o.gameId):"")+(o.qq?' · QQ：'+esc(o.qq):"")+(o.note?'<br>备注：'+esc(o.note):"")+'<br>'+fmtTime(o.ts)+'</div></div>'+
+        '<div class="oc-meta">'+esc(o.gameName)+' · '+esc(o.server)+(o.platform?' · '+(o.platform==="android"?"安卓":"苹果"):"")+' · ×'+o.qty+o.unit+(o.gameId?'<br>游戏ID：'+esc(o.gameId):"")+(o.qq?' · QQ：'+esc(o.qq):"")+(o.note?'<br>备注：'+esc(o.note):"")+'<br>'+fmtTime(o.ts)+'</div>'+boosterLine+'</div>'+
         '<div class="oc-right">¥'+o.price+'/'+o.unit+'</div></div>'+couponLine+rate+
         '<div class="oc-foot"><span class="oc-total">合计 <b>¥'+totalAmt+'</b></span><span class="oc-actions">'+orderActions(o)+'</span></div></div>';
     }).join("")+'</div><div class="no-more">没有更多了</div>';
@@ -3189,6 +3206,16 @@ const ACTIONS={
       if(!qq){toast("请填写QQ号",false);return;}
       if(!/^\d{5,11}$/.test(qq)){toast("QQ号格式不正确",false);return;}
       const no="XY"+String(Date.now()).slice(-8)+Math.floor(Math.random()*90+10);
+      // 佣金计算：平台抽1/5，打手分4/5；多打手则平分，余数归平台
+      const boosterCount=parseInt(p.boosterCount)||1;
+      const commissionPool=Math.round(r.total*0.8*100)/100; // 打手佣金池 = 总价 × 4/5
+      const commissionEach=Math.floor(commissionPool/boosterCount*100)/100; // 每个打手佣金（向下取整到分）
+      const platformFee=Math.round((r.total-commissionEach*boosterCount)*100)/100; // 平台抽成（含余数）
+      // 子单列表：每个打手一个，初始待接单
+      const subOrders=[];
+      for(let i=0;i<boosterCount;i++){
+        subOrders.push({index:i+1,status:"pending",grabbedBy:null,grabbedAt:null,doneAt:null});
+      }
       const order={
         no,id:p.id,title:p.title,img:p.img,gameName:gameById(p.game).name,
         price:p.price,qty:r.qty,unit:p.unit,server:$("#cfServer").value,note:($("#cfNote").value||"").trim(),
@@ -3196,7 +3223,8 @@ const ACTIONS={
         rank:p.rank||"",tags:(p.tags||[]).slice(),desc:p.desc||"",cat:p.cat||"",game:p.game,
         gameId,qq,
         platform:p.game==="wz"?(($("#cfPlatform")&&$("#cfPlatform").value)||"android"):null,
-        customerName:(store.user&&store.user.name)||"",customerContact:qq
+        customerName:(store.user&&store.user.name)||"",customerContact:qq,
+        boosterCount,commissionPool,commissionEach,platformFee,subOrders
       };
       if(r.coupon){
         const c=store.coupons.find(x=>x.id===r.coupon.id);
