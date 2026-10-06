@@ -381,13 +381,17 @@ function mapOrder(o,ownerUid){
 }
 
 /* ===================== 卡片渲染 ===================== */
-// 底部标签：区服图标（QQ/微信）+ 系统图标（安卓/苹果，仅王者荣耀）
+// 底部标签：区服图标（QQ/微信）+ 系统图标
 function chips(o){
   const zoneChip=`<span class="chip">${ic(o.im==='qq'?'i-qq':'i-wechat','im '+o.im)}${o.im==='qq'?'QQ':'微信'}</span>`;
   let osChip='';
-  if(o.zone==='wzry'&&o.os){
+  if(o.zone==='wzry'){
+    // 王者荣耀：仅显示老板选的设备
     const isIos=o.os==='ios';
-    osChip=`<span class="chip">${ic(isIos?'i-apple':'i-android','os '+o.os)}${isIos?'仅苹果可接':'仅安卓可接'}</span>`;
+    osChip=`<span class="chip">${ic(isIos?'i-apple':'i-android','os '+o.os)}仅限${isIos?'苹果':'安卓'}</span>`;
+  }else{
+    // 无畏契约/三角洲：安卓苹果均可（双图标）
+    osChip=`<span class="chip">${ic('i-android','os android')}${ic('i-apple','os ios')}均可</span>`;
   }
   return zoneChip+osChip;
 }
