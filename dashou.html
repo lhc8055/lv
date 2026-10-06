@@ -157,6 +157,8 @@ h1{font-size:24px;font-weight:700;letter-spacing:.5px;color:#0f172a}
 .chat-msg.me{align-self:flex-end}
 .chat-msg.them{align-self:flex-start}
 .chat-bubble{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5;word-break:break-word}
+.chat-name{font-size:11px;color:#999;margin-bottom:3px}
+.chat-msg.me .chat-name{text-align:right}
 .chat-msg.me .chat-bubble{background:var(--pri);color:#fff;border-bottom-right-radius:4px}
 .chat-msg.them .chat-bubble{background:#fff;color:#333;border-bottom-left-radius:4px}
 .chat-time{font-size:10px;color:#999;margin-top:3px}
@@ -444,13 +446,15 @@ function hallCard(o){
 function mineCard(o){
   const done=o.status==='done';
   const boosterTag=o.boosterCount>1?`<span class="new">${o.subIndex}/${o.boosterCount}名额</span>`:'';
+  const orderNo=o.parentNo||(o.id?o.id.split('_')[0]:'');
+  const price=o.price||o.total||0;
   return `<article class="card glass rim" data-id="${o.id}" data-zone="${o.zone}">
 <div class="c-top"><span class="mode">${o.mode}</span>${boosterTag}<span class="znm">${ZN[o.zone]}</span><span class="st ${done?'done':'doing'}">${done?'已完成':'进行中'}</span></div>
 <h3>${o.title}</h3><p class="desc">${o.desc}</p>
-<div class="info"><div><span>订单号</span><b>${o.parentNo}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>抢单时间</span><b>${fmt(o.gt)}</b></div><div><span>我的佣金</span><b>¥${o.price}</b></div></div>
+<div class="info"><div><span>订单号</span><b>${orderNo}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>抢单时间</span><b>${fmt(o.gt)}</b></div><div><span>我的佣金</span><b>¥${price}</b></div></div>
 ${o.gameId?`<div class="contact"><div><span>游戏ID</span><b>${o.gameId}</b></div><button class="mini" data-act="copy" data-v="${o.gameId}">复制</button></div>`:''}
-<div class="contact"><div><span>联系方式</span><b>接单后由客服提供</b></div></div>
-<div class="c-foot"><div class="chips">${chips(o)}</div>${done?'':`<button class="grab" data-act="done" data-id="${o.id}">完成订单</button>`}<button class="mini" data-act="chat" data-id="${o.id}" data-parent="${o.parentNo}">联系客服</button></div>
+<div class="contact"><div><span>联系沟通</span><b>订单聊天房间</b></div><button class="mini" data-act="order-chat" data-id="${o.id}" data-parent="${orderNo}" data-sub="${o.subIndex||1}">进入聊天</button></div>
+<div class="c-foot"><div class="chips">${chips(o)}</div>${done?'':`<button class="grab" data-act="done" data-id="${o.id}">完成订单</button>`}</div>
 </article>`;
 }
 
@@ -745,7 +749,7 @@ document.addEventListener('click',e=>{
   else if(a==='copy')copy(t.dataset.v);
   else if(a==='toggle')setOnline(!state.online);
   else if(a==='logout')logout();
-  else if(a==='chat')openChat(t.dataset.parent);
+  else if(a==='order-chat')openOrderChat(t.dataset.parent,parseInt(t.dataset.sub,10));
   else if(a==='close-chat')closeChat();
   else if(a==='send-chat'){const inp=$('#chatInput');sendChat(inp.value);inp.value='';}
 });
@@ -903,9 +907,9 @@ $('#regForm').addEventListener('submit',async e=>{
 const saved=store.get('xy_user');
 if(saved){enter(saved,true)}
 
-/* ===================== 聊天系统 ===================== */
+/* ===================== 订单聊天房间 ===================== */
 const CHAT_UID='xy_chat_messages';
-let chatOrderNo='',chatPollTimer=null,chatLastTs=0;
+let chatOrderNo='',chatSubIndex=1,chatPollTimer=null;
 async function getMessages(){
   const row=await sbSelectOne(CHAT_UID);
   return (row&&Array.isArray(row.orders))?row.orders:[];
@@ -913,9 +917,11 @@ async function getMessages(){
 async function saveMessages(list){
   await sbUpsert({uid:CHAT_UID,orders:list});
 }
+// 打手在房间中的显示名：打手1、打手2...
+function chatDisplayName(){return '打手'+chatSubIndex;}
 async function sendChat(content){
   if(!content.trim())return;
-  const msg={id:'M'+Date.now()+Math.floor(Math.random()*1000),from:state.user,fromRole:'booster',to:'service',toRole:'service',content:content.trim(),ts:Date.now(),orderNo:chatOrderNo};
+  const msg={id:'M'+Date.now()+Math.floor(Math.random()*1000),from:chatDisplayName(),fromRole:'booster',to:'all',toRole:'all',content:content.trim(),ts:Date.now(),orderNo:chatOrderNo};
   const list=await getMessages();
   list.push(msg);
   await saveMessages(list);
@@ -923,11 +929,12 @@ async function sendChat(content){
 }
 function renderChat(list){
   const box=$('#chatBox');if(!box)return;
-  const mine=list.filter(m=>(m.from===state.user&&m.fromRole==='booster')||(m.to===state.user&&m.toRole==='booster'));
+  // 只显示当前订单房间的消息
+  const mine=list.filter(m=>m.orderNo===chatOrderNo);
   mine.sort((a,b)=>a.ts-b.ts);
   box.innerHTML=mine.map(m=>{
-    const isMe=m.from===state.user;
-    return `<div class="chat-msg ${isMe?'me':'them'}"><div class="chat-bubble">${esc(m.content)}</div><div class="chat-time">${fmt(m.ts)}</div></div>`;
+    const isMe=m.from===chatDisplayName();
+    return `<div class="chat-msg ${isMe?'me':'them'}"><div class="chat-name">${esc(m.from)}</div><div class="chat-bubble">${esc(m.content)}</div><div class="chat-time">${fmt(m.ts)}</div></div>`;
   }).join('');
   box.scrollTop=box.scrollHeight;
 }
@@ -937,8 +944,10 @@ async function pollChat(){
     renderChat(list);
   }catch(e){}
 }
-function openChat(orderNo){
+function openOrderChat(orderNo,subIndex){
   chatOrderNo=orderNo||'';
+  chatSubIndex=subIndex||1;
+  $('#chatTitle').textContent='订单 '+chatOrderNo+' · 打手'+chatSubIndex;
   $('#chatPanel').classList.add('show');
   pollChat();
   chatPollTimer=setInterval(pollChat,3000);
@@ -950,7 +959,7 @@ function closeChat(){
 </script>
 <!-- 聊天面板 -->
 <div id="chatPanel" class="chat-panel">
-  <div class="chat-head"><span>联系客服</span><button class="chat-close" data-act="close-chat">✕</button></div>
+  <div class="chat-head"><span id="chatTitle">订单聊天</span><button class="chat-close" data-act="close-chat">✕</button></div>
   <div id="chatBox" class="chat-box"></div>
   <div class="chat-input">
     <input id="chatInput" placeholder="输入消息…" maxlength="200">

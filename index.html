@@ -537,6 +537,8 @@ html.fx-run .tabbar,html.fx-run .page-head{backdrop-filter:none;-webkit-backdrop
 .chat-msg.me{align-self:flex-end}
 .chat-msg.them{align-self:flex-start}
 .chat-bubble{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5;word-break:break-word}
+.chat-name{font-size:11px;color:#999;margin-bottom:3px}
+.chat-msg.me .chat-name{text-align:right}
 .chat-msg.me .chat-bubble{background:var(--pri);color:#fff;border-bottom-right-radius:4px}
 .chat-msg.them .chat-bubble{background:#fff;color:#333;border-bottom-left-radius:4px}
 .chat-input{display:flex;gap:8px;padding:12px 16px;background:#fff;border-top:1px solid rgba(0,0,0,.06)}
@@ -2363,15 +2365,12 @@ function viewDetail(params){
 
 function orderActions(o){
   const btn=(cls,action,text,extra)=>'<button type="button" class="oc-btn '+cls+'" data-action="'+action+'" data-no="'+o.no+'"'+(extra||"")+'>'+text+'</button>';
-  // 打手直接联系老板：打手接单后通过订单里的 QQ 号加老板，不再需要人工配置群链接
-  const grabbedTag = o.grabbedBy
-    ? '<button type="button" class="oc-btn gray" disabled>打手 '+esc(o.grabbedBy)+' 已接单</button>'
-    : '<button type="button" class="oc-btn gray" disabled>等待打手接单</button>';
+  const chatBtn=btn("gray","order-chat","订单聊天");
   switch(o.status){
     case "unpaid":return btn("gray","order-cancel","取消订单")+btn("solid","order-pay","去支付");
-    case "pending":return btn("gray","order-refund","申请退款")+grabbedTag;
-    case "ongoing":return grabbedTag+btn("solid","order-complete","确认完成");
-    case "done":return o.rating?"":btn("solid","order-rate","去评价");
+    case "pending":return btn("gray","order-refund","申请退款")+chatBtn;
+    case "ongoing":return chatBtn+btn("solid","order-complete","确认完成");
+    case "done":return (o.rating?"":btn("solid","order-rate","去评价"))+chatBtn;
     case "refunding":return '<button type="button" class="oc-btn gray" disabled>退款处理中…</button>';
     default:return btn("","detail","再次下单",' data-id="'+o.id+'"');
   }
@@ -3028,6 +3027,7 @@ const ACTIONS={
     toast("反馈已提交，客服会在10分钟内处理");
   },
   "contact-service"(){openChat();},
+  "order-chat"(el){openChat(el.dataset.no);},
   "contact-player"(el){
     // 已改为打手直接通过 QQ 联系老板，不再需要人工配置群链接
     toast("打手接单后会通过QQ直接联系你，请保持QQ畅通");
@@ -3670,9 +3670,9 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
   sync();
 })();
 
-/* ===================== 聊天系统（老板端） ===================== */
+/* ===================== 订单聊天房间（老板端） ===================== */
 const CHAT_UID='xy_chat_messages';
-let _chatTimer=null;
+let _chatOrderNo='',_chatTimer=null;
 async function _getChatMsgs(){
   try{
     const res=await fetch(SB_BASE_URLS[0]+"/rest/v1/"+SB_TABLE+"?uid=eq."+CHAT_UID+"&select=*",{headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON}});
@@ -3683,34 +3683,37 @@ async function _getChatMsgs(){
 async function _saveChatMsgs(list){
   await fetch(SB_BASE_URLS[0]+"/rest/v1/"+SB_TABLE+"?uid=eq."+CHAT_UID,{method:"PATCH",headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON,"Content-Type":"application/json"},body:JSON.stringify({orders:list})});
 }
-function _chatName(){return (store.user&&store.user.name)||"游客";}
+// 老板在房间中的显示名
+function _chatName(){return "老板";}
 async function sendChatMsg(){
   const inp=document.getElementById("chatInput");if(!inp)return;
   const content=inp.value.trim();if(!content)return;
-  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:_chatName(),fromRole:"customer",to:"service",toRole:"service",content,ts:Date.now()};
+  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:_chatName(),fromRole:"customer",to:"all",toRole:"all",content,ts:Date.now(),orderNo:_chatOrderNo};
   const list=await _getChatMsgs();list.push(msg);await _saveChatMsgs(list);
   inp.value="";renderChatMsgs(list);
 }
 function renderChatMsgs(list){
   const box=document.getElementById("chatBox");if(!box)return;
-  const mine=list.filter(m=>(m.from===_chatName()&&m.fromRole==="customer")||(m.to===_chatName()&&m.toRole==="customer"));
+  const mine=list.filter(m=>m.orderNo===_chatOrderNo);
   mine.sort((a,b)=>a.ts-b.ts);
   box.innerHTML=mine.map(m=>{
     const isMe=m.from===_chatName();
-    return '<div class="chat-msg '+(isMe?"me":"them")+'"><div class="chat-bubble">'+esc(m.content)+'</div></div>';
+    return '<div class="chat-msg '+(isMe?"me":"them")+'"><div class="chat-name">'+esc(m.from)+'</div><div class="chat-bubble">'+esc(m.content)+'</div></div>';
   }).join("");
   box.scrollTop=box.scrollHeight;
 }
 async function pollChatMsgs(){
   const list=await _getChatMsgs();renderChatMsgs(list);
 }
-function openChat(){
+function openChat(orderNo){
+  _chatOrderNo=orderNo||"";
   let p=document.getElementById("chatPanel");
   if(!p){
     p=document.createElement("div");p.id="chatPanel";p.className="chat-panel";
-    p.innerHTML='<div class="chat-head"><span>联系客服</span><button class="chat-close" onclick="closeChat()">✕</button></div><div id="chatBox" class="chat-box"></div><div class="chat-input"><input id="chatInput" placeholder="输入消息…" maxlength="200" onkeydown="if(event.key===\'Enter\')sendChatMsg()"><button onclick="sendChatMsg()">发送</button></div>';
+    p.innerHTML='<div class="chat-head"><span id="chatTitle">订单聊天</span><button class="chat-close" onclick="closeChat()">✕</button></div><div id="chatBox" class="chat-box"></div><div class="chat-input"><input id="chatInput" placeholder="输入消息…" maxlength="200" onkeydown="if(event.key===\'Enter\')sendChatMsg()"><button onclick="sendChatMsg()">发送</button></div>';
     document.body.appendChild(p);
   }
+  document.getElementById("chatTitle").textContent=_chatOrderNo?("订单 "+_chatOrderNo+" · 老板"):"通用客服";
   p.classList.add("show");pollChatMsgs();
   if(_chatTimer)clearInterval(_chatTimer);
   _chatTimer=setInterval(pollChatMsgs,3000);

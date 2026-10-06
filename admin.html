@@ -661,9 +661,9 @@ $("#tabnav").addEventListener("click", e => {
   if(btn.dataset.tab === "chat") loadChatUsers();
 });
 
-/* ---------- 客服聊天 ---------- */
+/* ---------- 客服聊天（订单房间模式） ---------- */
 const CHAT_UID="xy_chat_messages";
-let _curChatUser=null,_curChatRole=null,_chatTimer=null;
+let _curOrderNo=null,_chatTimer=null;
 function sbTable(){return ($("#sbTable")&&$("#sbTable").value.trim())||"user_data";}
 function sbKey(){const v=$("#sbKey")&&$("#sbKey").value.trim();return (v&&v.split(".").length===3)?v:SB_ANON_DEFAULT;}
 async function _adminGetMsgs(){
@@ -678,38 +678,36 @@ async function _adminSaveMsgs(list){
 }
 async function loadChatUsers(){
   const list=await _adminGetMsgs();
-  // 按用户分组（from/to + fromRole/toRole）
-  const users={};
+  // 按订单号分组（房间）
+  const rooms={};
   list.forEach(m=>{
-    const key=m.fromRole+"|"+m.from;
-    if(!users[key]) users[key]={name:m.from,role:m.fromRole,last:m.ts};
-    else users[key].last=Math.max(users[key].last,m.ts);
+    const on=m.orderNo||"通用";
+    if(!rooms[on]) rooms[on]={orderNo:on,last:m.ts,count:1};
+    else{rooms[on].last=Math.max(rooms[on].last,m.ts);rooms[on].count++;}
   });
-  const arr=Object.values(users).sort((a,b)=>b.last-a.last);
-  const roleName={customer:"老板",booster:"打手",service:"客服"};
-  $("#chatUsers").innerHTML=arr.map(u=>'<div class="chat-user-item" data-name="'+esc(u.name)+'" data-role="'+u.role+'" style="padding:12px;border-bottom:1px solid #eee;cursor:pointer'+(_curChatUser===u.name?";background:#e8f0fe":"")+'"><div style="font-weight:600">'+esc(u.name)+'</div><div style="font-size:11px;color:#888">'+roleName[u.role]+'</div></div>').join("")||'<div style="padding:20px;text-align:center;color:#999">暂无消息</div>';
-  $$(".chat-user-item").forEach(el=>el.onclick=()=>{_curChatUser=el.dataset.name;_curChatRole=el.dataset.role;loadChatUsers();renderAdminChat();});
-  if(_curChatUser) renderAdminChat();
+  const arr=Object.values(rooms).sort((a,b)=>b.last-a.last);
+  $("#chatUsers").innerHTML=arr.map(r=>'<div class="chat-user-item" data-no="'+esc(r.orderNo)+'" style="padding:12px;border-bottom:1px solid #eee;cursor:pointer'+(_curOrderNo===r.orderNo?";background:#e8f0fe":"")+'"><div style="font-weight:600">'+esc(r.orderNo)+'</div><div style="font-size:11px;color:#888">'+r.count+'条消息</div></div>').join("")||'<div style="padding:20px;text-align:center;color:#999">暂无聊天</div>';
+  $$(".chat-user-item").forEach(el=>el.onclick=()=>{_curOrderNo=el.dataset.no;loadChatUsers();renderAdminChat();});
+  if(_curOrderNo) renderAdminChat();
   if(_chatTimer)clearInterval(_chatTimer);
-  _chatTimer=setInterval(()=>{loadChatUsers();if(_curChatUser)renderAdminChat();},5000);
+  _chatTimer=setInterval(()=>{loadChatUsers();if(_curOrderNo)renderAdminChat();},5000);
 }
 async function renderAdminChat(){
-  if(!_curChatUser)return;
+  if(!_curOrderNo)return;
   const list=await _adminGetMsgs();
-  const mine=list.filter(m=>(m.from===_curChatUser&&m.fromRole===_curChatRole)||(m.to===_curChatUser&&m.toRole===_curChatRole));
+  const mine=list.filter(m=>(m.orderNo||"通用")===_curOrderNo);
   mine.sort((a,b)=>a.ts-b.ts);
-  const roleName={customer:"老板",booster:"打手"};
-  $("#chatHead").textContent=_curChatUser+"（"+(roleName[_curChatRole]||"")+"）";
+  $("#chatHead").textContent="订单 "+_curOrderNo+" · 客服";
   $("#chatMsgs").innerHTML=mine.map(m=>{
     const isMe=m.fromRole==="service";
-    return '<div style="max-width:75%;align-self:'+(isMe?"flex-end":"flex-start")+'"><div style="padding:10px 14px;border-radius:14px;font-size:14px;'+(isMe?"background:var(--pri,#4f6ef7);color:#fff":"background:#f0f0f5;color:#333")+'">'+esc(m.content)+'</div></div>';
+    return '<div style="max-width:75%;align-self:'+(isMe?"flex-end":"flex-start")+'"><div style="font-size:11px;color:#999;margin-bottom:3px;text-align:'+(isMe?"right":"left")+'">'+esc(m.from)+'</div><div style="padding:10px 14px;border-radius:14px;font-size:14px;'+(isMe?"background:var(--pri,#4f6ef7);color:#fff":"background:#f0f0f5;color:#333")+'">'+esc(m.content)+'</div></div>';
   }).join("");
   $("#chatMsgs").scrollTop=$("#chatMsgs").scrollHeight;
 }
 $("#chatSendBtn").addEventListener("click",async()=>{
-  if(!_curChatUser){toast("请先选择用户");return;}
+  if(!_curOrderNo){toast("请先选择订单房间");return;}
   const inp=$("#chatReply");const content=inp.value.trim();if(!content)return;
-  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:"客服",fromRole:"service",to:_curChatUser,toRole:_curChatRole,content,ts:Date.now()};
+  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:"客服",fromRole:"service",to:"all",toRole:"all",content,ts:Date.now(),orderNo:_curOrderNo};
   const list=await _adminGetMsgs();list.push(msg);await _adminSaveMsgs(list);
   inp.value="";renderAdminChat();
 });
