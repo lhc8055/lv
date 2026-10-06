@@ -731,15 +731,17 @@ async function renderAdminChat(){
   $("#chatFullMsgs").innerHTML=mine.map(m=>{
     const isMe=m.fromRole==="service";
     const readCount=(m.readBy||[]).filter(r=>r!==m.from).length;
+    // 所有消息都显示已读人数
     let readTxt='';
-    if(isMe&&!m.sending){
+    if(!m.sending){
       if(readCount>=3)readTxt='<span style="margin-left:6px;color:#4f6ef7">三人已读</span>';
       else if(readCount===2)readTxt='<span style="margin-left:6px;color:#4f6ef7">两人已读</span>';
       else if(readCount===1)readTxt='<span style="margin-left:6px;color:#4f6ef7">已读</span>';
+      else readTxt='<span style="margin-left:6px;color:#999">未读</span>';
     }
     const spinner=m.sending?'<span style="display:inline-block;width:10px;height:10px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-left:6px;vertical-align:middle"></span>':'';
     // 撤回按钮（客服可撤回任意消息）
-    const recallBtn='<span class="recall-btn" data-id="'+esc(m.id)+'" style="margin-left:8px;color:#ff3b30;cursor:pointer;font-size:11px">撤回</span>';
+    const recallBtn='<span class="recall-btn" data-id="'+esc(m.id)+'" style="margin-left:8px;color:#ff3b30;cursor:pointer;font-size:11px;user-select:none">撤回</span>';
     return '<div style="max-width:75%;align-self:'+(isMe?"flex-end":"flex-start")+'"><div style="font-size:11px;color:#999;margin-bottom:3px;text-align:'+(isMe?"right":"left")+'">'+esc(m.from)+'</div><div style="padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5;'+(isMe?"background:var(--pri,#4f6ef7);color:#fff":"background:#f0f0f5;color:#333")+'">'+esc(m.content)+spinner+'</div><div style="font-size:10px;color:#999;margin-top:3px;text-align:'+(isMe?"right":"left")+'">'+fmtHMS(m.ts)+readTxt+recallBtn+(m.failed?'<span style="margin-left:6px;color:#ff3b30">发送失败</span>':'')+'</div></div>';
   }).join("");
   // 绑定撤回按钮

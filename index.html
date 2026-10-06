@@ -3715,10 +3715,11 @@ function renderChatMsgs(list){
     const isMe=m.from===_chatName();
     const readCount=(m.readBy||[]).filter(r=>r!==m.from).length;
     let readTxt='';
-    if(isMe&&!m.sending){
+    if(!m.sending){
       if(readCount>=3)readTxt='<span style="margin-left:6px;color:var(--pri)">三人已读</span>';
       else if(readCount===2)readTxt='<span style="margin-left:6px;color:var(--pri)">两人已读</span>';
       else if(readCount===1)readTxt='<span style="margin-left:6px;color:var(--pri)">已读</span>';
+      else readTxt='<span style="margin-left:6px;color:#999">未读</span>';
     }
     const spinner=m.sending?'<span style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-left:6px;vertical-align:middle"></span>':'';
     return '<div class="chat-msg '+(isMe?"me":"them")+'"><div class="chat-name">'+esc(m.from)+'</div><div class="chat-bubble">'+esc(m.content)+spinner+'</div><div class="chat-time">'+_fmtHMS(m.ts)+readTxt+(m.failed?'<span style="margin-left:6px;color:#ff3b30">发送失败</span>':'')+'</div></div>';

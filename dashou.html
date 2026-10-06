@@ -953,10 +953,11 @@ function renderChat(list){
     // 已读人数 = readBy 中排除发送者自己
     const readCount=(m.readBy||[]).filter(r=>r!==m.from).length;
     let readTxt='';
-    if(isMe&&!m.sending){
+    if(!m.sending){
       if(readCount>=3)readTxt='<span class="chat-read">三人已读</span>';
       else if(readCount===2)readTxt='<span class="chat-read">两人已读</span>';
       else if(readCount===1)readTxt='<span class="chat-read">已读</span>';
+      else readTxt='<span class="chat-read" style="color:#999">未读</span>';
     }
     const spinner=m.sending?'<span class="chat-spin"></span>':'';
     const fail=m.failed?'<span class="chat-fail">发送失败</span>':'';
