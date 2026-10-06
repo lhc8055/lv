@@ -2373,7 +2373,7 @@ function orderActions(o){
     case "unpaid":return btn("gray","order-cancel","取消订单")+btn("solid","order-pay","去支付");
     case "pending":return btn("gray","order-refund","申请退款")+chatBtn;
     case "ongoing":return chatBtn+btn("solid","order-complete","确认完成");
-    case "done":return (o.rating?"":btn("solid","order-rate","去评价"))+chatBtn;
+    case "done":return btn("gray","order-aftersale","申请售后")+(o.rating?"":btn("solid","order-rate","去评价"));
     case "refunding":return '<button type="button" class="oc-btn gray" disabled>退款处理中…</button>';
     default:return btn("","detail","再次下单",' data-id="'+o.id+'"');
   }
@@ -2609,6 +2609,13 @@ function openRefund(no){
     '<div class="field"><label>补充说明（选填）</label><textarea id="rfText" maxlength="120" placeholder="可填写具体情况，方便客服快速处理"></textarea></div>'+
     '<button class="m-btn" data-action="do-refund" data-no="'+no+'">确认申请退款</button>'+
     '<div class="qs-tip">待接单订单退款原路退回，一般10分钟内到账</div>');
+}
+function openAfterSale(no){
+  openSheet('<h3>申请售后</h3>'+
+    '<div class="field"><label>售后类型</label><select id="asType"><option>服务态度问题</option><option>陪玩未完成服务</option><option>服务与描述不符</option><option>申请退款</option><option>其他问题</option></select></div>'+
+    '<div class="field"><label>问题描述（选填）</label><textarea id="asText" maxlength="200" placeholder="可填写具体情况，方便客服快速处理"></textarea></div>'+
+    '<button class="m-btn" data-action="do-aftersale" data-no="'+no+'">提交售后申请</button>'+
+    '<div class="qs-tip">客服将在24小时内处理你的售后申请</div>');
 }
 function openBuy(p){
   currentBuy=p;
@@ -3125,6 +3132,14 @@ const ACTIONS={
     o.status="refunding";o.refundTs=Date.now();o.refundReason=$("#rfReason").value;
     saveStore();closeSheet();render(true);
     toast("退款申请已提交，预计10分钟内原路退回");
+  },
+  "order-aftersale"(el){openAfterSale(el.dataset.no);},
+  "do-aftersale"(el){
+    const o=findOrder(el.dataset.no);
+    if(!o) return;
+    o.status="refunding";o.refundTs=Date.now();o.refundReason=$("#asType").value;o.afterSale=true;
+    saveStore();closeSheet();render(true);
+    toast("售后申请已提交，客服将尽快处理");
   },
 
   "get-coupon"(el){
