@@ -20,30 +20,36 @@ button{cursor:pointer}
 .glass{position:relative;background:rgba(255,255,255,.52);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);box-shadow:0 10px 30px -12px rgba(60,40,140,.18),inset 0 1px 0 rgba(255,255,255,.8)}
 .rim::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;background:linear-gradient(145deg,rgba(255,255,255,.95),rgba(255,255,255,.08) 38%,rgba(255,255,255,.08) 62%,rgba(255,255,255,.75));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
 
-.login{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px 20px;position:relative;overflow:hidden;transition:opacity .35s var(--ease),transform .35s var(--ease)}
-.login.out{opacity:0;transform:scale(1.03);pointer-events:none}
-.orb{position:absolute;border-radius:50%;pointer-events:none}
-.o1{width:210px;height:210px;left:calc(50% - 200px);top:12%;background:linear-gradient(145deg,#8f7bff,#ff8fc4)}
-.o2{width:150px;height:150px;right:calc(50% - 185px);bottom:12%;background:linear-gradient(145deg,#59c4ff,#7c5cff)}
-.lcard{width:100%;max-width:380px;border-radius:34px;padding:34px 24px 24px;text-align:center}
-.logo{width:76px;height:76px;margin:0 auto 18px;border-radius:22px;display:grid;place-items:center;background:linear-gradient(145deg,#9a7bff,#6a4dff);box-shadow:0 14px 28px -10px rgba(110,80,255,.6),inset 0 1px 0 rgba(255,255,255,.5)}
-.logo svg{width:38px;height:38px;fill:#fff}
-h1{font-size:25px;font-weight:700;letter-spacing:.5px}
-.sub{color:var(--sub);font-size:14px;margin:6px 0 24px}
-.group{border-radius:16px;background:rgba(255,255,255,.7);text-align:left;overflow:hidden}
+.login{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px 20px;position:relative;overflow:hidden;transition:opacity .35s var(--ease),transform .35s var(--ease);background:#070a12;background:radial-gradient(ellipse at 50% 0%,#131c33 0%,#0a0e1a 55%,#05070d 100%)}
+.login::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 20% 30%,rgba(59,130,246,.08),transparent 40%),radial-gradient(circle at 80% 70%,rgba(99,102,241,.06),transparent 40%);pointer-events:none}
+.login.out{opacity:0;transform:scale(1.02);pointer-events:none}
+.lcard{width:100%;max-width:380px;border-radius:28px;padding:32px 26px 26px;text-align:center;background:rgba(16,21,34,.92);border:1px solid rgba(255,255,255,.08);box-shadow:0 30px 60px -20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.04)}
+.logo{width:112px;height:112px;margin:0 auto 14px;border-radius:24px;display:grid;place-items:center;overflow:hidden;background:rgba(255,255,255,.03)}
+.logo img{width:100%;height:100%;object-fit:cover}
+h1{font-size:24px;font-weight:700;letter-spacing:.5px;color:#f0f2f5}
+.sub{color:#6b7589;font-size:13px;margin:6px 0 26px}
+.group{border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);text-align:left;overflow:hidden}
 .group label{display:flex;align-items:center;height:52px;padding:0 16px;gap:12px}
-.group label+label{border-top:.5px solid rgba(60,60,67,.16)}
-.group label span{width:52px;font-size:15px;font-weight:500}
-.group input{flex:1;min-width:0;font-size:16px}
-.eye{font-size:13px;color:var(--brand)}
-.err{height:20px;margin:10px 0 6px;font-size:13px;color:#ff3b30}
-.primary{width:100%;height:50px;border-radius:15px;color:#fff;font-size:17px;font-weight:600;background:linear-gradient(135deg,#8f6bff,#6a4dff);box-shadow:0 12px 24px -10px rgba(110,80,255,.7);transition:opacity .2s}
-.primary:disabled{opacity:.65}
-.hint{margin-top:16px;font-size:12px;color:var(--sub)}
-.zchips{display:flex;justify-content:center;gap:6px;margin-top:18px;flex-wrap:wrap}
-.zchips span{font-size:12px;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.65);color:var(--sub)}
+.group label+label{border-top:1px solid rgba(255,255,255,.06)}
+.group label span{width:56px;font-size:14px;font-weight:500;color:#9aa4b8}
+.group input{flex:1;min-width:0;font-size:16px;color:#f0f2f5}
+.group input::placeholder{color:#4a5266}
+.eye{font-size:13px;color:#5b8def}
+.err{height:20px;margin:10px 0 6px;font-size:13px;color:#ff5a5f}
+.primary{width:100%;height:50px;border-radius:14px;color:#fff;font-size:16px;font-weight:600;background:linear-gradient(135deg,#2563eb,#1d4ed8);box-shadow:0 10px 24px -10px rgba(37,99,235,.5);transition:opacity .2s,transform .1s}
+.primary:active{transform:scale(.98)}
+.primary:disabled{opacity:.6}
+.reg-btn{width:100%;height:46px;margin-top:12px;border-radius:14px;color:#c7d0e0;font-size:15px;font-weight:500;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);transition:background .2s}
+.reg-btn:active{background:rgba(255,255,255,.08)}
 .shake{animation:shake .4s}
 @keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.auth-switch{margin-top:18px;text-align:center}
+.auth-switch button{font-size:13px;color:#5b8def;background:none}
+.auth-switch button:active{opacity:.7}
+.reg-form{display:none}
+.reg-form.show{display:block}
+.login-form.hide{display:none}
+.field-tip{font-size:11px;color:#5a6478;text-align:left;margin-top:6px;padding:0 4px;line-height:1.5}
 
 #app{display:none;max-width:520px;margin:0 auto;min-height:100dvh}
 #app.on{display:block}
@@ -154,21 +160,32 @@ h1{font-size:25px;font-weight:700;letter-spacing:.5px}
 </defs></svg>
 
 <main class="login" id="login">
-  <div class="orb o1"></div><div class="orb o2"></div>
-  <div class="lcard glass rim" id="lcard">
-    <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7L2 9.2l7.1-.6z"/></svg></div>
+  <div class="lcard" id="lcard">
+    <div class="logo"><img src="imgs/logo-dashou.webp" alt="星柚电竞"></div>
     <h1>星柚打手接单系统</h1>
     <p class="sub">打手专用 · 登录后进入接单大厅</p>
-    <form id="loginForm" autocomplete="off">
+    <form id="loginForm" class="login-form" autocomplete="off">
       <div class="group">
-        <label><span>用户名</span><input id="u" type="text" placeholder="请输入打手用户名" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <label><span>用户名</span><input id="u" type="text" placeholder="请输入用户名" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
         <label><span>密码</span><input id="p" type="password" placeholder="请输入密码"><button type="button" class="eye" id="eye">显示</button></label>
       </div>
       <div class="err" id="err"></div>
       <button class="primary" id="loginBtn" type="submit">登录</button>
     </form>
-    <p class="hint">演示账号：xingyou　密码：123456</p>
-    <div class="zchips"><span>无畏契约</span><span>三角洲行动</span><span>王者荣耀</span></div>
+    <form id="regForm" class="reg-form" autocomplete="off">
+      <div class="group">
+        <label><span>用户名</span><input id="ru" type="text" placeholder="中文或英文" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <label><span>密码</span><input id="rp" type="password" placeholder="需含英文和中文"><button type="button" class="eye" id="reye">显示</button></label>
+        <label><span>邀请码</span><input id="rc" type="text" placeholder="请输入邀请码" autocapitalize="off" spellcheck="false"></label>
+      </div>
+      <div class="field-tip">密码需同时包含英文字母和中文，不能为纯数字</div>
+      <div class="err" id="rerr"></div>
+      <button class="primary" id="regBtn" type="submit">注册打手</button>
+    </form>
+    <div class="auth-switch">
+      <button type="button" id="toReg">注册打手账号</button>
+      <button type="button" id="toLogin" style="display:none">返回登录</button>
+    </div>
   </div>
 </main>
 
@@ -244,7 +261,8 @@ const ZK=Object.keys(ZN);
 // 用户端 game id → 打手端 zone id
 const GAME_TO_ZONE={val:'val',df:'delta',wz:'wzry'};
 const ZONE_TO_GAME={val:'val',delta:'df',wzry:'wz'};
-const ACCOUNTS={xingyou:'123456'};
+const ACCOUNTS={xingyou:'asd20090505'};
+const INVITE_CODE='XY2024'; // 一次性邀请码（注册时校验）
 const EASE='cubic-bezier(.32,.72,0,1)';
 
 /* ===================== Supabase 直连客户端 ===================== */
@@ -674,8 +692,33 @@ setInterval(()=>{
   });
 },1000);
 
-/* ===================== 登录 ===================== */
+/* ===================== 登录 / 注册 ===================== */
 const login=$('#login'),lcard=$('#lcard');
+const loginForm=$('#loginForm'),regForm=$('#regForm');
+const toReg=$('#toReg'),toLogin=$('#toLogin');
+
+// 已注册打手存储于 localStorage
+function getRegUsers(){return store.get('xy_reg_users')||{}}
+function setRegUsers(m){store.set('xy_reg_users',m)}
+
+// 用户名：中文、英文或数字（2-16位）
+function validUsername(u){return /^[\u4e00-\u9fa5A-Za-z0-9]{2,16}$/.test(u)}
+// 密码：必须同时包含英文字母和中文（不能纯数字，不区分大小写）
+function validPassword(p){return /[a-zA-Z]/.test(p)&&/[\u4e00-\u9fa5]/.test(p)&&p.length>=6}
+
+function showLogin(){
+  loginForm.classList.remove('hide');regForm.classList.remove('show');
+  toReg.style.display='';toLogin.style.display='none';
+  $('#rerr').textContent='';
+}
+function showReg(){
+  loginForm.classList.add('hide');regForm.classList.add('show');
+  toReg.style.display='none';toLogin.style.display='';
+  $('#err').textContent='';
+}
+toReg.addEventListener('click',showReg);
+toLogin.addEventListener('click',showLogin);
+
 function enter(u,instant){
   state.user=u;
   state.mine=store.get('xy_mine_'+u)||[];
@@ -703,10 +746,27 @@ function fail(m){
   $('#err').textContent=m;
   lcard.classList.remove('shake');void lcard.offsetWidth;lcard.classList.add('shake');
 }
+function rfail(m){
+  $('#rerr').textContent=m;
+  lcard.classList.remove('shake');void lcard.offsetWidth;lcard.classList.add('shake');
+}
 $('#eye').addEventListener('click',()=>{
   const p=$('#p'),show=p.type==='password';
   p.type=show?'text':'password';$('#eye').textContent=show?'隐藏':'显示';
 });
+$('#reye').addEventListener('click',()=>{
+  const p=$('#rp'),show=p.type==='password';
+  p.type=show?'text':'password';$('#reye').textContent=show?'隐藏':'显示';
+});
+
+// 校验密码：同时含英文和中文
+function checkPass(p){
+  if(p.length<6) return '密码至少6位';
+  if(!/[a-zA-Z]/.test(p)) return '密码必须包含英文字母';
+  if(!/[\u4e00-\u9fa5]/.test(p)) return '密码必须包含中文字符';
+  return '';
+}
+
 $('#loginForm').addEventListener('submit',e=>{
   e.preventDefault();
   const u=$('#u').value.trim(),p=$('#p').value,btn=$('#loginBtn');
@@ -714,13 +774,44 @@ $('#loginForm').addEventListener('submit',e=>{
   btn.disabled=true;btn.textContent='登录中…';
   setTimeout(()=>{
     btn.disabled=false;btn.textContent='登录';
-    if(Object.prototype.hasOwnProperty.call(ACCOUNTS,u)&&ACCOUNTS[u]===p){
-      $('#err').textContent='';store.set('xy_user',u);enter(u);
-    }else fail('用户名或密码错误');
+    // 校验：内置账号 + 已注册打手
+    const reg=getRegUsers();
+    const ok=(Object.prototype.hasOwnProperty.call(ACCOUNTS,u)&&ACCOUNTS[u]===p)
+          ||(Object.prototype.hasOwnProperty.call(reg,u)&&reg[u]===p);
+    if(ok){$('#err').textContent='';store.set('xy_user',u);enter(u);}
+    else fail('用户名或密码错误');
+  },400);
+});
+
+$('#regForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const u=$('#ru').value.trim(),p=$('#rp').value,code=$('#rc').value.trim(),btn=$('#regBtn');
+  if(!u||!p||!code){rfail('请填写用户名、密码和邀请码');return}
+  if(!validUsername(u)){rfail('用户名需为中文或英文，2-16位');return}
+  const pe=checkPass(p);
+  if(pe){rfail(pe);return}
+  if(code!==INVITE_CODE){rfail('邀请码不正确');return}
+  const reg=getRegUsers();
+  if(Object.prototype.hasOwnProperty.call(reg,u)||Object.prototype.hasOwnProperty.call(ACCOUNTS,u)){rfail('该用户名已被注册');return}
+  btn.disabled=true;btn.textContent='注册中…';
+  setTimeout(()=>{
+    reg[u]=p;
+    setRegUsers(reg);
+    btn.disabled=false;btn.textContent='注册打手';
+    $('#rerr').textContent='';
+    toast('注册成功，请登录');
+    // 切回登录并预填用户名
+    $('#u').value=u;$('#p').value='';
+    showLogin();
   },500);
 });
+
+// 自动登录：兼容内置账号和已注册账号
 const saved=store.get('xy_user');
-if(saved&&Object.prototype.hasOwnProperty.call(ACCOUNTS,saved))enter(saved,true);
+if(saved){
+  const reg=getRegUsers();
+  if(Object.prototype.hasOwnProperty.call(ACCOUNTS,saved)||Object.prototype.hasOwnProperty.call(reg,saved))enter(saved,true);
+}
 </script>
 </body>
 </html>
