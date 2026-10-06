@@ -427,14 +427,14 @@ input[type=file]{display:none}
     <div class="card">
       <h2>客服聊天</h2>
       <p class="hint">查看并回复老板和打手的咨询消息</p>
-      <div id="chatLayout" style="display:flex;gap:12px;margin-top:12px;height:500px">
-        <div id="chatUsers" style="width:200px;border:1px solid #e5e5ea;border-radius:10px;overflow-y:auto;background:#f9f9fb"></div>
-        <div style="flex:1;display:flex;flex-direction:column;border:1px solid #e5e5ea;border-radius:10px;background:#fff">
-          <div id="chatHead" style="padding:12px;border-bottom:1px solid #e5e5ea;font-weight:700">请选择左侧用户</div>
+      <div id="chatLayout" style="display:flex;gap:12px;margin-top:12px;height:500px;flex-wrap:wrap">
+        <div id="chatUsers" style="flex:0 0 180px;min-width:180px;border:1px solid #e5e5ea;border-radius:10px;overflow-y:auto;background:#f9f9fb"></div>
+        <div style="flex:1;min-width:280px;display:flex;flex-direction:column;border:1px solid #e5e5ea;border-radius:10px;background:#fff">
+          <div id="chatHead" style="padding:12px;border-bottom:1px solid #e5e5ea;font-weight:700">请选择左侧订单</div>
           <div id="chatMsgs" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div>
           <div style="display:flex;gap:8px;padding:12px;border-top:1px solid #e5e5ea">
             <input id="chatReply" placeholder="输入回复内容…" maxlength="500" style="flex:1;padding:10px;border:1px solid #e5e5ea;border-radius:20px;outline:none">
-            <button class="btn primary" id="chatSendBtn" style="border-radius:20px;padding:0 24px">发送</button>
+            <button class="btn primary" id="chatSendBtn" style="border-radius:20px;padding:0 24px;flex-shrink:0">发送</button>
           </div>
         </div>
       </div>
@@ -694,13 +694,29 @@ async function loadChatUsers(){
 }
 async function renderAdminChat(){
   if(!_curOrderNo)return;
-  const list=await _adminGetMsgs();
+  let list=await _adminGetMsgs();
+  // 客服标记已读
+  let changed=false;
+  list.forEach(m=>{
+    if((m.orderNo||"通用")===_curOrderNo){
+      if(!m.readBy)m.readBy=[];
+      if(!m.readBy.includes("客服")){m.readBy.push("客服");changed=true;}
+    }
+  });
+  if(changed){await _adminSaveMsgs(list);list=await _adminGetMsgs();}
   const mine=list.filter(m=>(m.orderNo||"通用")===_curOrderNo);
   mine.sort((a,b)=>a.ts-b.ts);
   $("#chatHead").textContent="订单 "+_curOrderNo+" · 客服";
   $("#chatMsgs").innerHTML=mine.map(m=>{
     const isMe=m.fromRole==="service";
-    return '<div style="max-width:75%;align-self:'+(isMe?"flex-end":"flex-start")+'"><div style="font-size:11px;color:#999;margin-bottom:3px;text-align:'+(isMe?"right":"left")+'">'+esc(m.from)+'</div><div style="padding:10px 14px;border-radius:14px;font-size:14px;'+(isMe?"background:var(--pri,#4f6ef7);color:#fff":"background:#f0f0f5;color:#333")+'">'+esc(m.content)+'</div></div>';
+    const readCount=(m.readBy||[]).length;
+    let readTxt='';
+    if(isMe&&!m.sending){
+      if(readCount>=3)readTxt='<span style="margin-left:6px;color:#4f6ef7;font-size:10px">三人已读</span>';
+      else if(readCount===2)readTxt='<span style="margin-left:6px;color:#4f6ef7;font-size:10px">两人已读</span>';
+      else if(readCount===1)readTxt='<span style="margin-left:6px;color:#4f6ef7;font-size:10px">已读</span>';
+    }
+    return '<div style="max-width:75%;align-self:'+(isMe?"flex-end":"flex-start")+'"><div style="font-size:11px;color:#999;margin-bottom:3px;text-align:'+(isMe?"right":"left")+'">'+esc(m.from)+'</div><div style="padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5;'+(isMe?"background:var(--pri,#4f6ef7);color:#fff":"background:#f0f0f5;color:#333")+'">'+esc(m.content)+'</div><div style="font-size:10px;color:#999;margin-top:3px;text-align:'+(isMe?"right":"left")+'">'+readTxt+'</div></div>';
   }).join("");
   $("#chatMsgs").scrollTop=$("#chatMsgs").scrollHeight;
 }

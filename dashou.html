@@ -159,13 +159,17 @@ h1{font-size:24px;font-weight:700;letter-spacing:.5px;color:#0f172a}
 .chat-bubble{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5;word-break:break-word}
 .chat-name{font-size:11px;color:#999;margin-bottom:3px}
 .chat-msg.me .chat-name{text-align:right}
-.chat-msg.me .chat-bubble{background:var(--pri);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.me .chat-bubble{background:var(--brand);color:#fff;border-bottom-right-radius:4px}
 .chat-msg.them .chat-bubble{background:#fff;color:#333;border-bottom-left-radius:4px}
 .chat-time{font-size:10px;color:#999;margin-top:3px}
 .chat-msg.me .chat-time{text-align:right}
+.chat-read{margin-left:6px;color:var(--brand);font-size:10px}
+.chat-fail{margin-left:6px;color:#ff3b30;font-size:10px}
+.chat-spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-left:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
 .chat-input{display:flex;gap:8px;padding:12px 16px;background:#fff;border-top:1px solid rgba(0,0,0,.06)}
-.chat-input input{flex:1;border:1px solid rgba(0,0,0,.1);border-radius:20px;padding:10px 16px;font-size:14px;outline:none}
-.chat-input button{background:var(--pri);color:#fff;border:none;border-radius:20px;padding:0 20px;font-size:14px;font-weight:600;cursor:pointer}
+.chat-input input{flex:1;min-width:0;border:1px solid rgba(0,0,0,.1);border-radius:20px;padding:10px 16px;font-size:14px;outline:none}
+.chat-input button{background:var(--brand);color:#fff;border:none;border-radius:20px;padding:0 20px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -922,31 +926,64 @@ async function saveMessages(list){
 function chatDisplayName(){return '打手'+chatSubIndex;}
 async function sendChat(content){
   if(!content.trim())return;
-  const msg={id:'M'+Date.now()+Math.floor(Math.random()*1000),from:chatDisplayName(),fromRole:'booster',to:'all',toRole:'all',content:content.trim(),ts:Date.now(),orderNo:chatOrderNo};
+  const msg={id:'M'+Date.now()+Math.floor(Math.random()*1000),from:chatDisplayName(),fromRole:'booster',to:'all',toRole:'all',content:content.trim(),ts:Date.now(),orderNo:chatOrderNo,readBy:[chatDisplayName()],sending:true};
+  // 乐观显示：立即渲染，带加载状态
+  let list=await getMessages();
+  list.push(msg);
+  renderChat(list);
   try{
-    const list=await getMessages();
-    list.push(msg);
-    await saveMessages(list);
+    // 保存时去掉本地临时字段 sending/failed
+    const toSave=list.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+    await saveMessages(toSave);
+    // 发送成功，去掉 loading 标记
+    msg.sending=false;
     renderChat(list);
   }catch(e){
     console.error(e);
+    msg.sending=false;
+    msg.failed=true;
+    renderChat(list);
     toast('发送失败：'+(e.message||'网络错误'));
   }
 }
 function renderChat(list){
   const box=$('#chatBox');if(!box)return;
-  // 只显示当前订单房间的消息
   const mine=list.filter(m=>m.orderNo===chatOrderNo);
   mine.sort((a,b)=>a.ts-b.ts);
   box.innerHTML=mine.map(m=>{
     const isMe=m.from===chatDisplayName();
-    return `<div class="chat-msg ${isMe?'me':'them'}"><div class="chat-name">${esc(m.from)}</div><div class="chat-bubble">${esc(m.content)}</div><div class="chat-time">${fmt(m.ts)}</div></div>`;
+    const readCount=(m.readBy||[]).length;
+    let readTxt='';
+    if(isMe&&!m.sending){
+      if(readCount>=3)readTxt='<span class="chat-read">三人已读</span>';
+      else if(readCount===2)readTxt='<span class="chat-read">两人已读</span>';
+      else if(readCount===1)readTxt='<span class="chat-read">已读</span>';
+    }
+    const spinner=m.sending?'<span class="chat-spin"></span>':'';
+    const fail=m.failed?'<span class="chat-fail">发送失败</span>':'';
+    return `<div class="chat-msg ${isMe?'me':'them'}"><div class="chat-name">${esc(m.from)}</div><div class="chat-bubble">${esc(m.content)}${spinner}</div><div class="chat-time">${fmt(m.ts)}${readTxt}${fail}</div></div>`;
   }).join('');
   box.scrollTop=box.scrollHeight;
 }
 async function pollChat(){
   try{
     const list=await getMessages();
+    // 云端消息已保存，清除临时 sending 字段
+    let hasSending=false;
+    list.forEach(m=>{if(m.sending!==undefined){hasSending=true;delete m.sending;}});
+    // 标记当前房间所有消息为已读
+    let changed=hasSending;
+    list.forEach(m=>{
+      if(m.orderNo===chatOrderNo){
+        const name=chatDisplayName();
+        if(!m.readBy)m.readBy=[];
+        if(!m.readBy.includes(name)){m.readBy.push(name);changed=true;}
+      }
+    });
+    if(changed){
+      const toSave=list.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+      await saveMessages(toSave);
+    }
     renderChat(list);
   }catch(e){}
 }

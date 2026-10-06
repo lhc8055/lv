@@ -539,6 +539,9 @@ html.fx-run .tabbar,html.fx-run .page-head{backdrop-filter:none;-webkit-backdrop
 .chat-bubble{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5;word-break:break-word}
 .chat-name{font-size:11px;color:#999;margin-bottom:3px}
 .chat-msg.me .chat-name{text-align:right}
+.chat-time{font-size:10px;color:#999;margin-top:3px}
+.chat-msg.me .chat-time{text-align:right}
+@keyframes spin{to{transform:rotate(360deg)}}
 .chat-msg.me .chat-bubble{background:var(--pri);color:#fff;border-bottom-right-radius:4px}
 .chat-msg.them .chat-bubble{background:#fff;color:#333;border-bottom-left-radius:4px}
 .chat-input{display:flex;gap:8px;padding:12px 16px;background:#fff;border-top:1px solid rgba(0,0,0,.06)}
@@ -3688,9 +3691,18 @@ function _chatName(){return "老板";}
 async function sendChatMsg(){
   const inp=document.getElementById("chatInput");if(!inp)return;
   const content=inp.value.trim();if(!content)return;
-  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:_chatName(),fromRole:"customer",to:"all",toRole:"all",content,ts:Date.now(),orderNo:_chatOrderNo};
-  const list=await _getChatMsgs();list.push(msg);await _saveChatMsgs(list);
-  inp.value="";renderChatMsgs(list);
+  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:_chatName(),fromRole:"customer",to:"all",toRole:"all",content,ts:Date.now(),orderNo:_chatOrderNo,readBy:[_chatName()],sending:true};
+  let list=await _getChatMsgs();list.push(msg);renderChatMsgs(list);
+  try{
+    const toSave=list.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+    await _saveChatMsgs(toSave);
+    msg.sending=false;
+    renderChatMsgs(list);
+  }catch(e){
+    msg.sending=false;msg.failed=true;
+    renderChatMsgs(list);
+  }
+  inp.value="";
 }
 function renderChatMsgs(list){
   const box=document.getElementById("chatBox");if(!box)return;
@@ -3698,12 +3710,34 @@ function renderChatMsgs(list){
   mine.sort((a,b)=>a.ts-b.ts);
   box.innerHTML=mine.map(m=>{
     const isMe=m.from===_chatName();
-    return '<div class="chat-msg '+(isMe?"me":"them")+'"><div class="chat-name">'+esc(m.from)+'</div><div class="chat-bubble">'+esc(m.content)+'</div></div>';
+    const readCount=(m.readBy||[]).length;
+    let readTxt='';
+    if(isMe&&!m.sending){
+      if(readCount>=3)readTxt='<span style="margin-left:6px;color:var(--pri);font-size:10px">三人已读</span>';
+      else if(readCount===2)readTxt='<span style="margin-left:6px;color:var(--pri);font-size:10px">两人已读</span>';
+      else if(readCount===1)readTxt='<span style="margin-left:6px;color:var(--pri);font-size:10px">已读</span>';
+    }
+    const spinner=m.sending?'<span style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-left:6px;vertical-align:middle"></span>':'';
+    return '<div class="chat-msg '+(isMe?"me":"them")+'"><div class="chat-name">'+esc(m.from)+'</div><div class="chat-bubble">'+esc(m.content)+spinner+'</div><div class="chat-time">'+readTxt+(m.failed?'<span style="margin-left:6px;color:#ff3b30;font-size:10px">发送失败</span>':'')+'</div></div>';
   }).join("");
   box.scrollTop=box.scrollHeight;
 }
 async function pollChatMsgs(){
-  const list=await _getChatMsgs();renderChatMsgs(list);
+  const list=await _getChatMsgs();
+  list.forEach(m=>{delete m.sending;});
+  // 标记已读
+  let changed=false;
+  list.forEach(m=>{
+    if(m.orderNo===_chatOrderNo){
+      if(!m.readBy)m.readBy=[];
+      if(!m.readBy.includes(_chatName())){m.readBy.push(_chatName());changed=true;}
+    }
+  });
+  if(changed){
+    const toSave=list.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+    await _saveChatMsgs(toSave);
+  }
+  renderChatMsgs(list);
 }
 function openChat(orderNo){
   _chatOrderNo=orderNo||"";
