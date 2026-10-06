@@ -2104,7 +2104,7 @@ async function ovoLoadOrders(){
   const rows = await sbApi("/rest/v1/user_data?select=uid,orders");
   ovoOrders = [];
   (rows||[]).forEach(u => {
-    if(u.uid === CHAT_UID) return; // 聊天记录行不是订单
+    if(u.uid === CHAT_UID || u.uid === FP_UID) return; // 聊天记录行/指纹配置行不是订单
     const arr = Array.isArray(u.orders) ? u.orders : [];
     arr.forEach(o => ovoOrders.push({id:o.no||u.uid+'#'+o.id,no:o.no||'—',title:o.title||o.name||'未命名',user:u.uid,amount:Number(o.total||o.price||0),qty:Number(o.qty||1),ts:Number(o.ts)||0,paidAt:Number(o.paidAt)||0,status:o.status||'done',payType:o.payType||'',cat:o.cat||'',game:o.game||'',gameName:o.gameName||ovoGamesMap[o.game]||'',server:o.server||'',rank:o.rank||'',tags:Array.isArray(o.tags)?o.tags:[]}));
   });
@@ -2334,7 +2334,7 @@ async function sha256(str){
 const ADMIN_HASH = "12u2Yq7JfYgdtcBQW4iTeV64tzWBcYhxhNXuGh5uoF4=";
 
 /* ---------- WebAuthn 指纹登录 ---------- */
-const FP_KEY = "webauthn";
+const FP_UID = "xy_admin_fp";   // 存在 user_data 表，uid=xy_admin_fp，配置放在 favs[0]
 const FP_RP_NAME = "星柚电竞后台";
 const FP_USER_ID = "xy-admin";
 
@@ -2343,20 +2343,22 @@ function b64ToBuf(b64){ const s = atob(b64); return Uint8Array.from(s, c => c.ch
 
 async function fpLoadConfig(){
   try{
-    const rows = await sbApi("/rest/v1/config?key=eq."+FP_KEY+"&select=data");
-    return (rows && rows[0] && rows[0].data) || { enabled:false, credentials:[] };
+    const rows = await sbApi("/rest/v1/user_data?uid=eq."+FP_UID+"&select=favs");
+    const favs = (rows && rows[0] && Array.isArray(rows[0].favs)) ? rows[0].favs : [];
+    const cfg = favs.find(f => f && f.type === "fp");
+    return cfg ? { enabled:!!cfg.enabled, credentials:cfg.credentials||[] } : { enabled:false, credentials:[] };
   }catch(e){ return { enabled:false, credentials:[] }; }
 }
 async function fpSaveConfig(cfg){
+  const favs = [{ type:"fp", enabled:cfg.enabled, credentials:cfg.credentials||[] }];
   try{
-    const r = await sbApi("/rest/v1/config?key=eq."+FP_KEY, {method:"PATCH", body:{data:cfg}});
+    const r = await sbApi("/rest/v1/user_data?uid=eq."+FP_UID, {method:"PATCH", body:{favs}});
     if(!r || (Array.isArray(r) && r.length === 0)){
       // 行不存在，创建
-      await sbApi("/rest/v1/config", {method:"POST", body:{key:FP_KEY, data:cfg}});
+      await sbApi("/rest/v1/user_data", {method:"POST", body:{uid:FP_UID, favs}});
     }
   }catch(e){
-    // PATCH 失败时尝试创建
-    try{ await sbApi("/rest/v1/config", {method:"POST", body:{key:FP_KEY, data:cfg}}); }catch(e2){ throw e2; }
+    try{ await sbApi("/rest/v1/user_data", {method:"POST", body:{uid:FP_UID, favs}}); }catch(e2){ throw e2; }
   }
 }
 
