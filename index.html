@@ -3042,7 +3042,7 @@ const ACTIONS={
     closeSheet();window.open("https://qm.qq.com/q/lJQ02DKWBy","_blank","noopener");
   },
   "faq-toggle"(el){el.closest(".faq-item").classList.toggle("open");},
-  invite(){if(!requireLogin()) openInvite();},
+  invite(){openSheet('<h3>邀请有礼</h3><div style="text-align:center;padding:24px 0;color:var(--sub);font-size:14px">当前功能暂不开放，敬请期待</div>');},
   "copy-site"(){copyText("88sss.top").then(ok=>toast(ok?"已复制官网：88sss.top":"复制失败，请手动输入 88sss.top",ok));},
   "copy-invite"(el){copyText(el.dataset.code);toast("邀请码已复制："+el.dataset.code);},
 
