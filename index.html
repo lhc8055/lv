@@ -3691,7 +3691,7 @@ function _chatName(){return "老板";}
 async function sendChatMsg(){
   const inp=document.getElementById("chatInput");if(!inp)return;
   const content=inp.value.trim();if(!content)return;
-  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:_chatName(),fromRole:"customer",to:"all",toRole:"all",content,ts:Date.now(),orderNo:_chatOrderNo,readBy:[_chatName()],sending:true};
+  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:_chatName(),fromRole:"customer",to:"all",toRole:"all",content,ts:Date.now(),orderNo:_chatOrderNo,readBy:[],sending:true};
   let list=await _getChatMsgs();list.push(msg);renderChatMsgs(list);
   try{
     const toSave=list.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
@@ -3710,7 +3710,7 @@ function renderChatMsgs(list){
   mine.sort((a,b)=>a.ts-b.ts);
   box.innerHTML=mine.map(m=>{
     const isMe=m.from===_chatName();
-    const readCount=(m.readBy||[]).length;
+    const readCount=(m.readBy||[]).filter(r=>r!==m.from).length;
     let readTxt='';
     if(isMe&&!m.sending){
       if(readCount>=3)readTxt='<span style="margin-left:6px;color:var(--pri);font-size:10px">三人已读</span>';
@@ -3725,12 +3725,13 @@ function renderChatMsgs(list){
 async function pollChatMsgs(){
   const list=await _getChatMsgs();
   list.forEach(m=>{delete m.sending;});
-  // 标记已读
+  // 标记已读（只标记别人发的）
+  const me=_chatName();
   let changed=false;
   list.forEach(m=>{
-    if(m.orderNo===_chatOrderNo){
+    if(m.orderNo===_chatOrderNo&&m.from!==me){
       if(!m.readBy)m.readBy=[];
-      if(!m.readBy.includes(_chatName())){m.readBy.push(_chatName());changed=true;}
+      if(!m.readBy.includes(me)){m.readBy.push(me);changed=true;}
     }
   });
   if(changed){

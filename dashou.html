@@ -926,7 +926,7 @@ async function saveMessages(list){
 function chatDisplayName(){return '打手'+chatSubIndex;}
 async function sendChat(content){
   if(!content.trim())return;
-  const msg={id:'M'+Date.now()+Math.floor(Math.random()*1000),from:chatDisplayName(),fromRole:'booster',to:'all',toRole:'all',content:content.trim(),ts:Date.now(),orderNo:chatOrderNo,readBy:[chatDisplayName()],sending:true};
+  const msg={id:'M'+Date.now()+Math.floor(Math.random()*1000),from:chatDisplayName(),fromRole:'booster',to:'all',toRole:'all',content:content.trim(),ts:Date.now(),orderNo:chatOrderNo,readBy:[],sending:true};
   // 乐观显示：立即渲染，带加载状态
   let list=await getMessages();
   list.push(msg);
@@ -952,7 +952,8 @@ function renderChat(list){
   mine.sort((a,b)=>a.ts-b.ts);
   box.innerHTML=mine.map(m=>{
     const isMe=m.from===chatDisplayName();
-    const readCount=(m.readBy||[]).length;
+    // 已读人数 = readBy 中排除发送者自己
+    const readCount=(m.readBy||[]).filter(r=>r!==m.from).length;
     let readTxt='';
     if(isMe&&!m.sending){
       if(readCount>=3)readTxt='<span class="chat-read">三人已读</span>';
@@ -971,13 +972,13 @@ async function pollChat(){
     // 云端消息已保存，清除临时 sending 字段
     let hasSending=false;
     list.forEach(m=>{if(m.sending!==undefined){hasSending=true;delete m.sending;}});
-    // 标记当前房间所有消息为已读
+    // 标记当前房间**别人发的**消息为已读（自己发的不算）
+    const me=chatDisplayName();
     let changed=hasSending;
     list.forEach(m=>{
-      if(m.orderNo===chatOrderNo){
-        const name=chatDisplayName();
+      if(m.orderNo===chatOrderNo&&m.from!==me){
         if(!m.readBy)m.readBy=[];
-        if(!m.readBy.includes(name)){m.readBy.push(name);changed=true;}
+        if(!m.readBy.includes(me)){m.readBy.push(me);changed=true;}
       }
     });
     if(changed){

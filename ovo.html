@@ -1064,10 +1064,10 @@ async function loadChatRooms(){
 async function renderChatRoom(){
   if(!_curOrderNo)return;
   let list=await chatGetAll();
-  // 客服标记已读
+  // 客服标记已读（只标记别人发的）
   let changed=false;
   list.forEach(m=>{
-    if((m.orderNo||"通用")===_curOrderNo){
+    if((m.orderNo||"通用")===_curOrderNo&&m.from!=="客服"){
       if(!m.readBy)m.readBy=[];
       if(!m.readBy.includes("客服")){m.readBy.push("客服");changed=true;}
     }
@@ -1078,7 +1078,7 @@ async function renderChatRoom(){
   $("#chatHead").textContent="订单 "+_curOrderNo+" · 客服";
   $("#chatMsgs").innerHTML=mine.map(m=>{
     const isMe=m.fromRole==="service";
-    const readCount=(m.readBy||[]).length;
+    const readCount=(m.readBy||[]).filter(r=>r!==m.from).length;
     let readTxt='';
     if(isMe&&!m.sending){
       if(readCount>=3)readTxt='<span style="margin-left:6px;color:#4f6ef7;font-size:10px">三人已读</span>';
