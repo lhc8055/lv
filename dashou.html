@@ -261,8 +261,6 @@ const ZK=Object.keys(ZN);
 // 用户端 game id → 打手端 zone id
 const GAME_TO_ZONE={val:'val',df:'delta',wz:'wzry'};
 const ZONE_TO_GAME={val:'val',delta:'df',wzry:'wz'};
-const ACCOUNTS={xingyou:'asd20090505'};
-const INVITE_CODE='XY2024'; // 一次性邀请码（注册时校验）
 const EASE='cubic-bezier(.32,.72,0,1)';
 
 /* ===================== Supabase 直连客户端 ===================== */
@@ -697,15 +695,6 @@ const login=$('#login'),lcard=$('#lcard');
 const loginForm=$('#loginForm'),regForm=$('#regForm');
 const toReg=$('#toReg'),toLogin=$('#toLogin');
 
-// 已注册打手存储于 localStorage
-function getRegUsers(){return store.get('xy_reg_users')||{}}
-function setRegUsers(m){store.set('xy_reg_users',m)}
-
-// 用户名：中文、英文或数字（2-16位）
-function validUsername(u){return /^[\u4e00-\u9fa5A-Za-z0-9]{2,16}$/.test(u)}
-// 密码：必须同时包含英文字母和中文（不能纯数字，不区分大小写）
-function validPassword(p){return /[a-zA-Z]/.test(p)&&/[\u4e00-\u9fa5]/.test(p)&&p.length>=6}
-
 function showLogin(){
   loginForm.classList.remove('hide');regForm.classList.remove('show');
   toReg.style.display='';toLogin.style.display='none';
@@ -759,59 +748,54 @@ $('#reye').addEventListener('click',()=>{
   p.type=show?'text':'password';$('#reye').textContent=show?'隐藏':'显示';
 });
 
-// 校验密码：同时含英文和中文
-function checkPass(p){
-  if(p.length<6) return '密码至少6位';
-  if(!/[a-zA-Z]/.test(p)) return '密码必须包含英文字母';
-  if(!/[\u4e00-\u9fa5]/.test(p)) return '密码必须包含中文字符';
-  return '';
-}
-
-$('#loginForm').addEventListener('submit',e=>{
+// 登录：调用后端 dashou_login 函数校验
+$('#loginForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const u=$('#u').value.trim(),p=$('#p').value,btn=$('#loginBtn');
   if(!u||!p){fail('请输入用户名和密码');return}
   btn.disabled=true;btn.textContent='登录中…';
-  setTimeout(()=>{
+  try{
+    const r=await sbRequest('/rest/v1/rpc/dashou_login',{method:'POST',body:{p_username:u,p_password:p}});
+    if(r&&r.ok){
+      $('#err').textContent='';
+      store.set('xy_user',u);
+      enter(u);
+    }else{
+      fail((r&&r.msg)||'登录失败');
+    }
+  }catch(err){
+    fail('网络错误，请重试');
+  }finally{
     btn.disabled=false;btn.textContent='登录';
-    // 校验：内置账号 + 已注册打手
-    const reg=getRegUsers();
-    const ok=(Object.prototype.hasOwnProperty.call(ACCOUNTS,u)&&ACCOUNTS[u]===p)
-          ||(Object.prototype.hasOwnProperty.call(reg,u)&&reg[u]===p);
-    if(ok){$('#err').textContent='';store.set('xy_user',u);enter(u);}
-    else fail('用户名或密码错误');
-  },400);
+  }
 });
 
-$('#regForm').addEventListener('submit',e=>{
+// 注册：调用后端 dashou_register 函数校验（用户名/密码/邀请码均由服务端验证）
+$('#regForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const u=$('#ru').value.trim(),p=$('#rp').value,code=$('#rc').value.trim(),btn=$('#regBtn');
   if(!u||!p||!code){rfail('请填写用户名、密码和邀请码');return}
-  if(!validUsername(u)){rfail('用户名需为中文或英文，2-16位');return}
-  const pe=checkPass(p);
-  if(pe){rfail(pe);return}
-  if(code!==INVITE_CODE){rfail('邀请码不正确');return}
-  const reg=getRegUsers();
-  if(Object.prototype.hasOwnProperty.call(reg,u)||Object.prototype.hasOwnProperty.call(ACCOUNTS,u)){rfail('该用户名已被注册');return}
   btn.disabled=true;btn.textContent='注册中…';
-  setTimeout(()=>{
-    reg[u]=p;
-    setRegUsers(reg);
+  try{
+    const r=await sbRequest('/rest/v1/rpc/dashou_register',{method:'POST',body:{p_username:u,p_password:p,p_invite_code:code}});
+    if(r&&r.ok){
+      $('#rerr').textContent='';
+      toast('注册成功，请登录');
+      $('#u').value=u;$('#p').value='';
+      showLogin();
+    }else{
+      rfail((r&&r.msg)||'注册失败');
+    }
+  }catch(err){
+    rfail('网络错误，请重试');
+  }finally{
     btn.disabled=false;btn.textContent='注册打手';
-    $('#rerr').textContent='';
-    toast('注册成功，请登录');
-    // 切回登录并预填用户名
-    $('#u').value=u;$('#p').value='';
-    showLogin();
-  },500);
+  }
 });
 
-// 自动登录：兼容内置账号和已注册账号
+// 自动登录：上次成功登录的用户名直接进入（会话信任）
 const saved=store.get('xy_user');
-if(saved){
-  const reg=getRegUsers();
-  if(Object.prototype.hasOwnProperty.call(ACCOUNTS,saved)||Object.prototype.hasOwnProperty.call(reg,saved))enter(saved,true);
-}
+if(saved){enter(saved,true)}
 </script>
 </body>
 </html>
