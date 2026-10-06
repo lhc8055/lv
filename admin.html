@@ -39,7 +39,7 @@
   13. 新增「退出登录」（更多页底部 / 侧栏底部），清除 sessionStorage 的 xy_admin_authed
   14. [第二版] 客服聊天重做：左侧会话列表(头像/最新消息/未读数/搜索/未读筛选)，右侧气泡按发送者分组、
       超过5分钟显示时间分隔、仅最后一条客服消息显示已读状态、点击气泡出现「复制/撤回」、
-      快捷回复常量 QUICK_REPLIES、输入框自动增高(Enter发送/Shift+Enter换行/输入法组字不触发)、
+      输入框自动增高(Enter发送/Shift+Enter换行/输入法组字不触发)、
       头部「订单详情」按钮(按 orderNo 匹配订单)、手机端进入会话后全屏(body.chat-conv)
   15. [第二版] 未读红点：侧栏/标签栏「客服」上显示未读数（非聊天页每30秒刷新一次，函数 startBadgePoll / updateChatBadge）
   16. [第二版] 新增搜索栏：商品管理(#productSearch)、订单(#ordSearch)，仅过滤显示，不改数据；
@@ -507,9 +507,8 @@ body[data-page=chat] .page-wrap{max-width:1180px}
               <button class="btn sm tinted" id="chatOrderBtn" hidden>订单详情</button>
             </div>
             <div class="chat-msgs" id="chatFullMsgs"></div>
-            <div class="chat-quick" id="chatQuick" hidden></div>
             <div class="chat-input" id="chatInputBar" hidden>
-              <textarea id="chatFullInput" rows="1" placeholder="输入消息…（Enter 发送，Shift+Enter 换行）" maxlength="500"></textarea>
+              <textarea id="chatFullInput" rows="1" placeholder="输入消息…" maxlength="500"></textarea>
               <button id="chatFullSend" aria-label="发送"></button>
             </div>
           </div>
@@ -1634,11 +1633,10 @@ document.addEventListener("click", e => {
    11. 客服聊天（订单房间模式）
    [第二版] 会话列表带头像/最新消息/未读数/搜索/未读筛选；消息按发送者分组、
    超过 5 分钟插入时间分隔；只在最后一条客服消息上显示已读；点击气泡出现「复制 / 撤回」；
-   快捷回复(QUICK_REPLIES)；输入框自动增高；手机端进入会话后全屏。
+   输入框自动增高；手机端进入会话后全屏。
    数据读写仍是 user_data 表 uid=xy_chat_messages 行的 orders 数组，消息结构不变。
    ================================================================ */
 const CHAT_UID = "xy_chat_messages";
-const QUICK_REPLIES = ["您好，请问有什么可以帮您？","稍等，正在为您安排","已安排打手，请留意上号","请提供游戏 ID 和区服","订单已完成，感谢支持～"];
 const AV_COLORS = ["#007AFF","#34C759","#FF9500","#FF2D55","#5E5CE6","#30B0C7","#AF52DE"];
 let _curOrderNo = null, _chatTimer = null, _badgeTimer = null, _msgCache = [], _chatSig = "", _chatFilter = "all", _chatQ = "", _selMsg = null;
 const roomOf = m => m.orderNo || "通用";
@@ -1720,10 +1718,10 @@ async function renderAdminChat(forceScroll){
   const box = $("#chatFullMsgs");
   if(!_curOrderNo){
     box.innerHTML = '<div class="chat-empty">'+ic("chat")+'<b>选择一个订单开始对话</b><span>会话按最新消息排序</span></div>';
-    $("#chatQuick").hidden = true; $("#chatInputBar").hidden = true;
+    $("#chatInputBar").hidden = true;
     renderChatHead(); return;
   }
-  $("#chatQuick").hidden = false; $("#chatInputBar").hidden = false;
+  $("#chatInputBar").hidden = false;
   let changed = false;
   _msgCache.forEach(m => {
     if(roomOf(m) === _curOrderNo && m.from !== "客服"){
@@ -1814,15 +1812,10 @@ async function recallMsg(id){
   _renderRoomList(); renderAdminChat(); toast("已撤回");
 }
 
-/* 输入：快捷回复 / 自动增高 / Enter 发送（输入法组字中不触发） */
+/* 输入：自动增高 / Enter 发送（输入法组字中不触发） */
 const chatInp = $("#chatFullInput");
 function autosize(){ chatInp.style.height = "auto"; chatInp.style.height = Math.min(chatInp.scrollHeight, 120) + "px"; }
 chatInp.addEventListener("input", autosize);
-$("#chatQuick").innerHTML = QUICK_REPLIES.map(t => '<button class="qchip">'+esc(t)+'</button>').join("");
-$("#chatQuick").addEventListener("click", e => {
-  const c = e.target.closest(".qchip"); if(!c) return;
-  chatInp.value = c.textContent; autosize(); chatInp.focus();
-});
 async function sendChat(){
   if(!_curOrderNo){ toast("请先选择订单房间"); return; }
   const content = chatInp.value.trim(); if(!content) return;
