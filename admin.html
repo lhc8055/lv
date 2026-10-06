@@ -427,20 +427,30 @@ input[type=file]{display:none}
   <section class="panel" id="panel-chat">
     <div class="card">
       <h2>客服聊天</h2>
-      <p class="hint">查看并回复老板和打手的咨询消息</p>
-      <div id="chatLayout" style="display:flex;gap:12px;margin-top:12px;height:500px;flex-wrap:wrap">
-        <div id="chatUsers" style="flex:0 0 180px;min-width:180px;border:1px solid #e5e5ea;border-radius:10px;overflow-y:auto;background:#f9f9fb"></div>
-        <div style="flex:1;min-width:280px;display:flex;flex-direction:column;border:1px solid #e5e5ea;border-radius:10px;background:#fff">
-          <div id="chatHead" style="padding:12px;border-bottom:1px solid #e5e5ea;font-weight:700">请选择左侧订单</div>
-          <div id="chatMsgs" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div>
-          <div style="display:flex;gap:8px;padding:12px;border-top:1px solid #e5e5ea">
-            <input id="chatReply" placeholder="输入回复内容…" maxlength="500" style="flex:1;padding:10px;border:1px solid #e5e5ea;border-radius:20px;outline:none">
-            <button class="btn primary" id="chatSendBtn" style="border-radius:20px;padding:0 24px;flex-shrink:0">发送</button>
-          </div>
+      <p class="hint">订单聊天房间 · 客服可撤回任意消息</p>
+      <button class="btn primary" id="openChatFull" style="margin-top:12px">打开客服聊天</button>
+    </div>
+  </section>
+
+  <!-- 全屏客服聊天面板 -->
+  <div id="chatFullPanel" style="position:fixed;inset:0;z-index:300;background:#f2f3f7;display:none;flex-direction:column">
+    <div style="display:flex;height:100%">
+      <!-- 左侧房间列表 -->
+      <div id="chatRoomList" style="width:200px;min-width:200px;background:#f9f9fb;border-right:1px solid #e5e5ea;overflow-y:auto"></div>
+      <!-- 右侧聊天区 -->
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+        <div id="chatFullHead" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fff;border-bottom:1px solid #e5e5ea;font-weight:700">
+          <span>请选择左侧订单</span>
+          <button id="chatFullClose" style="background:none;border:none;font-size:18px;color:#666;cursor:pointer">✕</button>
+        </div>
+        <div id="chatFullMsgs" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px"></div>
+        <div style="display:flex;gap:8px;padding:12px 16px;background:#fff;border-top:1px solid #e5e5ea">
+          <input id="chatFullInput" placeholder="输入消息…" maxlength="500" style="flex:1;padding:10px 16px;border:1px solid #e5e5ea;border-radius:20px;outline:none;font-size:14px">
+          <button id="chatFullSend" style="background:var(--pri,#4f6ef7);color:#fff;border:none;border-radius:20px;padding:0 24px;font-size:14px;font-weight:600;cursor:pointer;flex-shrink:0">发送</button>
         </div>
       </div>
     </div>
-  </section>
+  </div>
 
   <!-- ============================================================
        面板八：数据导出 / 导入
@@ -659,7 +669,7 @@ $("#tabnav").addEventListener("click", e => {
   $$("#tabnav button").forEach(b => b.classList.toggle("on", b === btn));
   $$(".panel").forEach(p => p.classList.toggle("on", p.id === "panel-" + btn.dataset.tab));
   if(btn.dataset.tab === "export") refreshExportPreview();
-  if(btn.dataset.tab === "chat"){loadChatUsers();startAdminChatPoll();}
+  if(btn.dataset.tab === "chat"){} // 客服聊天通过"打开客服聊天"按钮进入全屏面板
 });
 
 /* ---------- 客服聊天（订单房间模式） ---------- */
@@ -671,19 +681,26 @@ async function _adminGetMsgs(){
   try{
     const res=await fetch(SB_URL+"/rest/v1/"+sbTable()+"?uid=eq."+CHAT_UID+"&select=*",{headers:{apikey:sbKey(),Authorization:"Bearer "+sbKey()}});
     const rows=await res.json();
-    return (rows&&rows[0]&&Array.isArray(rows[0].orders))?rows[0].orders:[];
+    _msgCache=(rows&&rows[0]&&Array.isArray(rows[0].orders))?rows[0].orders:[];
+    return _msgCache;
   }catch(e){return [];}
 }
 async function _adminSaveMsgs(list){
+  _msgCache=list;
   await fetch(SB_URL+"/rest/v1/"+sbTable()+"?uid=eq."+CHAT_UID,{method:"PATCH",headers:{apikey:sbKey(),Authorization:"Bearer "+sbKey(),"Content-Type":"application/json"},body:JSON.stringify({orders:list})});
 }
 function fmtHMS(ts){try{const d=new Date(ts);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0");}catch(e){return "";}}
-async function loadChatUsers(){
-  _msgCache=await _adminGetMsgs();
-  _renderRoomsOnly();
-  if(_curOrderNo)renderAdminChat();
-}
-function _renderRoomsOnly(){
+// 打开全屏聊天面板
+$("#openChatFull").addEventListener("click",async()=>{
+  $("#chatFullPanel").style.display="flex";
+  await _adminGetMsgs();
+  _renderRoomList();
+  startAdminChatPoll();
+});
+$("#chatFullClose").addEventListener("click",()=>{
+  $("#chatFullPanel").style.display="none";
+});
+function _renderRoomList(){
   const rooms={};
   _msgCache.forEach(m=>{
     const on=m.orderNo||"通用";
@@ -691,11 +708,12 @@ function _renderRoomsOnly(){
     else{rooms[on].last=Math.max(rooms[on].last,m.ts);rooms[on].count++;}
   });
   const arr=Object.values(rooms).sort((a,b)=>b.last-a.last);
-  $("#chatUsers").innerHTML=arr.map(r=>'<div class="chat-user-item" data-no="'+esc(r.orderNo)+'" style="padding:12px;border-bottom:1px solid #eee;cursor:pointer'+(_curOrderNo===r.orderNo?";background:#e8f0fe":"")+'"><div style="font-weight:600">'+esc(r.orderNo)+'</div><div style="font-size:11px;color:#888">'+r.count+'条消息</div></div>').join("")||'<div style="padding:20px;text-align:center;color:#999">暂无聊天</div>';
-  $$(".chat-user-item").forEach(el=>el.onclick=()=>{_curOrderNo=el.dataset.no;_renderRoomsOnly();renderAdminChat();});
+  $("#chatRoomList").innerHTML=arr.map(r=>'<div data-no="'+esc(r.orderNo)+'" style="padding:14px;border-bottom:1px solid #eee;cursor:pointer;'+(_curOrderNo===r.orderNo?'background:#e8f0fe':'')+'"><div style="font-weight:600;font-size:14px">'+esc(r.orderNo)+'</div><div style="font-size:12px;color:#888;margin-top:2px">'+r.count+'条消息</div></div>').join("")||'<div style="padding:30px;text-align:center;color:#999;font-size:14px">暂无聊天</div>';
+  $$("#chatRoomList > div").forEach(el=>el.onclick=()=>{_curOrderNo=el.dataset.no;_renderRoomList();renderAdminChat();});
 }
 async function renderAdminChat(){
   if(!_curOrderNo)return;
+  // 客服标记已读（只标记别人发的）
   let changed=false;
   _msgCache.forEach(m=>{
     if((m.orderNo||"通用")===_curOrderNo&&m.from!=="客服"){
@@ -709,8 +727,8 @@ async function renderAdminChat(){
   }
   const mine=_msgCache.filter(m=>(m.orderNo||"通用")===_curOrderNo);
   mine.sort((a,b)=>a.ts-b.ts);
-  $("#chatHead").textContent="订单 "+_curOrderNo+" · 客服";
-  $("#chatMsgs").innerHTML=mine.map(m=>{
+  $("#chatFullHead").querySelector("span").textContent="订单 "+_curOrderNo+" · 客服";
+  $("#chatFullMsgs").innerHTML=mine.map(m=>{
     const isMe=m.fromRole==="service";
     const readCount=(m.readBy||[]).filter(r=>r!==m.from).length;
     let readTxt='';
@@ -720,13 +738,26 @@ async function renderAdminChat(){
       else if(readCount===1)readTxt='<span style="margin-left:6px;color:#4f6ef7">已读</span>';
     }
     const spinner=m.sending?'<span style="display:inline-block;width:10px;height:10px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-left:6px;vertical-align:middle"></span>':'';
-    return '<div style="max-width:75%;align-self:'+(isMe?"flex-end":"flex-start")+'"><div style="font-size:11px;color:#999;margin-bottom:3px;text-align:'+(isMe?"right":"left")+'">'+esc(m.from)+'</div><div style="padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5;'+(isMe?"background:var(--pri,#4f6ef7);color:#fff":"background:#f0f0f5;color:#333")+'">'+esc(m.content)+spinner+'</div><div style="font-size:10px;color:#999;margin-top:3px;text-align:'+(isMe?"right":"left")+'">'+fmtHMS(m.ts)+readTxt+(m.failed?'<span style="margin-left:6px;color:#ff3b30">发送失败</span>':'')+'</div></div>';
+    // 撤回按钮（客服可撤回任意消息）
+    const recallBtn='<span class="recall-btn" data-id="'+esc(m.id)+'" style="margin-left:8px;color:#ff3b30;cursor:pointer;font-size:11px">撤回</span>';
+    return '<div style="max-width:75%;align-self:'+(isMe?"flex-end":"flex-start")+'"><div style="font-size:11px;color:#999;margin-bottom:3px;text-align:'+(isMe?"right":"left")+'">'+esc(m.from)+'</div><div style="padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5;'+(isMe?"background:var(--pri,#4f6ef7);color:#fff":"background:#f0f0f5;color:#333")+'">'+esc(m.content)+spinner+'</div><div style="font-size:10px;color:#999;margin-top:3px;text-align:'+(isMe?"right":"left")+'">'+fmtHMS(m.ts)+readTxt+recallBtn+(m.failed?'<span style="margin-left:6px;color:#ff3b30">发送失败</span>':'')+'</div></div>';
   }).join("");
-  $("#chatMsgs").scrollTop=$("#chatMsgs").scrollHeight;
+  // 绑定撤回按钮
+  $$(".recall-btn").forEach(btn=>btn.onclick=()=>recallMsg(btn.dataset.id));
+  $("#chatFullMsgs").scrollTop=$("#chatFullMsgs").scrollHeight;
 }
-$("#chatSendBtn").addEventListener("click",async()=>{
+async function recallMsg(id){
+  if(!confirm("确定撤回这条消息？"))return;
+  _msgCache=_msgCache.filter(m=>m.id!==id);
+  const toSave=_msgCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+  await _adminSaveMsgs(toSave);
+  _renderRoomList();
+  renderAdminChat();
+  toast("已撤回");
+}
+$("#chatFullSend").addEventListener("click",async()=>{
   if(!_curOrderNo){toast("请先选择订单房间");return;}
-  const inp=$("#chatReply");const content=inp.value.trim();if(!content)return;
+  const inp=$("#chatFullInput");const content=inp.value.trim();if(!content)return;
   const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:"客服",fromRole:"service",to:"all",toRole:"all",content,ts:Date.now(),orderNo:_curOrderNo,readBy:[],sending:true};
   _msgCache.push(msg);
   inp.value="";
@@ -742,12 +773,13 @@ $("#chatSendBtn").addEventListener("click",async()=>{
     toast("发送失败");
   }
 });
+$("#chatFullInput").addEventListener("keydown",e=>{if(e.key==="Enter")$("#chatFullSend").click();});
 // 启动轮询（只一次）
 function startAdminChatPoll(){
   if(_chatTimer)return;
   _chatTimer=setInterval(async()=>{
-    _msgCache=await _adminGetMsgs();
-    _renderRoomsOnly();
+    await _adminGetMsgs();
+    _renderRoomList();
     if(_curOrderNo)renderAdminChat();
   },5000);
 }
