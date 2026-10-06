@@ -1900,9 +1900,7 @@ function renderNow(keepScroll){
   if(!VIEWS[r.name]){location.hash="#/home";return;}
   document.querySelectorAll(".tabbar .tab").forEach(t=>{
     const on=t.dataset.route===TAB_OF[r.name];
-    const was=t.classList.contains("on");
     t.classList.toggle("on",on);
-    if(on&&!was) tabPop(t);
   });
   const y=window.scrollY;
   const prev=lastRoute,leftId=curDetailId;
