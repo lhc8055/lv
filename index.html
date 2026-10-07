@@ -541,9 +541,12 @@ html.fx-run .tabbar,html.fx-run .page-head{backdrop-filter:none;-webkit-backdrop
 @keyframes spin{to{transform:rotate(360deg)}}
 .chat-msg.me .chat-bubble{background:var(--pri);color:#fff;border-bottom-right-radius:4px}
 .chat-msg.them .chat-bubble{background:#fff;color:#333;border-bottom-left-radius:4px}
-.chat-input{display:flex;gap:8px;padding:12px 16px;background:#fff;border-top:1px solid rgba(0,0,0,.06)}
+.chat-bubble img.chat-img{display:block;max-width:200px;border-radius:8px;cursor:pointer}
+.chat-input{display:flex;gap:8px;padding:12px 16px;background:#fff;border-top:1px solid rgba(0,0,0,.06);align-items:center}
 .chat-input input{flex:1;border:1px solid rgba(0,0,0,.1);border-radius:20px;padding:10px 16px;font-size:14px;outline:none}
 .chat-input button{background:var(--pri);color:#fff;border:none;border-radius:20px;padding:0 20px;font-size:14px;font-weight:600;cursor:pointer}
+.chat-input .chat-img-btn{background:none;border:none;color:var(--pri);font-size:22px;padding:4px 8px;cursor:pointer;line-height:1}
+.chat-input .chat-img-btn:disabled{opacity:.4;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -3764,6 +3767,70 @@ async function _saveChatMsgs(list){
 function _fmtHMS(ts){try{const d=new Date(ts);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0");}catch(e){return "";}}
 // 老板在房间中的显示名
 function _chatName(){return "老板";}
+// === 聊天图片：WebP压缩 + 每分钟限5条 ===
+let _chatMsgTimestamps=[];
+function _chatRateLimited(){
+  const now=Date.now();
+  _chatMsgTimestamps=_chatMsgTimestamps.filter(t=>now-t<60000);
+  if(_chatMsgTimestamps.length>=5){
+    toast("发送太频繁，每分钟最多发5条，请稍后再试",false);
+    return true;
+  }
+  _chatMsgTimestamps.push(now);
+  return false;
+}
+function _compressChatImage(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        const maxDim=1280;
+        if(w>maxDim||h>maxDim){ if(w>=h){h=Math.round(h*maxDim/w);w=maxDim;}else{w=Math.round(w*maxDim/h);h=maxDim;} }
+        const canvas=document.createElement("canvas");
+        canvas.width=w;canvas.height=h;
+        canvas.getContext("2d").drawImage(img,0,0,w,h);
+        // 优先 WebP（省内存），不支持时回退 JPEG
+        let out=canvas.toDataURL("image/webp",0.72);
+        if(out.indexOf("data:image/webp")===-1){ out=canvas.toDataURL("image/jpeg",0.72); }
+        // 超过 500KB 进一步压缩
+        if(out.length>500*1024){
+          const q=Math.max(0.4,0.72-(out.length-500*1024)/1024/1024*0.3);
+          out=canvas.toDataURL("image/webp",q);
+          if(out.indexOf("data:image/webp")===-1) out=canvas.toDataURL("image/jpeg",q);
+        }
+        resolve(out);
+      };
+      img.onerror=reject;
+      img.src=e.target.result;
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function sendChatImage(input){
+  const file=input.files&&input.files[0];
+  input.value=""; // 重置，确保选同一文件也能再触发
+  if(!file) return;
+  if(!file.type.startsWith("image/")){ toast("请选择图片文件",false); return; }
+  if(file.size>15*1024*1024){ toast("图片不能超过15MB",false); return; }
+  if(_chatRateLimited()) return;
+  let dataUrl;
+  try{ dataUrl=await _compressChatImage(file); }
+  catch(e){ toast("图片处理失败",false); _chatMsgTimestamps.pop(); return; }
+  const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:_chatName(),fromRole:"customer",to:"all",toRole:"all",content:dataUrl,type:"image",ts:Date.now(),orderNo:_chatOrderNo,readBy:[],sending:true};
+  _chatCache.push(msg);renderChatMsgs(_chatCache);
+  try{
+    const toSave=_chatCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
+    await _saveChatMsgs(toSave);
+    msg.sending=false;
+    renderChatMsgs(_chatCache);
+  }catch(e){
+    msg.sending=false;msg.failed=true;
+    renderChatMsgs(_chatCache);
+  }
+}
 async function sendChatMsg(){
   const inp=document.getElementById("chatInput");if(!inp)return;
   const content=inp.value.trim();if(!content)return;
@@ -3795,7 +3862,9 @@ function renderChatMsgs(list){
       else readTxt='<span style="margin-left:6px;color:#999">未读</span>';
     }
     const spinner=m.sending?'<span style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-left:6px;vertical-align:middle"></span>':'';
-    return '<div class="chat-msg '+(isMe?"me":"them")+'"><div class="chat-name">'+esc(m.from)+'</div><div class="chat-bubble">'+esc(m.content)+spinner+'</div><div class="chat-time">'+_fmtHMS(m.ts)+readTxt+(m.failed?'<span style="margin-left:6px;color:#ff3b30">发送失败</span>':'')+'</div></div>';
+    const isImg=m.type==="image"||/data:image\//.test(m.content||"");
+    const body=isImg?'<img class="chat-img" src="'+m.content+'" onclick="window.open(this.src)" '+((m.sending)?'style="opacity:.5"':'')+'>'+spinner:esc(m.content)+spinner;
+    return '<div class="chat-msg '+(isMe?"me":"them")+'"><div class="chat-name">'+esc(m.from)+'</div><div class="chat-bubble">'+body+'</div><div class="chat-time">'+_fmtHMS(m.ts)+readTxt+(m.failed?'<span style="margin-left:6px;color:#ff3b30">发送失败</span>':'')+'</div></div>';
   }).join("");
   box.scrollTop=box.scrollHeight;
 }
@@ -3822,7 +3891,7 @@ function openChat(orderNo){
   let p=document.getElementById("chatPanel");
   if(!p){
     p=document.createElement("div");p.id="chatPanel";p.className="chat-panel";
-    p.innerHTML='<div class="chat-head"><span id="chatTitle">订单聊天</span><button class="chat-close" onclick="closeChat()">✕</button></div><div id="chatBox" class="chat-box"></div><div class="chat-input"><input id="chatInput" placeholder="输入消息…" maxlength="200" onkeydown="if(event.key===\'Enter\')sendChatMsg()"><button onclick="sendChatMsg()">发送</button></div>';
+    p.innerHTML='<div class="chat-head"><span id="chatTitle">订单聊天</span><button class="chat-close" onclick="closeChat()">✕</button></div><div id="chatBox" class="chat-box"></div><div class="chat-input"><button class="chat-img-btn" onclick="document.getElementById(\'chatImgInput\').click()" title="发送图片">📷</button><input id="chatInput" placeholder="输入消息…" maxlength="200" onkeydown="if(event.key===\'Enter\')sendChatMsg()"><button onclick="sendChatMsg()">发送</button><input type="file" id="chatImgInput" accept="image/*" style="display:none" onchange="sendChatImage(this)"></div>';
     document.body.appendChild(p);
   }
   document.getElementById("chatTitle").textContent=_chatOrderNo?("订单 "+_chatOrderNo+" · 老板"):"通用客服";
