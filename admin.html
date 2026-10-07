@@ -2078,8 +2078,29 @@ async function ovoLoadOrders(){
   ovoOrders.sort((a,b) => (b.ts||0)-(a.ts||0));
 }
 async function ovoLoadFeedbacks(){
-  const rows = await sbApi("/rest/v1/posts?select=id,title,content,author,tags,category,status,created_at&order=created_at.desc");
-  ovoFeedbacks = (rows||[]).map(p => ({id:'p'+p.id,user:p.author||'匿名',title:p.title||'',type:p.category||'通用',tags:p.tags||'',content:p.content||'',time:new Date(p.created_at).getTime(),status:(p.status==='published'?'已处理':(p.status==='draft'?'待处理':p.status))||'待处理',_dbId:p.id}));
+  const rows = await sbApi("/rest/v1/user_data?select=uid,feedbacks");
+  ovoFeedbacks = [];
+  const fbStatusMap = {pending:'待处理',processing:'处理中',done:'已处理'};
+  (rows||[]).forEach(u => {
+    if(u.uid === CHAT_UID) return;
+    const arr = Array.isArray(u.feedbacks) ? u.feedbacks : [];
+    arr.forEach(fb => {
+      ovoFeedbacks.push({
+        id: fb.id,
+        user: u.uid,
+        title: fb.type || '',
+        type: fb.type || '通用',
+        content: fb.content || '',
+        contact: fb.contact || '',
+        orderNo: fb.orderNo || '',
+        time: Number(fb.ts) || 0,
+        status: fbStatusMap[fb.status] || fb.status || '待处理',
+        _uid: u.uid,
+        _fbId: fb.id
+      });
+    });
+  });
+  ovoFeedbacks.sort((a,b) => (b.time||0)-(a.time||0));
 }
 
 /* ---- 图表（纯 SVG，颜色走 CSS 变量，自动适配深色） ---- */
@@ -2242,11 +2263,13 @@ function orderSheet(o){
 }
 function feedbackSheet(f){
   let pending = f.status;
+  const infoCells = kvCell('用户',esc(f.user))+kvCell('分类',esc(f.type||'—'))+kvCell('时间',fullTime(f.time));
+  const extraCells = (f.orderNo?kvCell('关联订单',esc(f.orderNo)):'')+(f.contact?kvCell('联系方式',esc(f.contact)):'');
   openSheet({
     title:"反馈 / 投诉", left:"关闭", right:"保存",
     html:
       '<div class="gh">内容</div><div class="group"><div class="cell col">'+(f.title?'<div style="font-weight:600">'+esc(f.title)+'</div>':'')+'<div style="line-height:1.5;word-break:break-word">'+esc(f.content)+'</div></div></div>'+
-      '<div class="gh">信息</div><div class="group">'+kvCell('用户',esc(f.user))+kvCell('分类',esc(f.type||'—'))+kvCell('时间',fullTime(f.time))+'</div>'+
+      '<div class="gh">信息</div><div class="group">'+infoCells+extraCells+'</div>'+
       '<div class="gh">处理状态</div><div class="seg" id="fbSeg">'+['待处理','处理中','已处理'].map(s => '<button data-s="'+s+'" class="'+(s===f.status?'on':'')+'">'+s+'</button>').join('')+'</div>',
     onMount: b => {
       $("#fbSeg", b).addEventListener("click", e => {
@@ -2255,11 +2278,26 @@ function feedbackSheet(f){
         $$("#fbSeg button", b).forEach(x => x.classList.toggle("on", x === sb));
       });
     },
-    onSave: (b, close) => {
-      const dbStatus = pending === '待处理' ? 'draft' : 'published';
-      sbApi("/rest/v1/posts?id=eq."+encodeURIComponent(f._dbId), {method:"PATCH", body:{status:dbStatus}})
-        .then(() => { f.status = pending; renderFbList(); renderDsStats(); toast('已更新为「'+f.status+'」'); close(); })
-        .catch(err => toast('保存失败：'+(err && err.message || err)));
+    onSave: async (b, close) => {
+      const statusMap = {'待处理':'pending','处理中':'processing','已处理':'done'};
+      const dbStatus = statusMap[pending] || 'pending';
+      try{
+        // 读取该用户的 feedbacks 数组，找到对应反馈并更新状态
+        const rows = await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(f._uid)+"&select=feedbacks");
+        const list = Array.isArray(rows && rows[0] && rows[0].feedbacks) ? rows[0].feedbacks : [];
+        const idx = list.findIndex(x => x.id === f._fbId);
+        if(idx >= 0){
+          list[idx].status = dbStatus;
+          await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(f._uid), {method:"PATCH", body:{feedbacks:list}});
+        }
+        f.status = pending;
+        renderFbList();
+        renderDsStats();
+        toast('已更新为「'+f.status+'」');
+        close();
+      }catch(err){
+        toast('保存失败：'+(err && err.message || err));
+      }
       return false;
     }
   });
