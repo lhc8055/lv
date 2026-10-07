@@ -1105,8 +1105,13 @@ async function loadProductHeat(){
   try{
     const rows=await sbRequest("/rest/v1/posts?title=eq."+encodeURIComponent(HEAT_POST_TITLE)+"&select=id,content",{method:"GET",ms:4000});
     if(Array.isArray(rows)&&rows[0]){
-      try{ productHeatOffsets=JSON.parse(rows[0].content||"{}")||{}; }catch(e){ productHeatOffsets={}; }
+      let remote={};
+      try{ remote=JSON.parse(rows[0].content||"{}")||{}; }catch(e){ remote={}; }
       window._heatPostId=rows[0].id;
+      // 热度只增不减：取本地与云端的较大值，避免本地刚加的增量被云端旧值覆盖
+      for(const k in remote){
+        productHeatOffsets[k]=Math.max(Number(productHeatOffsets[k])||0,Number(remote[k])||0);
+      }
       try{ localStorage.setItem("xy_heat_offsets",JSON.stringify(productHeatOffsets)); }catch(e){}
     }
     _heatLoaded=true;
@@ -2373,8 +2378,11 @@ function couponBlock(p){
 function viewDetail(params){
   const p=productById(parseInt(params.id,10));
   if(!p) return '<section class="view">'+pageHead("商品详情")+emptyHtml({ico:"search",title:"商品不存在或已下架",btn:HOME_BTN})+'</section>';
-  // 访问商品详情页，登录用户热度+1
-  if(store.user&&store.user.uid) addProductHeat(p.id,1);
+  // 访问商品详情页，登录用户热度+1（每次进入商品页计一次，重复渲染不重复加）
+  if(store.user&&store.user.uid&&window._lastDetailHeatId!==p.id){
+    window._lastDetailHeatId=p.id;
+    addProductHeat(p.id,1);
+  }
   const g=gameById(p.game);
   const fav=store.favs.includes(p.id);
   const rel=PRODUCTS.filter(x=>x.game===p.game&&x.id!==p.id).slice(0,3);
