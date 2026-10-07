@@ -1096,6 +1096,48 @@ async function sbSelect(uid,ms){
 async function sbUpsert(row,ms){
   return await sbRequest("/rest/v1/"+SB_TABLE,{method:"POST",body:row,ms});
 }
+// === 商品热度：访问+1，购买+10，存储在 posts 表（title=_product_heat，content=JSON）===
+const HEAT_POST_TITLE="_product_heat";
+let productHeatOffsets={}; // {productId: 额外热度}
+let _heatLoaded=false;
+let _heatSaveQueue=Promise.resolve();
+async function loadProductHeat(){
+  try{
+    const rows=await sbRequest("/rest/v1/posts?title=eq."+encodeURIComponent(HEAT_POST_TITLE)+"&select=id,content",{method:"GET",ms:4000});
+    if(Array.isArray(rows)&&rows[0]){
+      try{ productHeatOffsets=JSON.parse(rows[0].content||"{}")||{}; }catch(e){ productHeatOffsets={}; }
+      window._heatPostId=rows[0].id;
+      try{ localStorage.setItem("xy_heat_offsets",JSON.stringify(productHeatOffsets)); }catch(e){}
+    }
+    _heatLoaded=true;
+    // 热度偏移加载完成后刷新当前页面（商品列表/详情的热度数字会更新）
+    try{ if(window._dataReady) render(); }catch(e){}
+  }catch(e){ _heatLoaded=true; }
+}
+function getHeat(p){
+  return (Number(p.heat)||0)+(Number(productHeatOffsets[p.id])||0);
+}
+async function addProductHeat(productId,delta){
+  productHeatOffsets[productId]=(Number(productHeatOffsets[productId])||0)+delta;
+  try{ localStorage.setItem("xy_heat_offsets",JSON.stringify(productHeatOffsets)); }catch(e){}
+  _heatSaveQueue=_heatSaveQueue.then(async ()=>{
+    try{
+      const payload=JSON.stringify(productHeatOffsets);
+      if(window._heatPostId){
+        await sbRequest("/rest/v1/posts?id=eq."+window._heatPostId,{method:"PATCH",body:{content:payload},ms:5000});
+      }else{
+        const rows=await sbRequest("/rest/v1/posts?title=eq."+encodeURIComponent(HEAT_POST_TITLE)+"&select=id",{method:"GET",ms:4000});
+        if(Array.isArray(rows)&&rows[0]){
+          window._heatPostId=rows[0].id;
+          await sbRequest("/rest/v1/posts?id=eq."+window._heatPostId,{method:"PATCH",body:{content:payload},ms:5000});
+        }else{
+          const ins=await sbRequest("/rest/v1/posts",{method:"POST",body:{title:HEAT_POST_TITLE,content:payload,author:"system",status:"published"},ms:5000});
+          if(ins&&ins.id) window._heatPostId=ins.id;
+        }
+      }
+    }catch(e){ /* 热度同步失败不影响使用，下次再试 */ }
+  }).catch(()=>{});
+}
 console.log("[Supabase] 直连客户端已就绪，端点:",SB_BASE_URLS.join(", "));
 const store={user:null,orders:[],coupons:[],favs:[],feedbacks:[],noticeClosed:false,homeGame:"val",cancelClearedAt:0};
 const catState={game:"val",zone:"all",sort:"default",q:""};
@@ -1405,6 +1447,8 @@ function migrateOrders(){
 }
 loadStore();
 dedupeCoupons();
+// 从本地缓存恢复商品热度偏移，保证首屏立即可用
+try{ productHeatOffsets=JSON.parse(localStorage.getItem("xy_heat_offsets")||"{}")||{}; }catch(e){}
 if(store.user&&store.user.uid){
   // 保存旧的 snapTs（上次同步完成时间），loadUserData 会覆盖为新时间
   // 用旧 snapTs 合并：本次会话新领取的券（updatedAt > 旧 snapTs）才不会被云端删除覆盖
@@ -1544,13 +1588,13 @@ function cardHtml(p,idx){
     '<div class="g-img">'+imgTag(p.img,p.title,imgPri(idx))+'</div>'+
     '<div class="g-body"><div>'+(splitTitle(p.title).pre?'<div class="g-pre">'+esc(splitTitle(p.title).pre)+'</div>':'')+'<div class="g-title">'+titleHtml(splitTitle(p.title).name)+'</div></div>'+
     '<div class="g-tags">'+p.tags.slice(0,2).map(t=>'<span>'+esc(t)+'</span>').join("")+'</div>'+
-    '<div class="g-foot"><span class="g-price">¥'+p.price+'<small>/'+p.unit+'</small></span><span class="g-heat">热度'+p.heat+'</span></div></div></button>';
+    '<div class="g-foot"><span class="g-price">¥'+p.price+'<small>/'+p.unit+'</small></span><span class="g-heat">热度'+getHeat(p)+'</span></div></div></button>';
 }
 function rowHtml(p,idx){
   return '<button type="button" class="grow" data-action="detail" data-id="'+p.id+'">'+
     '<div class="gr-img">'+imgTag(p.img,p.title,imgPri(idx))+'</div>'+
     '<div class="gr-body"><div><div class="gr-title">'+titleHtml(splitTitle(p.title).name)+'</div><div class="gr-meta"><span class="gr-rank">'+esc(p.rank)+'</span></div></div>'+
-    '<div class="gr-foot"><span class="gr-price"><small>¥</small>'+p.price+'<small>/'+p.unit+'</small></span><span class="gr-heat">热度'+p.heat+'</span></div></div></button>';
+    '<div class="gr-foot"><span class="gr-price"><small>¥</small>'+p.price+'<small>/'+p.unit+'</small></span><span class="gr-heat">热度'+getHeat(p)+'</span></div></div></button>';
 }
 
 function parseHash(){
@@ -2195,7 +2239,7 @@ function filterProducts(){
     return catState.game==="all"||p.game===catState.game;
   });
   const by={
-    heat_desc:(a,b)=>b.heat-a.heat,heat_asc:(a,b)=>a.heat-b.heat,
+    heat_desc:(a,b)=>getHeat(b)-getHeat(a),heat_asc:(a,b)=>getHeat(a)-getHeat(b),
     price_asc:(a,b)=>a.price-b.price,price_desc:(a,b)=>b.price-a.price
   }[catState.sort];
   return by?list.sort(by):list;
@@ -2329,6 +2373,8 @@ function couponBlock(p){
 function viewDetail(params){
   const p=productById(parseInt(params.id,10));
   if(!p) return '<section class="view">'+pageHead("商品详情")+emptyHtml({ico:"search",title:"商品不存在或已下架",btn:HOME_BTN})+'</section>';
+  // 访问商品详情页，热度+1
+  addProductHeat(p.id,1);
   const g=gameById(p.game);
   const fav=store.favs.includes(p.id);
   const rel=PRODUCTS.filter(x=>x.game===p.game&&x.id!==p.id).slice(0,3);
@@ -2337,7 +2383,7 @@ function viewDetail(params){
     '<div class="detail-hero">'+imgPlain(p.img,p.title,' fetchpriority="high"')+'</div>'+
     '<div class="detail-rest">'+
     '<div class="detail-price"><div class="dp-row"><span class="dp-price"><small>¥</small>'+p.price+'<small>/'+p.unit+'</small></span>'+
-      '<span class="dp-heat">热度'+p.heat+' · 已售'+p.sales+'</span></div>'+
+      '<span class="dp-heat">热度'+getHeat(p)+' · 已售'+p.sales+'</span></div>'+
       '<h2>'+esc(p.title)+'</h2><div class="dp-tags">'+p.tags.map(t=>'<span>'+esc(t)+'</span>').join("")+'</div></div>'+
     '<div id="couponBox" data-id="'+p.id+'">'+couponBlock(p)+'</div>'+
     '<div class="detail-block"><h3>商品信息</h3>'+
@@ -3259,6 +3305,8 @@ const ACTIONS={
         if(c&&c.status==="active"){c.status="used";c.usedAt=Date.now();c.orderNo=no;c.updatedAt=Date.now();}
       }
       store.orders.push(order);
+      // 下单成功，商品热度+10
+      addProductHeat(p.id,10);
       // 本地立即保存（含订单），然后等待云端同步完成再跳转支付，
       // 避免页面跳转中断云端写入导致订单只存本地、不同步到其他浏览器
       const cloudP=saveStore();
@@ -3566,6 +3614,8 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
   primeMany([IMG.banner,IMG.hot,IMG.all].concat(GAMES.map(g=>g.icon)),6,true);
   await loadSiteData();
   migrateOrders();
+  // 加载商品热度偏移（从 Supabase posts 表）
+  loadProductHeat();
   // 优化登录/支付回调体验：URL 含回调参数时优先处理，跳过图片预加载等待
   // 登录回调的 fetch 与 render 并行，避免从QQ授权回来后还要等图片预加载
   const hasUrlCallback=handleUrlParams();
