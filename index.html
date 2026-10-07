@@ -2383,7 +2383,7 @@ function viewDetail(params){
     '<div class="detail-hero">'+imgPlain(p.img,p.title,' fetchpriority="high"')+'</div>'+
     '<div class="detail-rest">'+
     '<div class="detail-price"><div class="dp-row"><span class="dp-price"><small>¥</small>'+p.price+'<small>/'+p.unit+'</small></span>'+
-      '<span class="dp-heat">热度'+getHeat(p)+' · 已售'+p.sales+'</span></div>'+
+      '<span class="dp-heat">热度'+getHeat(p)+'</span></div>'+
       '<h2>'+esc(p.title)+'</h2><div class="dp-tags">'+p.tags.map(t=>'<span>'+esc(t)+'</span>').join("")+'</div></div>'+
     '<div id="couponBox" data-id="'+p.id+'">'+couponBlock(p)+'</div>'+
     '<div class="detail-block"><h3>商品信息</h3>'+
