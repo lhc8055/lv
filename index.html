@@ -269,6 +269,7 @@ button.pf-header:active{opacity:.8}
 .oc-btn:active{transform:scale(.94)}
 .oc-btn.gray{color:#9aa0c4;border-color:#d6daf0;background:#f6f7fc}
 .oc-btn.solid{color:#fff;background:linear-gradient(135deg,var(--pri),var(--purple));border-color:transparent;font-weight:700;box-shadow:0 4px 10px rgba(91,108,240,.22)}
+.oc-btn.purple{color:#fff;background:var(--purple);border-color:transparent;font-weight:700;box-shadow:0 4px 10px rgba(138,99,255,.28)}
 
 .coupon{position:relative;margin:0 14px 14px;border-radius:var(--r-md);overflow:hidden;background:linear-gradient(120deg,#6e7bff,#8a63ff);color:#fff;display:flex;min-height:108px;box-shadow:var(--shadow)}
 .coupon.c2{background:linear-gradient(120deg,#ff9a5c,#ff6a8d)}
@@ -2363,11 +2364,10 @@ function viewDetail(params){
 
 function orderActions(o){
   const btn=(cls,action,text,extra)=>'<button type="button" class="oc-btn '+cls+'" data-action="'+action+'" data-no="'+o.no+'"'+(extra||"")+'>'+text+'</button>';
-  const chatBtn=btn("gray","order-chat","订单聊天");
   switch(o.status){
     case "unpaid":return btn("gray","order-cancel","取消订单")+btn("solid","order-pay","去支付");
-    case "pending":return btn("gray","order-refund","申请退款")+chatBtn;
-    case "ongoing":return chatBtn+btn("solid","order-complete","确认完成");
+    case "pending":return btn("gray","order-refund","申请退款")+btn("purple","contact-service","联系客服");
+    case "ongoing":return btn("gray","order-chat","联系打手")+btn("solid","order-complete","确认完成");
     case "done":return btn("gray","order-aftersale","申请售后")+(o.rating?"":btn("solid","order-rate","去评价"));
     case "refunding":return '<button type="button" class="oc-btn gray" disabled>退款处理中…</button>';
     default:return btn("","detail","再次下单",' data-id="'+o.id+'"');
