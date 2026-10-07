@@ -526,10 +526,10 @@
       "id": "c1",
       "cls": "",
       "minus": 3,
-      "need": 30,
+      "need": 0,
       "name": "新人立减券",
-      "desc": "全站通用 · 领取后7天有效 · 每个账号限领1张",
-      "validDays": 7,
+      "desc": "新用户专享 · 无门槛立减3元 · 永久有效",
+      "validDays": 0,
       "scope": "all",
       "claimable": false
     },

@@ -796,7 +796,7 @@ function defaultState(){
     ],
     tagPool: TAG_POOL_DEFAULT.slice(),
     coupons: [
-      {id:"c1",cls:"",minus:3,need:30,name:"新人立减券",desc:"全站通用 · 领取后7天有效 · 每个账号限领1张",validDays:7,scope:"all",claimable:false},
+      {id:"c1",cls:"",minus:3,need:0,name:"新人立减券",desc:"新用户专享 · 无门槛立减3元 · 永久有效",validDays:0,scope:"all",claimable:false},
       {id:"c2",cls:"c2",minus:10,need:100,name:"技术单局券",desc:"仅限技术单局区商品 · 满100元可用",validDays:7,scope:"tech",claimable:false},
       {id:"c3",cls:"c3",minus:25,need:200,name:"开黑畅玩券",desc:"娱乐小时区与技术区通用 · 满200元可用",validDays:7,scope:"all",claimable:false},
       {id:"c4",cls:"c2",minus:2,need:0,name:"邀请注册券",desc:"填写邀请码注册获得 · 无门槛全站通用 · 7天有效",validDays:7,scope:"all",claimable:false},
@@ -1402,7 +1402,7 @@ function renderCouponList(){
     const scopeT = (COUPON_SCOPES.find(s => s.v === c.scope)||{}).t || c.scope;
     return '<div class="cell tap" data-cidx="'+i+'">'+
       '<div class="cb"><div class="t1">'+esc(c.name||"未命名")+' <span style="font-size:12px;color:var(--label2);font-weight:400">'+esc(c.id)+'</span></div>'+
-      '<div class="t2">满¥'+c.need+'减¥'+c.minus+' · '+scopeT+' · '+c.validDays+'天有效'+(c.desc?' · '+esc(c.desc):'')+'</div></div>'+
+      '<div class="t2">满¥'+c.need+'减¥'+c.minus+' · '+scopeT+' · '+(c.validDays>0?c.validDays+'天有效':'永久有效')+(c.desc?' · '+esc(c.desc):'')+'</div></div>'+
       '<input type="checkbox" class="sw" data-dist="'+i+'"'+(c.claimable!==false?" checked":"")+' title="发放">'+
     '</div>';
   }).join("");
@@ -1515,7 +1515,7 @@ function fmtTs(ts){ if(!ts) return "-"; const d = new Date(ts); return d.getFull
 function couponStatusOf(c, def){
   if(c.status === "used") return "used";
   if(c.status === "expired") return "expired";
-  if(def && c.claimedAt && Date.now() - c.claimedAt > def.validDays*86400000) return "expired";
+  if(def && c.claimedAt && def.validDays>0 && Date.now() - c.claimedAt > def.validDays*86400000) return "expired";
   return "active";
 }
 const UC_BADGE = {used:'<span class="badge b-gray"><i></i>已使用</span>',expired:'<span class="badge b-warn"><i></i>已过期</span>',active:'<span class="badge b-ok"><i></i>有效</span>'};
