@@ -960,9 +960,34 @@ function openSheet(o){
       '<div class="sheet-body">'+o.html+'</div></div></div>';
   const body = $(".sheet-body", root);
   const close = () => { root.innerHTML = ""; };
+  const shR = $("#shR");
+  let saving = false;
   $("#shL").onclick = close;
-  $("#scrim").addEventListener("mousedown", e => { if(e.target.id === "scrim") close(); });
-  $("#shR").onclick = () => { if(o.onSave && o.onSave(body, close) === false) return; close(); };
+  $("#scrim").addEventListener("mousedown", e => { if(e.target.id === "scrim" && !saving) close(); });
+  shR.onclick = async () => {
+    if(saving) return; // 防止重复点击
+    if(!o.onSave){ close(); return; }
+    saving = true;
+    shR.disabled = true; shR.style.opacity = ".5";
+    const origText = shR.textContent;
+    shR.textContent = "保存中…";
+    try{
+      const r = o.onSave(body, close);
+      // onSave 可能返回 Promise 或 false（阻止自动关闭）
+      if(r && typeof r.then === "function"){
+        const val = await r;
+        if(val !== false) close();
+      }else if(r !== false){
+        close();
+      }
+    }catch(e){
+      toast("操作失败："+(e&&e.message||e));
+    }finally{
+      saving = false;
+      shR.disabled = false; shR.style.opacity = "";
+      shR.textContent = origText;
+    }
+  };
   if(o.onMount) o.onMount(body, close);
   return close;
 }
