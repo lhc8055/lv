@@ -2373,8 +2373,8 @@ function couponBlock(p){
 function viewDetail(params){
   const p=productById(parseInt(params.id,10));
   if(!p) return '<section class="view">'+pageHead("商品详情")+emptyHtml({ico:"search",title:"商品不存在或已下架",btn:HOME_BTN})+'</section>';
-  // 访问商品详情页，热度+1
-  addProductHeat(p.id,1);
+  // 访问商品详情页，登录用户热度+1
+  if(store.user&&store.user.uid) addProductHeat(p.id,1);
   const g=gameById(p.game);
   const fav=store.favs.includes(p.id);
   const rel=PRODUCTS.filter(x=>x.game===p.game&&x.id!==p.id).slice(0,3);
