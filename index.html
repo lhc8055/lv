@@ -3305,8 +3305,8 @@ const ACTIONS={
         if(c&&c.status==="active"){c.status="used";c.usedAt=Date.now();c.orderNo=no;c.updatedAt=Date.now();}
       }
       store.orders.push(order);
-      // 下单成功，商品热度+10
-      addProductHeat(p.id,10);
+      // 下单成功，商品热度+5
+      addProductHeat(p.id,5);
       // 本地立即保存（含订单），然后等待云端同步完成再跳转支付，
       // 避免页面跳转中断云端写入导致订单只存本地、不同步到其他浏览器
       const cloudP=saveStore();
