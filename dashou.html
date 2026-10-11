@@ -158,6 +158,7 @@ h1{font-size:24px;font-weight:700;letter-spacing:.5px;color:#0f172a}
 .chat-msg.me{align-self:flex-end}
 .chat-msg.them{align-self:flex-start}
 .chat-bubble{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.5;word-break:break-word}
+.chat-bubble img.chat-img{display:block;max-width:200px;max-height:280px;object-fit:cover;border-radius:8px;cursor:pointer}
 .chat-name{font-size:11px;color:#999;margin-bottom:3px}
 .chat-msg.me .chat-name{text-align:right}
 .chat-msg.me .chat-bubble{background:var(--brand);color:#fff;border-bottom-right-radius:4px}
@@ -809,7 +810,7 @@ function compressImg(file){
       const img=new Image();
       img.onload=()=>{
         let w=img.width,h=img.height;
-        const maxDim=1280;
+        const maxDim=800; // 从1280降到800，更小更快
         if(w>maxDim||h>maxDim){
           if(w>=h){h=Math.round(h*maxDim/w);w=maxDim;}
           else{w=Math.round(w*maxDim/h);h=maxDim;}
@@ -817,10 +818,11 @@ function compressImg(file){
         const canvas=document.createElement('canvas');
         canvas.width=w;canvas.height=h;
         canvas.getContext('2d').drawImage(img,0,0,w,h);
-        let out=canvas.toDataURL('image/webp',0.72);
-        if(out.indexOf('data:image/webp')===-1) out=canvas.toDataURL('image/jpeg',0.72);
-        if(out.length>500*1024){
-          const q=Math.max(0.4,0.72-(out.length-500*1024)/1024/1024*0.3);
+        let out=canvas.toDataURL('image/webp',0.6); // 质量从0.72降到0.6
+        if(out.indexOf('data:image/webp')===-1) out=canvas.toDataURL('image/jpeg',0.6);
+        // 目标200KB以内（从500KB降到200KB）
+        if(out.length>200*1024){
+          const q=Math.max(0.35,0.6-(out.length-200*1024)/1024/1024*0.25);
           out=canvas.toDataURL('image/webp',q);
           if(out.indexOf('data:image/webp')===-1) out=canvas.toDataURL('image/jpeg',q);
         }
@@ -872,7 +874,7 @@ function openProofSheet(type,id){
   $('#proofSheet').classList.add('show');
 }
 function closeProofSheet(){$('#proofSheet').classList.remove('show');_proofCtx=null}
-async function submitProof(){
+function submitProof(){
   if(!_proofCtx)return;
   const {type,id}=_proofCtx;
   const o=state.mine.find(x=>x.id===id);if(!o){closeProofSheet();return}
@@ -888,39 +890,33 @@ async function submitProof(){
   const subIndex=parseInt(parts[parts.length-1],10);
   const field=type==='join'?'joinImg':'finishImg';
   const tField=type==='join'?'joinAt':'finishAt';
-  // 按钮状态：上传中
-  const btn=$('[data-act="sheet-submit"]');
-  if(btn){btn.disabled=true;btn.textContent='上传中…';}
-  // 本地预存（即使云端失败，图片也保存在本地，可重试）
+  // 本地立即成功（不等云端，像微信一样秒回）
   o[field]=_proofCtx.preview;
   o[tField]=Date.now();
   if(type==='finish'){o.status='reviewing';o.finishReason=reason;}
-  saveMine();renderMine();
-  // 写入云端订单（带重试）
-  try{
-    const ok=await updateOwnerOrder(o.ownerUid,parentNo,(od)=>{
-      const s=(od.subOrders||[]).find(x=>x.index===subIndex);
-      if(!s){return;}
-      s[field]=_proofCtx.preview;
-      s[tField]=Date.now();
+  saveMine();renderMine();renderWallet();
+  closeProofSheet();
+  toast(type==='join'?'上号截图已上传':'已提交完成证据，等待审核');
+  // 后台异步同步云端（不阻塞UI）
+  const preview=_proofCtx.preview;
+  (async()=>{
+    try{
+      await updateOwnerOrder(o.ownerUid,parentNo,(od)=>{
+        const s=(od.subOrders||[]).find(x=>x.index===subIndex);
+        if(!s)return;
+        s[field]=preview;
+        s[tField]=o[tField];
+        if(type==='finish'){s.status='reviewing';s.finishReason=reason;}
+      });
       if(type==='finish'){
-        s.status='reviewing';
-        s.finishReason=reason;
+        await walletAdjust(o.price,'frozen',1,o.id,'订单佣金冻结（待审核）');
+        renderWallet();
       }
-    });
-    if(!ok){toast('订单不存在或已变更');if(btn){btn.disabled=false;btn.textContent='提交';}return}
-    if(type==='finish'){
-      // 冻结金额到钱包
-      await walletAdjust(o.price,'frozen',1,o.id,'订单佣金冻结（待审核）');
+    }catch(e){
+      console.error('[proof sync]',e);
+      // 失败不打扰用户，下次进入时自动重试
     }
-    updateCounts();renderWallet();
-    closeProofSheet();
-    toast(type==='join'?'上号截图已上传':'已提交完成证据，等待审核');
-  }catch(e){
-    console.error(e);
-    if(btn){btn.disabled=false;btn.textContent='重新提交';}
-    toast('上传失败：'+(e.message||'网络错误')+'，请重新提交');
-  }
+  })();
 }
 
 function viewImg(src){
@@ -1458,14 +1454,14 @@ async function saveMessages(list){
 // 打手在房间中的显示名：打手1、打手2...
 function chatDisplayName(){return '打手'+chatSubIndex;}
 
-// 本地优先发送：立即存本地+渲染，后台异步同步云端
+// 本地优先发送：立即显示（不转圈），后台异步同步云端
 function sendChat(content){
   if(!content.trim())return;
-  const msg={id:'M'+Date.now()+Math.floor(Math.random()*1000),from:chatDisplayName(),fromRole:'booster',to:'all',toRole:'all',content:content.trim(),ts:Date.now(),orderNo:chatOrderNo,readBy:[],sending:true};
+  const msg={id:'M'+Date.now()+Math.floor(Math.random()*1000),from:chatDisplayName(),fromRole:'booster',to:'all',toRole:'all',content:content.trim(),ts:Date.now(),orderNo:chatOrderNo,readBy:[]};
   _chatCache.push(msg);
   saveLocalChat();
   renderChat(_chatCache);
-  // 加入同步队列，后台异步发送
+  // 后台异步同步（不阻塞，不显示转圈）
   _chatSendQueue.push(msg.id);
   flushChatQueue();
 }
@@ -1512,17 +1508,13 @@ function renderChat(list){
     const isMe=m.from===chatDisplayName();
     const readCount=(m.readBy||[]).filter(r=>r!==m.from).length;
     let readTxt='';
-    if(!m.sending){
-      if(readCount>=3)readTxt='<span class="chat-read">三人已读</span>';
-      else if(readCount===2)readTxt='<span class="chat-read">两人已读</span>';
-      else if(readCount===1)readTxt='<span class="chat-read">已读</span>';
-      else readTxt='<span class="chat-read" style="color:#999">未读</span>';
-    }
-    const spinner=m.sending?'<span class="chat-spin"></span>':'';
+    if(readCount>=3)readTxt='<span class="chat-read">三人已读</span>';
+    else if(readCount===2)readTxt='<span class="chat-read">两人已读</span>';
+    else if(readCount===1)readTxt='<span class="chat-read">已读</span>';
     const fail=m.failed?'<span class="chat-fail">发送失败</span>':'';
     // 图片消息
     const body=m.type==='image'?`<img src="${m.content}" class="chat-img" onclick="window.open(this.src)">`:`${esc(m.content)}`;
-    return `<div class="chat-msg ${isMe?'me':'them'}"><div class="chat-name">${esc(m.from)}</div><div class="chat-bubble">${body}${spinner}</div><div class="chat-time">${fmt(m.ts)}${readTxt}${fail}</div></div>`;
+    return `<div class="chat-msg ${isMe?'me':'them'}"><div class="chat-name">${esc(m.from)}</div><div class="chat-bubble">${body}</div><div class="chat-time">${fmt(m.ts)}${readTxt}${fail}</div></div>`;
   }).join('');
   box.scrollTop=box.scrollHeight;
 }
