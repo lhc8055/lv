@@ -1552,6 +1552,10 @@ function openCouponForm(i){
 
 /* ---------- 用户优惠券（Supabase 直连 + 代理降级）---------- */
 const SB_URL = "https://jsrxbpysgaywdhnntqnl.supabase.co";
+// ★ 推荐：部署 Cloudflare Worker 反向代理（国内速度最好，免费，支持POST/PATCH）
+// 部署方法：https://dash.cloudflare.com → Workers → 创建 → 粘贴 worker.js 代码 → 部署
+// 把得到的 workers.dev 域名填到下面 SB_WORKER_URL（留空则只用直连+代理）
+const SB_WORKER_URL = ""; // 例如 "https://sb-proxy.你的用户名.workers.dev"
 const SB_ANON_DEFAULT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
 $("#sbAnonKey").value = SB_ANON_DEFAULT;
 // 多地区 CORS 代理线路（不同IP/地域，竞速并发）
@@ -1586,7 +1590,7 @@ function fetchOne(t, method, hdrs, body){
         const text = await res.text();
         let json = null; try{ json = text ? JSON.parse(text) : null; }catch(e){}
         if(!res.ok){ throw new Error("HTTP "+res.status+": "+((json && json.message) || text)); }
-        if(t.proxy){ _sbFastestProxies = [t.url, ..._sbFastestProxies.filter(u=>u!==t.url)].slice(0,3); }
+        if(t.proxy||t.isWorker){ _sbFastestProxies = [t.url, ..._sbFastestProxies.filter(u=>u!==t.url)].slice(0,3); }
         resolve(json);
       })
       .catch(e => {
@@ -1596,8 +1600,11 @@ function fetchOne(t, method, hdrs, body){
       });
   });
 }
-// 本地缓存
-const _sbAdminCache = {};
+// 本地缓存（持久化到 localStorage，云端挂了也有数据）
+const _sbCacheKey = "xy_admin_cache_v1";
+let _sbAdminCache = {};
+try{ _sbAdminCache = JSON.parse(localStorage.getItem(_sbCacheKey)||"{}") || {}; }catch(e){}
+function _saveSbCache(){ try{ localStorage.setItem(_sbCacheKey, JSON.stringify(_sbAdminCache)); }catch(e){} }
 async function sbApi(path, opts){
   const {key} = sbCfg();
   const hdrs = {"apikey":key,"Authorization":"Bearer "+key};
@@ -1606,11 +1613,21 @@ async function sbApi(path, opts){
   const body = opts && opts.body !== undefined ? JSON.stringify(opts.body) : undefined;
   const sep = path.includes("?") ? "&" : "?";
   const proxyTarget = SB_URL + path + sep + "apikey=" + encodeURIComponent(key);
-  let targets = [{url:SB_URL+path, proxy:false}];
+  let targets = [];
+  // Worker 代理作为第一优先
+  if(SB_WORKER_URL){
+    targets.push({url:SB_WORKER_URL+path, proxy:false, isWorker:true});
+  }
+  targets.push({url:SB_URL+path, proxy:false});
   sbProxyUrls(proxyTarget).forEach(u => targets.push({url:u, proxy:true}));
-  // 历史最快代理排前面
+  // 历史最快代理排前面（Worker始终优先）
   if(_sbFastestProxies.length){
-    targets.sort((a,b)=>{const ia=_sbFastestProxies.indexOf(a.url);const ib=_sbFastestProxies.indexOf(b.url);return (ia<0?99:ia)-(ib<0?99:ib);});
+    targets.sort((a,b)=>{
+      if(a.isWorker)return -1;
+      if(b.isWorker)return 1;
+      const ia=_sbFastestProxies.indexOf(a.url);const ib=_sbFastestProxies.indexOf(b.url);
+      return (ia<0?99:ia)-(ib<0?99:ib);
+    });
   }
   // GET 请求走本地缓存兜底
   const cacheKey = method + path;
@@ -1618,13 +1635,31 @@ async function sbApi(path, opts){
   const results = await Promise.allSettled(targets.map(t => fetchOne(t, method, hdrs, body)));
   const ok = results.find(r => r.status === 'fulfilled');
   if(ok){
-    if(method === "GET") _sbAdminCache[cacheKey] = ok.value;
+    if(method === "GET"){ _sbAdminCache[cacheKey] = ok.value; _saveSbCache(); }
     return ok.value;
   }
-  // 都失败，GET 返回缓存
+  // 都失败，GET 返回缓存（不会报"加载失败"）
   if(cached !== undefined) return cached;
   const lastErr = results[results.length-1];
   throw (lastErr && lastErr.reason) || new Error("所有端点均不可达");
+}
+// 乐观请求：GET 立即返回缓存数据，后台异步刷新（适合列表页，0延迟显示）
+async function sbApiOptimistic(path, opts, onUpdate){
+  const method = (opts && opts.method) || "GET";
+  if(method !== "GET") return await sbApi(path, opts);
+  const cacheKey = method + path;
+  const cached = _sbAdminCache[cacheKey];
+  // 先返回缓存
+  if(cached !== undefined && onUpdate){ setTimeout(()=>onUpdate(cached),0); }
+  // 后台刷新
+  try{
+    const fresh = await sbApi(path, opts);
+    if(onUpdate && fresh !== cached) onUpdate(fresh);
+    return fresh;
+  }catch(e){
+    if(cached !== undefined) return cached;
+    throw e;
+  }
 }
 // 带重试的请求
 async function sbApiRetry(path, opts, retries){

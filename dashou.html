@@ -372,6 +372,10 @@ const ZONE_TO_GAME={val:'val',delta:'df',wzry:'wz'};
 const EASE='cubic-bezier(.32,.72,0,1)';
 
 /* ===================== Supabase 多线路竞速客户端 ===================== */
+// ★ 推荐：部署 Cloudflare Worker 反向代理（国内速度最好，免费，支持POST/PATCH）
+// 部署方法：https://dash.cloudflare.com → Workers → 创建 → 粘贴 worker.js 代码 → 部署
+// 把得到的 workers.dev 域名填到下面 SB_WORKER_URL（留空则只用直连+代理）
+const SB_WORKER_URL=""; // 例如 "https://sb-proxy.你的用户名.workers.dev"
 // 直连 Supabase（海外），国内不稳定，需配合 CORS 代理
 const SB_BASE_URLS=["https://jsrxbpysgaywdhnntqnl.supabase.co"];
 // 多地区 CORS 代理线路（不同IP/地域，竞速并发，谁先回用谁）
@@ -396,18 +400,24 @@ const SB_RACE_TIMEOUT=4000; // 竞速整体超时（快速失败）
 let _sbReachable=false;
 let _sbFastestProxies=[];   // 缓存最快的代理，优先使用
 
-// 构建所有目标线路（直连 + 代理），按"上次最快"排序
+// 构建所有目标线路（Worker → 直连 → 代理），按"上次最快"排序
 function buildTargets(path){
   const sep=path.includes("?")?"&":"?";
   const proxiedPath=path+sep+"apikey="+encodeURIComponent(SB_ANON);
   const all=[];
+  // Worker 代理作为第一优先（国内速度最好，支持所有方法）
+  if(SB_WORKER_URL){
+    all.push({url:SB_WORKER_URL+path,base:SB_WORKER_URL,proxy:false,isWorker:true});
+  }
   for(const base of SB_BASE_URLS){
     all.push({url:base+path,base,proxy:false});
     for(const pu of sbProxyUrls(base+proxiedPath)) all.push({url:pu,base,proxy:true});
   }
-  // 把历史最快的代理排前面
+  // 把历史最快的代理排前面（但 Worker 始终优先）
   if(_sbFastestProxies.length){
     all.sort((a,b)=>{
+      if(a.isWorker)return -1;
+      if(b.isWorker)return 1;
       const ia=_sbFastestProxies.indexOf(a.url);
       const ib=_sbFastestProxies.indexOf(b.url);
       return (ia<0?99:ia)-(ib<0?99:ib);
@@ -427,8 +437,8 @@ function fetchOne(t,method,headers,body,isRpc){
         const text=await res.text();
         let json=null; try{json=text?JSON.parse(text):null;}catch(e){}
         if(!res.ok){const err=new Error((json&&json.message)||("HTTP "+res.status));err.code=json&&json.code;throw err;}
-        // 记录最快代理
-        if(t.proxy){
+        // 记录最快线路（Worker或代理）
+        if(t.proxy||t.isWorker){
           _sbFastestProxies=[t.url,..._sbFastestProxies.filter(u=>u!==t.url)].slice(0,3);
         }
         resolve(json);
@@ -472,14 +482,17 @@ async function sbRequestRetry(path,opts,retries){
   }
   throw lastErr||new Error("云端请求失败");
 }
-// 本地缓存（读操作兜底，云端挂了也有数据）
-const _sbCache={all:null,users:{}};
+// 本地缓存（持久化到 localStorage，读操作兜底，云端挂了也有数据）
+const _sbCacheKey='xy_sb_cache_v1';
+let _sbCache={all:null,users:{}};
+try{const c=JSON.parse(localStorage.getItem(_sbCacheKey)||'{}');if(c){_sbCache.all=c.all||null;_sbCache.users=c.users||{};}}catch(e){}
+function _saveSbCache(){try{localStorage.setItem(_sbCacheKey,JSON.stringify(_sbCache));}catch(e){}}
 // 读取所有用户数据（用于聚合待接单订单）
 async function sbSelectAll(){
   const cached=_sbCache.all;
   try{
     const rows=await sbRequestRetry("/rest/v1/"+SB_TABLE+"?select=*",{method:"GET"},2);
-    _sbCache.all=rows;
+    _sbCache.all=rows;_saveSbCache();
     return rows;
   }catch(e){
     if(cached)return cached; // 云端失败，返回本地缓存
@@ -492,7 +505,7 @@ async function sbSelectOne(uid){
   try{
     const rows=await sbRequestRetry("/rest/v1/"+SB_TABLE+"?uid=eq."+encodeURIComponent(uid)+"&select=*",{method:"GET"},2);
     const row=(Array.isArray(rows)&&rows[0])||null;
-    if(row)_sbCache.users[uid]=row;
+    if(row){_sbCache.users[uid]=row;_saveSbCache();}
     return row;
   }catch(e){
     if(cached)return cached; // 云端失败，返回本地缓存
@@ -502,7 +515,7 @@ async function sbSelectOne(uid){
 // 写入/更新单用户数据（带重试）
 async function sbUpsert(row){
   const res=await sbRequestRetry("/rest/v1/"+SB_TABLE,{method:"POST",body:row},3);
-  if(row&&row.uid)_sbCache.users[row.uid]=row;
+  if(row&&row.uid){_sbCache.users[row.uid]=row;_saveSbCache();}
   return res;
 }
 // 部分更新单用户数据（仅更新指定字段，不覆盖同行其他数据）
