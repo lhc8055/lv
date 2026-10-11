@@ -470,6 +470,7 @@ let toastTimer=0,_pollTimer=null,_svcTimer=null;
 const ACC_UID='xy_dashou_accounts';
 const WALLET_UID='xy_dashou_wallets';
 const WITHDRAW_UID='xy_withdraw_requests';
+const CONTACT_UID='xy_contact_requests';
 const JOIN_TIMEOUT_MS=15*60*1000;
 
 /* ===================== 用户订单 → 打手订单映射 ===================== */
@@ -566,6 +567,7 @@ function mineCard(o){
 <div class="info"><div><span>订单号</span><b>${orderNo}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>抢单时间</span><b>${fmt(o.gt)}</b></div><div><span>我的佣金</span><b>¥${price}</b></div></div>
 ${o.gameId?`<div class="contact"><div><span>游戏ID</span><b>${o.gameId}</b></div><button class="mini" data-act="copy" data-v="${o.gameId}">复制</button></div>`:''}
 <div class="contact"><div><span>联系沟通</span><b>订单聊天房间</b></div><button class="mini" data-act="order-chat" data-id="${o.id}" data-parent="${orderNo}" data-sub="${o.subIndex||1}">进入聊天</button></div>
+${o.contactGiven?'<div class="contact"><div><span>老板联系方式</span><b>'+esc(o.contactGiven)+'</b></div><button class="mini" data-act="copy" data-v="'+esc(o.contactGiven)+'">复制</button></div>':(done||reviewing?'':(o.contactReqId?'<div class="contact"><div><span>老板联系方式</span><b>已申请，等待客服</b></div></div>':'<div class="contact"><div><span>老板联系方式</span><b>老板未响应可申请</b></div><button class="mini" data-act="contact-req" data-id="'+o.id+'">找客服要</button></div>'))}
 ${o.joinImg?'<div class="contact"><div><span>上号截图</span><b>已上传</b></div><button class="mini" data-act="view-img" data-v="'+o.joinImg+'">查看</button></div>':''}
 ${o.finishImg?'<div class="contact"><div><span>完成证据</span><b>已上传</b></div><button class="mini" data-act="view-img" data-v="'+o.finishImg+'">查看</button></div>':''}
 <div class="c-foot"><div class="chips">${chips(o)}</div>${actBtn}</div>
@@ -896,6 +898,57 @@ async function walletAdjust(amount,type,op,refId,note){
   if(refId)w.lastTx={amount,type,op,refId,note,ts:Date.now()};
   await saveWallet();
 }
+
+/* ===================== 找客服要老板联系方式 ===================== */
+async function loadContactReqs(){
+  if(!state.user)return;
+  try{
+    const row=await sbSelectOne(CONTACT_UID);
+    const list=(row&&Array.isArray(row.orders))?row.orders:[];
+    let changed=false;
+    state.mine.forEach(o=>{
+      const req=list.find(r=>r.dashou===state.user&&r.orderNo===o.parentNo&&r.subIndex===(o.subIndex||1));
+      if(req){
+        if(req.status==='approved'&&req.contact&&!o.contactGiven){o.contactGiven=req.contact;changed=true;}
+        o.contactReqId=(req.status==='pending')?req.id:null;
+        if(req.status==='rejected')o.contactReqId=null;
+      }
+    });
+    if(changed)saveMine();
+    if(state.tab==='mine')renderMine();
+  }catch(e){console.error('[loadContactReqs]',e)}
+}
+let _contactCtx=null;
+function openContactSheet(id){
+  const o=state.mine.find(x=>x.id===id);
+  if(!o)return;
+  _contactCtx={id};
+  $('#sheetTitle').textContent='找客服要老板联系方式';
+  $('#sheetBody').innerHTML=
+    '<div style="font-size:12px;color:#8e8e93;margin-bottom:8px;line-height:1.5">老板长时间未响应时，可向客服申请获取老板的联系方式（QQ/微信）。请填写申请理由，客服审核后将发送给你。</div>'+
+    '<div class="field-label">申请理由</div>'+
+    '<textarea class="sheet-textarea" id="sheetReason" placeholder="如：老板在聊天房间长时间未响应，已等待多时">'+esc(o.contactReason||'')+'</textarea>'+
+    '<div class="btn-row"><button class="cancel" data-act="sheet-close">取消</button><button class="confirm" data-act="contact-submit">提交申请</button></div>';
+  $('#proofSheet').classList.add('show');
+}
+async function submitContactReq(){
+  if(!_contactCtx)return;
+  const {id}=_contactCtx;
+  const o=state.mine.find(x=>x.id===id);if(!o){closeProofSheet();return}
+  const reason=($('#sheetReason')?$('#sheetReason').value:'').trim();
+  if(!reason){toast('请填写申请理由');return}
+  const reqId='CR'+Date.now();
+  try{
+    const row=await sbSelectOne(CONTACT_UID);
+    let list=(row&&Array.isArray(row.orders))?row.orders:[];
+    list.push({id:reqId,dashou:state.user,ownerUid:o.ownerUid,orderNo:o.parentNo,subIndex:o.subIndex||1,status:'pending',reason,ts:Date.now()});
+    await sbUpsert({uid:CONTACT_UID,orders:list});
+    o.contactReqId=reqId;
+    saveMine();renderMine();
+    toast('已提交申请，等待客服处理');
+    closeProofSheet();
+  }catch(e){toast('提交失败：'+(e.message||'网络错误'))}
+}
 function renderWallet(){
   const w=state.wallet;
   $('#wBalance').textContent=(w.balance||0).toFixed(2);
@@ -1079,6 +1132,7 @@ function startPoll(){
   const tick=async ()=>{
     if(state.user&&state.online&&!document.hidden){
       await fetchPendingOrders();
+      loadContactReqs();
     }
     _pollTimer=setTimeout(tick,state.online?3000:8000);
   };
@@ -1136,6 +1190,8 @@ document.addEventListener('click',e=>{
   else if(a==='withdraw-submit')submitWithdraw();
   else if(a==='join-proof')openProofSheet('join',t.dataset.id);
   else if(a==='finish-proof')openProofSheet('finish',t.dataset.id);
+  else if(a==='contact-req')openContactSheet(t.dataset.id);
+  else if(a==='contact-submit')submitContactReq();
   else if(a==='sheet-close')closeProofSheet();
   else if(a==='sheet-submit')submitProof();
   else if(a==='view-img')viewImg(t.dataset.v);
@@ -1210,6 +1266,7 @@ function enter(u,instant){
   $('#app').classList.add('on');$('#dock').classList.add('on');
   setOnline(true);setZone('val');setMineTab('doing');updateCounts();setTab('hall');
   loadWallet().then(()=>{renderWallet();updateCounts();});
+  loadContactReqs();
   if(instant)login.style.display='none';
   else{login.classList.add('out');setTimeout(()=>{login.style.display='none'},360)}
   startPoll();

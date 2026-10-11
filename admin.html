@@ -509,6 +509,21 @@ body[data-page=chat] .page-wrap{max-width:1180px}
       </section>
 
       <!-- ======================================================
+           页面：联系方式申请（运营）
+           ====================================================== -->
+      <section class="page" id="page-contact" data-title="联系方式申请">
+        <h1 class="large-title">联系方式申请</h1>
+        <div class="seg" id="ctSeg" data-seg>
+          <button class="on" data-f="pending">待处理</button>
+          <button data-f="approved">已发送</button>
+          <button data-f="rejected">已驳回</button>
+          <button data-f="all">全部</button>
+        </div>
+        <div class="group" id="ctRows"></div>
+        <div class="gf" id="ctSub"></div>
+      </section>
+
+      <!-- ======================================================
            页面：反馈 / 投诉（运营）
            ====================================================== -->
       <section class="page" id="page-feedback" data-title="反馈 / 投诉">
@@ -767,7 +782,8 @@ const IC = {
   out:'<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l-4-4 4-4M6 12h10"/>',
   search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
   check:'<path d="M5 12l5 5 9-11"/>',
-  wallet:'<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 8h18M16 12h2"/>'
+  wallet:'<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 8h18M16 12h2"/>',
+  phone:'<path d="M6.5 4h3l1.5 4-2 1.5a11 11 0 0 0 5 5l1.5-2 4 1.5v3a2 2 0 0 1-2 2A15 15 0 0 1 4.5 6a2 2 0 0 1 2-2z"/>'
 };
 const ic = (n, cls) => '<svg class="ic'+(cls?' '+cls:'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+IC[n]+'</svg>';
 const CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'+IC.chev+'</svg>';
@@ -780,6 +796,7 @@ const PAGES = [
   {id:"orders",   t:"订单",    ic:"list",  c:"#FF9500",g:"运营",tab:"订单"},
   {id:"review",   t:"打手审核",ic:"check", c:"#FFCC00",g:"运营"},
   {id:"withdraw", t:"提现审核",ic:"wallet",c:"#34C759",g:"运营"},
+  {id:"contact",  t:"联系方式申请",ic:"phone",c:"#5856D6",g:"运营"},
   {id:"feedback", t:"反馈 / 投诉",ic:"bubble",c:"#FF3B30",g:"运营"},
   {id:"chat",     t:"客服聊天",ic:"chat",  c:"#34C759",g:"运营",tab:"客服"},
   {id:"home",     t:"首页与弹窗",ic:"home",c:"#30B0C7",g:"内容"},
@@ -974,6 +991,7 @@ function showPage(id){
   if(id === "orders") loadOrdersPage();
   if(id === "review") loadReviewPage();
   if(id === "withdraw") loadWithdrawPage();
+  if(id === "contact") loadContactPage();
   if(id === "feedback") loadFeedbackPage();
   if(id === "chat") openChatPage();
 }
@@ -2451,9 +2469,12 @@ $("#ordSearch").addEventListener("input", e => { _ordQ = e.target.value.trim().t
    ================================================================ */
 const WALLET_UID_ADMIN='xy_dashou_wallets';
 const WITHDRAW_UID_ADMIN='xy_withdraw_requests';
+const CONTACT_UID_ADMIN='xy_contact_requests';
 let rvPending=[]; // 待审核的子单列表 [{ownerUid,orderNo,sub,order}]
 let wdList=[]; // 提现申请
 let wdFilter='pending';
+let ctList=[]; // 联系方式申请
+let ctFilter='pending';
 
 async function loadReviewPage(){
   if(!rvPending.length) $('#rvRows').innerHTML = '<div class="empty">加载中…</div>';
@@ -2668,6 +2689,106 @@ async function withdrawAction(wid,action){
     toast(action==='processed'?'已标记为已打款':'已驳回，金额已退回打手余额');
     close();
     loadWithdrawPage();
+  }catch(err){
+    toast('操作失败：'+(err&&err.message||err));
+  }
+  return false;
+}
+
+/* ================================================================
+   联系方式申请审核
+   ================================================================ */
+async function loadContactPage(){
+  if(!ctList.length) $('#ctRows').innerHTML = '<div class="empty">加载中…</div>';
+  try{
+    const row = await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(CONTACT_UID_ADMIN)+"&select=*");
+    ctList = (row&&row[0]&&Array.isArray(row[0].orders))?row[0].orders.slice():[];
+    renderCtList();
+  }catch(e){
+    $('#ctRows').innerHTML = '<div class="empty">加载失败：'+esc(e.message)+'</div>';
+  }
+}
+function renderCtList(){
+  const list = ctList.filter(x=>ctFilter==='all'||x.status===ctFilter).sort((a,b)=>b.ts-a.ts);
+  const pending=ctList.filter(x=>x.status==='pending').length;
+  $('#ctSub').textContent = (ctFilter==='pending'?'待处理 ':'')+list.length+' 笔 · 待处理 '+pending+' 笔';
+  if(!list.length){
+    $('#ctRows').innerHTML = '<div class="empty">暂无联系方式申请</div>';
+    return;
+  }
+  $('#ctRows').innerHTML = list.map(c=>{
+    const st=c.status==='approved'?'<span class="badge b-ok"><i></i>已发送</span>':(c.status==='rejected'?'<span class="badge b-red"><i></i>已驳回</span>':'<span class="badge b-warn"><i></i>待处理</span>');
+    return '<div class="cell" data-ctid="'+esc(c.id)+'"><div class="cb"><div class="t1">打手 '+esc(c.dashou||'—')+' · 订单 '+esc(c.orderNo||'—')+'</div><div class="t2">'+esc(c.reason||'—')+' · 申请于 '+fmtTs(c.ts)+'</div></div><div class="cr">'+st+'</div></div>';
+  }).join('');
+}
+$('#ctSeg').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if(!b) return; ctFilter=b.dataset.f; renderCtList(); });
+document.addEventListener('click', e => {
+  const r = e.target.closest('[data-ctid]');
+  if(r){ const c=ctList.find(x=>x.id===r.dataset.ctid); if(c) contactSheet(c); }
+});
+async function contactSheet(c){
+  // 读取老板订单中的联系方式
+  let bossContact='';
+  try{
+    if(c.ownerUid){
+      const row=await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(c.ownerUid)+"&select=orders");
+      if(row&&row[0]&&Array.isArray(row[0].orders)){
+        const o=row[0].orders.find(x=>x.no===c.orderNo);
+        if(o) bossContact=o.customerContact||o.qq||'';
+      }
+    }
+  }catch(e){}
+  const st=c.status==='approved'?'已发送':(c.status==='rejected'?'已驳回':'待处理');
+  openSheet({
+    title:"联系方式申请 · "+c.id, left:"关闭", right:null,
+    html:
+      '<div class="gh">申请信息</div><div class="group">'+
+        kvCell('打手',esc(c.dashou||'—'))+kvCell('订单号',esc(c.orderNo||'—'))+
+        kvCell('子单编号','打手'+(c.subIndex||1))+kvCell('状态',st)+
+        kvCell('申请时间',fmtTs(c.ts))+
+        (c.processedAt?kvCell('处理时间',fmtTs(c.processedAt)):'')+
+      '</div>'+
+      '<div class="gh">申请理由</div><div class="group"><div class="cell"><div style="line-height:1.6">'+esc(c.reason||'—')+'</div></div></div>'+
+      (bossContact?'<div class="gh">老板联系方式（订单填写）</div><div class="group"><div class="cell"><div class="t1">QQ：'+esc(bossContact)+'</div><div class="t2">来自老板下单时填写的QQ号</div></div></div>':'<div class="gh">老板联系方式</div><div class="group"><div class="empty">该订单未填写联系方式</div></div>')+
+      (c.status==='pending'?'<div class="btn-row" style="margin-top:14px">'+
+        '<button class="btn gray" data-ct-reject="'+esc(c.id)+'">驳回</button>'+
+        '<button class="btn tinted" data-ct-pass="'+esc(c.id)+'">发送联系方式给打手</button>'+
+      '</div>':'')
+  });
+}
+document.addEventListener('click', async e=>{
+  const p=e.target.closest('[data-ct-pass]');
+  if(p){ await contactAction(p.dataset.ctPass,'approved'); return; }
+  const r=e.target.closest('[data-ct-reject]');
+  if(r){ await contactAction(r.dataset.ctReject,'rejected'); return; }
+});
+async function contactAction(ctid,action){
+  try{
+    const row=await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(CONTACT_UID_ADMIN)+"&select=*");
+    let list=(row&&row[0]&&Array.isArray(row[0].orders))?row[0].orders.slice():[];
+    const idx=list.findIndex(x=>x.id===ctid);
+    if(idx<0){toast('申请不存在');return}
+    const c=list[idx];
+    if(c.status!=='pending'){toast('申请已处理');return}
+    if(action==='approved'){
+      // 读取老板联系方式
+      let bc='';
+      if(c.ownerUid){
+        const oRow=await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(c.ownerUid)+"&select=orders");
+        if(oRow&&oRow[0]&&Array.isArray(oRow[0].orders)){
+          const o=oRow[0].orders.find(x=>x.no===c.orderNo);
+          if(o) bc=o.customerContact||o.qq||'';
+        }
+      }
+      if(!bc){toast('该订单未填写联系方式，无法发送');return}
+      c.status='approved';c.contact=bc;c.processedAt=Date.now();
+    }else{
+      c.status='rejected';c.processedAt=Date.now();
+    }
+    await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(CONTACT_UID_ADMIN),{method:"PATCH",body:{orders:list}});
+    toast(action==='approved'?'已发送联系方式给打手':'已驳回申请');
+    close();
+    loadContactPage();
   }catch(err){
     toast('操作失败：'+(err&&err.message||err));
   }
