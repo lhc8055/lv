@@ -63,7 +63,7 @@
    ============================================================ */
 :root{
   --blue:#007AFF;--green:#34C759;--orange:#FF9500;--red:#FF3B30;--teal:#30B0C7;--indigo:#5E5CE6;--pink:#FF2D55;--gray:#8E8E93;
-  --blue-t:#007AFF;--green-t:#248A3D;--orange-t:#C27400;--purple-t:#AF52DE;
+  --blue-t:#007AFF;--green-t:#248A3D;--orange-t:#C27400;--purple-t:#AF52DE;--red-t:#FF3B30;
   --bg:#F2F2F7;--card:#FFFFFF;--fill:rgba(120,120,128,.12);--fill2:rgba(120,120,128,.2);
   --label:#000;--label2:rgba(60,60,67,.6);--label3:rgba(60,60,67,.3);--sep:rgba(60,60,67,.16);
   --seg-on:#fff;
@@ -75,7 +75,7 @@
 @media (prefers-color-scheme: dark){
   :root{
     --blue:#0A84FF;--green:#30D158;--orange:#FF9F0A;--red:#FF453A;--teal:#40CBE0;--indigo:#7D7AFF;--pink:#FF375F;
-    --blue-t:#0A84FF;--green-t:#30D158;--orange-t:#FF9F0A;--purple-t:#BF5AF2;
+    --blue-t:#0A84FF;--green-t:#30D158;--orange-t:#FF9F0A;--purple-t:#BF5AF2;--red-t:#FF453A;
     --bg:#000;--card:#1C1C1E;--fill:rgba(120,120,128,.24);--fill2:rgba(120,120,128,.36);
     --label:#fff;--label2:rgba(235,235,245,.6);--label3:rgba(235,235,245,.3);--sep:rgba(84,84,88,.6);
     --seg-on:#636366;
@@ -228,6 +228,11 @@ svg.ic{width:22px;height:22px;flex:none}
 .b-ok{background:rgba(52,199,89,.16);color:var(--green-t)}
 .b-gray{background:var(--fill);color:var(--label2)}
 .b-purple{background:rgba(175,82,222,.15);color:var(--purple-t)}
+.b-red{background:rgba(255,59,48,.15);color:var(--red-t)}
+.btn-row{display:flex;gap:10px;margin-top:14px}
+.btn-row .btn{flex:1;height:46px;border-radius:14px;font-size:15px;font-weight:600;border:none;cursor:pointer}
+.btn-row .btn.gray{background:var(--fill);color:var(--label)}
+.btn-row .btn.tinted{background:rgba(0,122,255,.12);color:var(--blue-t)}
 .tagt{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--fill);color:var(--label2);font-size:12px}
 
 .tag-pool{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px}
@@ -389,7 +394,7 @@ body[data-page=chat] .page-wrap{max-width:1180px}
 .chat-input textarea{flex:1;min-width:0;border:.5px solid var(--sep);background:var(--card);border-radius:19px;padding:8px 16px;outline:none;font-size:16px;line-height:1.35;resize:none;max-height:120px;color:var(--label);display:block}
 .chat-input button{width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
 .chat-input button svg.ic{width:18px;height:18px}
-.chat-input .chat-img-btn{width:36px;height:36px;border-radius:50%;background:var(--card);color:var(--blue);border:.5px solid var(--sep);display:flex;align-items:center;justify-content:center;flex:none;font-size:18px;cursor:pointer}
+.chat-input .chat-img-btn{width:36px;height:36px;border-radius:50%;background:var(--card);color:var(--blue);border:.5px solid var(--sep);display:flex;align-items:center;justify-content:center;flex:none;font-size:22px;font-weight:300;cursor:pointer;padding:0;line-height:1}
 .chat-input .chat-img-btn:disabled{opacity:.4;cursor:not-allowed}
 .chat-msgs .bub img.chat-img{display:block;max-width:220px;border-radius:12px;cursor:pointer}
 @media (max-width:760px){
@@ -481,6 +486,29 @@ body[data-page=chat] .page-wrap{max-width:1180px}
       </section>
 
       <!-- ======================================================
+           页面：打手审核（运营）
+           ====================================================== -->
+      <section class="page" id="page-review" data-title="打手审核">
+        <h1 class="large-title">打手审核</h1>
+        <div class="gf" id="rvSub">加载中…</div>
+        <div class="group" id="rvRows"></div>
+      </section>
+
+      <!-- ======================================================
+           页面：提现审核（运营）
+           ====================================================== -->
+      <section class="page" id="page-withdraw" data-title="提现审核">
+        <h1 class="large-title">提现审核</h1>
+        <div class="seg" id="wdSeg" data-seg>
+          <button class="on" data-f="pending">待处理</button>
+          <button data-f="processed">已打款</button>
+          <button data-f="all">全部</button>
+        </div>
+        <div class="group" id="wdRows"></div>
+        <div class="gf" id="wdSub"></div>
+      </section>
+
+      <!-- ======================================================
            页面：反馈 / 投诉（运营）
            ====================================================== -->
       <section class="page" id="page-feedback" data-title="反馈 / 投诉">
@@ -511,7 +539,7 @@ body[data-page=chat] .page-wrap{max-width:1180px}
             </div>
             <div class="chat-msgs" id="chatFullMsgs"></div>
             <div class="chat-input" id="chatInputBar" hidden>
-              <button class="chat-img-btn" id="chatImgBtn" title="发送图片">📷</button>
+              <button class="chat-img-btn" id="chatImgBtn" title="发送图片">+</button>
               <input type="file" id="chatImgInput" accept="image/*" hidden>
               <textarea id="chatFullInput" rows="1" placeholder="输入消息…" maxlength="500"></textarea>
               <button id="chatFullSend" aria-label="发送"></button>
@@ -737,7 +765,9 @@ const IC = {
   send:'<path d="M12 19V6M6 11.5 12 5.5l6 6"/>',
   lock:'<rect x="5" y="11" width="14" height="9.5" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   out:'<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l-4-4 4-4M6 12h10"/>',
-  search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>'
+  search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+  check:'<path d="M5 12l5 5 9-11"/>',
+  wallet:'<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 8h18M16 12h2"/>'
 };
 const ic = (n, cls) => '<svg class="ic'+(cls?' '+cls:'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+IC[n]+'</svg>';
 const CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'+IC.chev+'</svg>';
@@ -748,6 +778,8 @@ const CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentC
 const PAGES = [
   {id:"dashboard",t:"数据看板",ic:"chart", c:"#007AFF",g:"运营",tab:"看板"},
   {id:"orders",   t:"订单",    ic:"list",  c:"#FF9500",g:"运营",tab:"订单"},
+  {id:"review",   t:"打手审核",ic:"check", c:"#FFCC00",g:"运营"},
+  {id:"withdraw", t:"提现审核",ic:"wallet",c:"#34C759",g:"运营"},
   {id:"feedback", t:"反馈 / 投诉",ic:"bubble",c:"#FF3B30",g:"运营"},
   {id:"chat",     t:"客服聊天",ic:"chat",  c:"#34C759",g:"运营",tab:"客服"},
   {id:"home",     t:"首页与弹窗",ic:"home",c:"#30B0C7",g:"内容"},
@@ -940,6 +972,8 @@ function showPage(id){
   if(id === "system") refreshExportPreview();
   if(id === "dashboard") loadDashboard();
   if(id === "orders") loadOrdersPage();
+  if(id === "review") loadReviewPage();
+  if(id === "withdraw") loadWithdrawPage();
   if(id === "feedback") loadFeedbackPage();
   if(id === "chat") openChatPage();
 }
@@ -2411,6 +2445,234 @@ document.addEventListener('click', e => {
 $('#ordChips').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if(!b) return; ordCurFilter = +b.dataset.f; ordShown = ORD_PAGE; renderOrdList(); });
 $('#ordMore').addEventListener('click', e => { if(e.target.closest('button')){ ordShown += ORD_PAGE; renderOrdList(); } });
 $("#ordSearch").addEventListener("input", e => { _ordQ = e.target.value.trim().toLowerCase(); ordShown = ORD_PAGE; renderOrdList(); });
+
+/* ================================================================
+   14. 打手审核 / 提现审核
+   ================================================================ */
+const WALLET_UID_ADMIN='xy_dashou_wallets';
+const WITHDRAW_UID_ADMIN='xy_withdraw_requests';
+let rvPending=[]; // 待审核的子单列表 [{ownerUid,orderNo,sub,order}]
+let wdList=[]; // 提现申请
+let wdFilter='pending';
+
+async function loadReviewPage(){
+  if(!rvPending.length) $('#rvRows').innerHTML = '<div class="empty">加载中…</div>';
+  try{
+    const rows = await sbApi("/rest/v1/user_data?select=uid,orders");
+    rvPending = [];
+    (rows||[]).forEach(u=>{
+      if(u.uid===WALLET_UID_ADMIN||u.uid===WITHDRAW_UID_ADMIN||u.uid==='xy_chat_messages'||u.uid==='xy_dashou_accounts')return;
+      const arr = Array.isArray(u.orders) ? u.orders : [];
+      arr.forEach(o=>{
+        const subs = Array.isArray(o.subOrders)?o.subOrders:[];
+        subs.forEach(s=>{
+          if(s.status==='reviewing'){
+            rvPending.push({ownerUid:u.uid, orderNo:o.no, sub:s, order:o});
+          }
+        });
+      });
+    });
+    renderRvList();
+  }catch(e){
+    $('#rvRows').innerHTML = '<div class="empty">加载失败：'+esc(e.message)+'</div>';
+  }
+}
+function renderRvList(){
+  $('#rvSub').textContent = '共 '+rvPending.length+' 单待审核';
+  if(!rvPending.length){
+    $('#rvRows').innerHTML = '<div class="empty">暂无待审核订单</div>';
+    return;
+  }
+  $('#rvRows').innerHTML = rvPending.map(r=>{
+    const o=r.order,s=r.sub;
+    return '<div class="cell" data-rvid="'+esc(r.ownerUid)+'-'+esc(r.orderNo)+'-'+esc(s.index)+'">'+
+      '<div class="cb"><div class="t1">'+esc(o.title||'—')+' · 打手'+s.index+'</div>'+
+      '<div class="t2">订单 '+esc(o.no)+' · 打手 '+esc(s.grabbedBy||'—')+' · 提交于 '+fmtTs(s.finishAt)+'</div></div>'+
+      '<div class="cr"><span class="badge b-warn"><i></i>待审核</span></div>'+
+    '</div>';
+  }).join('');
+}
+document.addEventListener('click', e => {
+  const r = e.target.closest('[data-rvid]');
+  if(r){ const id=r.dataset.rvid; const parts=id.split('-'); const ownerUid=parts[0]; const no=parts[1]; const idx=parseInt(parts[2],10); const item=rvPending.find(x=>x.ownerUid===ownerUid&&x.orderNo===no&&x.sub.index===idx); if(item) reviewSheet(item); }
+});
+function reviewSheet(item){
+  const o=item.order, s=item.sub;
+  const price=o.commissionEach||o.total||0;
+  const breachFee=Math.round(price*0.1*100)/100;
+  openSheet({
+    title:"打手审核 · 订单 "+o.no, left:"关闭", right:null,
+    html:
+      '<div class="gh">订单信息</div><div class="group">'+
+        kvCell('订单号',esc(o.no))+kvCell('商品',esc(o.title||'—'))+kvCell('客户',esc(item.ownerUid))+
+        kvCell('打手',esc(s.grabbedBy||'—'))+kvCell('打手编号','打手'+s.index)+
+        kvCell('订单金额',money(o.total||o.price||0))+kvCell('打手佣金',money(price))+
+        kvCell('抢单时间',fmtTs(s.grabbedAt))+kvCell('提交时间',fmtTs(s.finishAt))+
+      '</div>'+
+      (s.finishReason?'<div class="gh">打手备注</div><div class="group"><div class="cell"><div style="line-height:1.6">'+esc(s.finishReason)+'</div></div></div>':'')+
+      (s.joinImg?'<div class="gh">上号截图</div><div class="group"><div class="cell"><img src="'+s.joinImg+'" style="max-width:100%;border-radius:8px;cursor:pointer" onclick="window.open(this.src)"></div></div>':'')+
+      (s.finishImg?'<div class="gh">完成证据</div><div class="group"><div class="cell"><img src="'+s.finishImg+'" style="max-width:100%;border-radius:8px;cursor:pointer" onclick="window.open(this.src)"></div></div>':'')+
+      '<div class="btn-row" style="margin-top:14px">'+
+        '<button class="btn gray" data-rv-reject="'+esc(item.ownerUid)+'-'+esc(o.no)+'-'+esc(s.index)+'">驳回</button>'+
+        '<button class="btn tinted" data-rv-pass="'+esc(item.ownerUid)+'-'+esc(o.no)+'-'+esc(s.index)+'">通过并结算</button>'+
+      '</div>'
+  });
+}
+document.addEventListener('click', async e=>{
+  const p=e.target.closest('[data-rv-pass]');
+  if(p){
+    const id=p.dataset.rvPass; const parts=id.split('-'); const ownerUid=parts[0]; const no=parts[1]; const idx=parseInt(parts[2],10);
+    await reviewAction(ownerUid,no,idx,'pass');
+    return;
+  }
+  const r=e.target.closest('[data-rv-reject]');
+  if(r){
+    const id=r.dataset.rvReject; const parts=id.split('-'); const ownerUid=parts[0]; const no=parts[1]; const idx=parseInt(parts[2],10);
+    await reviewAction(ownerUid,no,idx,'reject');
+    return;
+  }
+});
+// 客服审核：通过=订单done、佣金到打手余额；驳回=订单回到ongoing、冻结金额退回
+async function reviewAction(ownerUid,orderNo,subIndex,action){
+  try{
+    const row=await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(ownerUid)+"&select=*");
+    if(!row||!row[0]||!Array.isArray(row[0].orders)){toast('订单不存在');return}
+    const orders=row[0].orders;
+    const o=orders.find(x=>x.no===orderNo);
+    if(!o){toast('订单不存在');return}
+    const sub=(o.subOrders||[]).find(s=>s.index===subIndex);
+    if(!sub){toast('子单不存在');return}
+    if(sub.status!=='reviewing'){toast('子单状态已变更');return}
+    const price=o.commissionEach||o.total||0;
+    if(action==='pass'){
+      sub.status='done';
+      sub.doneAt=Date.now();
+      sub.endedBy='service';
+      sub.endedAt=Date.now();
+      const allDone=(o.subOrders||[]).every(s=>s.status==='done');
+      if(allDone){o.status='done';o.doneAt=Date.now();o.endedBy='service';o.endedAt=Date.now();}
+    }else{
+      sub.status='ongoing';
+      sub.finishImg=null;sub.finishAt=null;sub.finishReason='';
+    }
+    await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(ownerUid),{method:"PATCH",body:{orders}});
+    // 调整打手钱包
+    const wRow=await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(WALLET_UID_ADMIN)+"&select=*");
+    let wList=(wRow&&wRow[0]&&Array.isArray(wRow[0].orders))?wRow[0].orders.slice():[];
+    const u=sub.grabbedBy;
+    if(u){
+      let idx=wList.findIndex(x=>x.user===u);
+      let w=idx>=0?wList[idx]:{user:u,balance:0,frozen:0,totalEarned:0,wechatQr:'',alipayQr:'',withdrawals:[]};
+      if(action==='pass'){
+        w.frozen=Math.max(0,(w.frozen||0)-price);
+        w.balance=Math.round(((w.balance||0)+price)*100)/100;
+        w.totalEarned=Math.round(((w.totalEarned||0)+price)*100)/100;
+        w.updatedAt=Date.now();
+      }else{
+        w.frozen=Math.max(0,(w.frozen||0)-price);
+        w.updatedAt=Date.now();
+      }
+      if(idx>=0)wList[idx]=w;else wList.push(w);
+      await sbApi("/rest/v1/user_data",{method:"POST",body:{uid:WALLET_UID_ADMIN,orders:wList}});
+    }
+    toast(action==='pass'?'已通过，订单已完成、佣金已结算':'已驳回，订单回到进行中');
+    close();
+    loadReviewPage();
+  }catch(err){
+    toast('操作失败：'+(err&&err.message||err));
+  }
+  return false;
+}
+
+async function loadWithdrawPage(){
+  if(!wdList.length) $('#wdRows').innerHTML = '<div class="empty">加载中…</div>';
+  try{
+    const row = await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(WITHDRAW_UID_ADMIN)+"&select=*");
+    wdList = (row&&row[0]&&Array.isArray(row[0].orders))?row[0].orders.slice():[];
+    renderWdList();
+  }catch(e){
+    $('#wdRows').innerHTML = '<div class="empty">加载失败：'+esc(e.message)+'</div>';
+  }
+}
+function renderWdList(){
+  const list = wdList.filter(x=>wdFilter==='all'||x.status===wdFilter).sort((a,b)=>b.ts-a.ts);
+  const pending=wdList.filter(x=>x.status==='pending').length;
+  $('#wdSub').textContent = (wdFilter==='pending'?'待处理 ':'')+list.length+' 笔 · 待处理 '+pending+' 笔';
+  if(!list.length){
+    $('#wdRows').innerHTML = '<div class="empty">暂无提现申请</div>';
+    return;
+  }
+  $('#wdRows').innerHTML = list.map(w=>{
+    const st=w.status==='processed'?'<span class="badge b-ok"><i></i>已打款</span>':(w.status==='rejected'?'<span class="badge b-red"><i></i>已驳回</span>':'<span class="badge b-warn"><i></i>待处理</span>');
+    const ch=w.channel==='wechat'?'微信':'支付宝';
+    return '<div class="cell" data-wdid="'+esc(w.id)+'"><div class="cb"><div class="t1">¥'+Number(w.amount).toFixed(2)+' · '+ch+'</div><div class="t2">打手 '+esc(w.user)+' · 申请于 '+fmtTs(w.ts)+(w.processedAt?' · 处理于 '+fmtTs(w.processedAt):'')+'</div></div><div class="cr">'+st+'</div></div>';
+  }).join('');
+}
+$('#wdSeg').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if(!b) return; wdFilter=b.dataset.f; renderWdList(); });
+document.addEventListener('click', e => {
+  const r = e.target.closest('[data-wdid]');
+  if(r){ const w=wdList.find(x=>x.id===r.dataset.wdid); if(w) withdrawSheet(w); }
+});
+function withdrawSheet(w){
+  openSheet({
+    title:"提现申请 · "+w.id, left:"关闭", right:null,
+    html:
+      '<div class="gh">申请信息</div><div class="group">'+
+        kvCell('打手',esc(w.user))+kvCell('金额',money(w.amount))+kvCell('渠道',w.channel==='wechat'?'微信':'支付宝')+
+        kvCell('申请时间',fmtTs(w.ts))+
+        (w.processedAt?kvCell('处理时间',fmtTs(w.processedAt)):'')+
+        (w.note?kvCell('备注',esc(w.note)):'')+
+      '</div>'+
+      '<div class="gh">收款码</div><div class="group"><div class="cell"><img src="'+w.qr+'" style="max-width:100%;border-radius:8px;cursor:pointer" onclick="window.open(this.src)"></div></div>'+
+      (w.status==='pending'?'<div class="btn-row" style="margin-top:14px">'+
+        '<button class="btn gray" data-wd-reject="'+esc(w.id)+'">驳回</button>'+
+        '<button class="btn tinted" data-wd-pass="'+esc(w.id)+'">已打款</button>'+
+      '</div>':'')
+  });
+}
+document.addEventListener('click', async e=>{
+  const p=e.target.closest('[data-wd-pass]');
+  if(p){ await withdrawAction(p.dataset.wdPass,'processed'); return; }
+  const r=e.target.closest('[data-wd-reject]');
+  if(r){ await withdrawAction(r.dataset.wdReject,'rejected'); return; }
+});
+async function withdrawAction(wid,action){
+  try{
+    // 更新提现表
+    const row=await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(WITHDRAW_UID_ADMIN)+"&select=*");
+    let list=(row&&row[0]&&Array.isArray(row[0].orders))?row[0].orders.slice():[];
+    const idx=list.findIndex(x=>x.id===wid);
+    if(idx<0){toast('申请不存在');return}
+    const w=list[idx];
+    if(w.status!=='pending'){toast('申请已处理');return}
+    w.status=action;
+    w.processedAt=Date.now();
+    await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(WITHDRAW_UID_ADMIN),{method:"PATCH",body:{orders:list}});
+    // 驳回时把金额退回打手余额
+    if(action==='rejected'){
+      const wRow=await sbApi("/rest/v1/user_data?uid=eq."+encodeURIComponent(WALLET_UID_ADMIN)+"&select=*");
+      let wList=(wRow&&wRow[0]&&Array.isArray(wRow[0].orders))?wRow[0].orders.slice():[];
+      const u=w.user;
+      const uidx=wList.findIndex(x=>x.user===u);
+      if(uidx>=0){
+        const uw=wList[uidx];
+        uw.balance=Math.round(((uw.balance||0)+w.amount)*100)/100;
+        // 同步本地 withdrawals 列表中对应项状态
+        const localIdx=(uw.withdrawals||[]).findIndex(x=>x.id===wid);
+        if(localIdx>=0){uw.withdrawals[localIdx].status='rejected';uw.withdrawals[localIdx].processedAt=Date.now();}
+        uw.updatedAt=Date.now();
+        wList[uidx]=uw;
+        await sbApi("/rest/v1/user_data",{method:"POST",body:{uid:WALLET_UID_ADMIN,orders:wList}});
+      }
+    }
+    toast(action==='processed'?'已标记为已打款':'已驳回，金额已退回打手余额');
+    close();
+    loadWithdrawPage();
+  }catch(err){
+    toast('操作失败：'+(err&&err.message||err));
+  }
+  return false;
+}
 async function loadDashboard(){ tick(); try{ await Promise.all([ovoLoadGames(), ovoLoadOrders(), ovoLoadFeedbacks()]); renderDsStats(); renderDsCharts(); }catch(e){ toast('加载失败：'+e.message); } }
 async function loadOrdersPage(){ tick(); if(!ovoOrders.length) $("#ordRows").innerHTML = '<div class="empty">加载中…</div>'; try{ await ovoLoadGames(); await ovoLoadOrders(); renderOrdList(); }catch(e){ toast('加载失败：'+e.message); } }
 async function loadFeedbackPage(){ if(!ovoFeedbacks.length) $("#fbRows").innerHTML = '<div class="empty">加载中…</div>'; try{ await ovoLoadFeedbacks(); renderFbList(); }catch(e){ toast('加载失败：'+e.message); } }

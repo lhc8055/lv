@@ -116,6 +116,7 @@ h1{font-size:24px;font-weight:700;letter-spacing:.5px;color:#0f172a}
 .st{font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px}
 .st.doing{color:#0a84ff;background:rgba(10,132,255,.12)}
 .st.done{color:#1f9d46;background:rgba(52,199,89,.14)}
+.st.reviewing{color:#ff9500;background:rgba(255,149,0,.14)}
 .empty{display:none;text-align:center;padding:64px 20px;color:var(--sub);font-size:14px;line-height:1.6}
 .empty.show{display:block}
 .empty .pulse{width:64px;height:64px;margin:0 auto 16px;border-radius:50%;background:rgba(124,92,255,.12);display:grid;place-items:center}
@@ -135,9 +136,9 @@ h1{font-size:24px;font-weight:700;letter-spacing:.5px;color:#0f172a}
 .sw[aria-checked=true]{background:#34c759}
 .sw[aria-checked=true]::after{transform:translateX(20px)}
 .logout{width:100%;height:52px;border-radius:18px;color:#ff3b30;font-size:17px;font-weight:600}
-.dock{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(calc(100% - 32px),360px);height:64px;padding:4px;border-radius:99px;display:none;grid-template-columns:repeat(3,1fr);z-index:30;--i:0}
+.dock{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(calc(100% - 32px),460px);height:64px;padding:4px;border-radius:99px;display:none;grid-template-columns:repeat(4,1fr);z-index:30;--i:0}
 .dock.on{display:grid}
-.dock .thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 8px)/3);border-radius:99px;background:rgba(124,92,255,.14);box-shadow:inset 0 0 0 .5px rgba(124,92,255,.18);transform:translateX(calc(var(--i)*100%));transition:transform .45s var(--ease)}
+.dock .thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 8px)/4);border-radius:99px;background:rgba(124,92,255,.14);box-shadow:inset 0 0 0 .5px rgba(124,92,255,.18);transform:translateX(calc(var(--i)*100%));transition:transform .45s var(--ease)}
 .dock button{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600;color:#6e6e73;transition:color .3s}
 .dock button.on{color:var(--brand)}
 .dock svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -169,7 +170,50 @@ h1{font-size:24px;font-weight:700;letter-spacing:.5px;color:#0f172a}
 @keyframes spin{to{transform:rotate(360deg)}}
 .chat-input{display:flex;gap:8px;padding:12px 16px;background:#fff;border-top:1px solid rgba(0,0,0,.06)}
 .chat-input input{flex:1;min-width:0;border:1px solid rgba(0,0,0,.1);border-radius:20px;padding:10px 16px;font-size:14px;outline:none}
-.chat-input button{background:var(--brand);color:#fff;border:none;border-radius:20px;padding:0 20px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.chat-input button.send-btn{width:36px;height:36px;border-radius:50%;background:var(--brand);color:#fff;border:none;display:flex;align-items:center;justify-content:center;flex:none;cursor:pointer;padding:0}
+.chat-input .chat-img-btn{width:36px;height:36px;border-radius:50%;background:#f1f1f5;color:var(--brand);border:none;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:300;cursor:pointer;padding:0;line-height:1;flex:none}
+/* 上号截图/完成证据 弹层 */
+.sheet{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s var(--ease)}
+.sheet.show{opacity:1;pointer-events:auto}
+.sheet-card{width:100%;max-width:520px;background:#fff;border-radius:24px 24px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .3s var(--ease);max-height:88vh;overflow-y:auto}
+.sheet.show .sheet-card{transform:none}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sheet-head h3{font-size:17px;font-weight:700}
+.sheet-close{font-size:18px;color:#999;background:none;border:none}
+.field-label{font-size:13px;color:#6e6e73;margin:10px 0 6px}
+.upload-box{position:relative;border:1.5px dashed #c7c7cc;border-radius:14px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:6px;color:#8e8e93;cursor:pointer;background:#fafafa}
+.upload-box.has{padding:0;border-style:solid;overflow:hidden}
+.upload-box img{max-width:100%;max-height:160px;border-radius:10px;display:block}
+.upload-box .upload-tip{font-size:12px;color:#aeaeb2}
+.sheet-textarea{width:100%;min-height:80px;border:1px solid rgba(0,0,0,.1);border-radius:12px;padding:10px 12px;font-size:14px;outline:none;resize:vertical;font-family:inherit}
+.btn-row{display:flex;gap:10px;margin-top:14px}
+.btn-row button{flex:1;height:46px;border-radius:14px;font-size:15px;font-weight:600;border:none;cursor:pointer}
+.btn-row .cancel{background:#f1f1f6;color:#3a3a3c}
+.btn-row .confirm{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff}
+.btn-row .confirm:disabled{opacity:.6}
+/* 钱包页 */
+.wallet-card{border-radius:22px;padding:18px;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;margin-bottom:14px;box-shadow:0 14px 30px -14px rgba(124,92,255,.5)}
+.wallet-card .bal{font-size:32px;font-weight:700;font-variant-numeric:tabular-nums}
+.wallet-card .bal small{font-size:15px;font-weight:500;margin-right:2px}
+.wallet-card .sub{font-size:13px;opacity:.85;margin-top:2px}
+.wallet-rows{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.wallet-stat{border-radius:16px;padding:14px;background:rgba(255,255,255,.6);text-align:center}
+.wallet-stat b{display:block;font-size:18px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.wallet-stat span{font-size:11px;color:var(--sub);margin-top:2px;display:block}
+.qr-block{border-radius:18px;padding:14px;margin-bottom:12px;background:rgba(255,255,255,.65)}
+.qr-block .qt{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.qr-block .qt b{font-size:15px}
+.qr-block .qt .upload-btn{height:30px;padding:0 12px;border-radius:99px;font-size:12px;font-weight:600;color:#fff;background:var(--brand);border:none;cursor:pointer}
+.qr-block .qt .upload-btn:disabled{opacity:.5}
+.qr-block .qr-img{width:100%;max-height:140px;object-fit:contain;border-radius:10px;background:#f1f1f6}
+.qr-block .qr-tip{font-size:11px;color:var(--sub);margin-top:6px;text-align:center}
+.qr-block.unset{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;border:1.5px dashed #c7c7cc;background:transparent}
+.withdraw-history{margin-top:8px}
+.withdraw-history .wh-row{padding:11px 14px;border-radius:12px;background:rgba(255,255,255,.6);font-size:13px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.wh-row .amt{font-weight:700;font-variant-numeric:tabular-nums}
+.wh-row .st-wait{color:#ff9500;font-size:11px}
+.wh-row .st-ok{color:#34c759;font-size:11px}
+.wh-row .st-rej{color:#ff3b30;font-size:11px}
 </style>
 </head>
 <body>
@@ -242,9 +286,10 @@ h1{font-size:24px;font-weight:700;letter-spacing:.5px;color:#0f172a}
   <section class="page" id="p-mine">
     <div class="bar">
       <div class="title">我的订单</div>
-      <div class="seg" id="mineSeg" style="--n:2;--i:0">
+      <div class="seg" id="mineSeg" style="--n:3;--i:0">
         <i class="thumb"></i>
         <button data-seg="mine" data-v="doing">进行中</button>
+        <button data-seg="mine" data-v="reviewing">审核中</button>
         <button data-seg="mine" data-v="done">已完成</button>
       </div>
     </div>
@@ -259,11 +304,42 @@ h1{font-size:24px;font-weight:700;letter-spacing:.5px;color:#0f172a}
     <div class="pc">
       <div class="prof glass rim"><div class="av" id="meAv">星</div><div><b id="meName">打手</b><span>星柚认证打手</span></div></div>
       <div class="rows glass rim">
+        <div class="row" data-act="wallet" style="cursor:pointer"><span>我的钱包</span><em id="meWallet">¥0</em></div>
         <div class="row"><span>接单状态</span><button class="sw" id="sw" role="switch" aria-checked="true" data-act="toggle"></button></div>
         <div class="row"><span>累计完成</span><em id="meDone">0 单</em></div>
         <div class="row"><span>累计收益</span><em id="meEarn">¥0</em></div>
       </div>
       <button class="logout glass rim" data-act="logout">退出登录</button>
+    </div>
+  </section>
+
+  <section class="page" id="p-wallet">
+    <div class="bar"><div class="title solo">我的钱包</div></div>
+    <div class="pc">
+      <div class="wallet-card">
+        <div class="bal"><small>¥</small><span id="wBalance">0.00</span></div>
+        <div class="sub" id="wFrozen">冻结中 ¥0.00（待审核订单）</div>
+      </div>
+      <div class="wallet-rows">
+        <div class="wallet-stat"><b id="wEarn">¥0.00</b><span>累计收益</span></div>
+        <div class="wallet-stat"><b id="wToday">¥0.00</b><span>今日收益</span></div>
+      </div>
+
+      <div class="qr-block" id="wxQrBlock">
+        <div class="qt"><b>微信收款码</b><button class="upload-btn" data-act="upload-qr" data-ch="wechat">上传</button></div>
+        <div class="qr-img-wrap"></div>
+        <div class="qr-tip">用于提现到微信</div>
+      </div>
+      <div class="qr-block" id="aliQrBlock">
+        <div class="qt"><b>支付宝收款码</b><button class="upload-btn" data-act="upload-qr" data-ch="alipay">上传</button></div>
+        <div class="qr-img-wrap"></div>
+        <div class="qr-tip">用于提现到支付宝</div>
+      </div>
+
+      <button class="logout glass rim" data-act="withdraw" style="color:#fff;background:linear-gradient(135deg,var(--brand),var(--brand2));margin-bottom:14px">申请提现</button>
+
+      <div class="field-label" style="margin-top:14px">提现记录</div>
+      <div class="withdraw-history" id="withdrawHistory"></div>
     </div>
   </section>
 </div>
@@ -272,8 +348,17 @@ h1{font-size:24px;font-weight:700;letter-spacing:.5px;color:#0f172a}
   <i class="thumb"></i>
   <button class="on" data-tab="hall"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>抢单大厅</button>
   <button data-tab="mine"><svg viewBox="0 0 24 24"><path d="M9 4h6a1 1 0 011 1v1h2a1 1 0 011 1v13a1 1 0 01-1 1H6a1 1 0 01-1-1V7a1 1 0 011-1h2V5a1 1 0 011-1z"/><path d="M9 12h6M9 16h4"/></svg>我的订单<b class="badge" id="badge">0</b></button>
+  <button data-tab="wallet"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h14a2 2 0 012 2v2H3V7zm0 4h18v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6z"/><path d="M3 13h4"/></svg>钱包</button>
   <button data-tab="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2.5 8 6"/></svg>账号</button>
 </nav>
+
+<!-- 上号/完成证据 弹层 -->
+<div class="sheet" id="proofSheet">
+  <div class="sheet-card">
+    <div class="sheet-head"><h3 id="sheetTitle">提交证据</h3><button class="sheet-close" data-act="sheet-close">✕</button></div>
+    <div id="sheetBody"></div>
+  </div>
+</div>
 
 <div class="toast glass rim" id="toast"></div>
 
@@ -380,8 +465,12 @@ const store={
   del(k){try{localStorage.removeItem(k)}catch(e){}}
 };
 
-const state={user:null,zone:'val',tab:'hall',mineTab:'doing',online:true,hall:{val:[],delta:[],wzry:[]},mine:[]};
+const state={user:null,zone:'val',tab:'hall',mineTab:'doing',online:true,hall:{val:[],delta:[],wzry:[]},mine:[],wallet:{balance:0,frozen:0,totalEarned:0,wechatQr:'',alipayQr:'',withdrawals:[]}};
 let toastTimer=0,_pollTimer=null,_svcTimer=null;
+const ACC_UID='xy_dashou_accounts';
+const WALLET_UID='xy_dashou_wallets';
+const WITHDRAW_UID='xy_withdraw_requests';
+const JOIN_TIMEOUT_MS=15*60*1000;
 
 /* ===================== 用户订单 → 打手订单映射 ===================== */
 function mapOrder(o,ownerUid){
@@ -419,7 +508,13 @@ function mapOrder(o,ownerUid){
     status:sub.status||o.status,
     grabbedBy:sub.grabbedBy||null,
     grabbedAt:sub.grabbedAt||null,
-    doneAt:sub.doneAt||null
+    doneAt:sub.doneAt||null,
+    joinImg:sub.joinImg||null,
+    joinAt:sub.joinAt||null,
+    finishImg:sub.finishImg||null,
+    finishAt:sub.finishAt||null,
+    finishReason:sub.finishReason||'',
+    breachFee:sub.breachFee||0
   }));
 }
 
@@ -450,16 +545,30 @@ function hallCard(o){
 }
 function mineCard(o){
   const done=o.status==='done';
+  const reviewing=o.status==='reviewing';
   const boosterTag=o.boosterCount>1?`<span class="new">${o.subIndex}/${o.boosterCount}名额</span>`:'';
   const orderNo=o.parentNo||(o.id?o.id.split('_')[0]:'');
   const price=o.price||o.total||0;
+  const stCls=done?'done':(reviewing?'reviewing':'doing');
+  const stTxt=done?'已完成':(reviewing?'审核中':'进行中');
+  // 上号按钮：抢单后未上号且在15分钟内
+  const needJoin=!done&&!reviewing&&!o.joinImg;
+  const joinExpired=needJoin&&o.grabbedAt&&(Date.now()-o.grabbedAt>JOIN_TIMEOUT_MS);
+  let actBtn='';
+  if(done)actBtn='';
+  else if(reviewing)actBtn='<button class="grab" disabled style="opacity:.6">审核中</button>';
+  else if(joinExpired)actBtn='<button class="grab" disabled style="opacity:.5">已超时</button>';
+  else if(needJoin)actBtn=`<button class="mini" data-act="join-proof" data-id="${o.id}" style="margin-right:8px">上传上号截图</button><button class="grab" data-act="finish-proof" data-id="${o.id}">申请结束</button>`;
+  else actBtn=`<button class="grab" data-act="finish-proof" data-id="${o.id}">申请结束</button>`;
   return `<article class="card glass rim" data-id="${o.id}" data-zone="${o.zone}">
-<div class="c-top"><span class="mode">${o.mode}</span>${boosterTag}<span class="znm">${ZN[o.zone]}</span><span class="st ${done?'done':'doing'}">${done?'已完成':'进行中'}</span></div>
+<div class="c-top"><span class="mode">${o.mode}</span>${boosterTag}<span class="znm">${ZN[o.zone]}</span><span class="st ${stCls}">${stTxt}</span></div>
 <h3>${o.title}</h3><p class="desc">${o.desc}</p>
 <div class="info"><div><span>订单号</span><b>${orderNo}</b></div><div><span>下单时间</span><b>${fmt(o.ct)}</b></div><div><span>抢单时间</span><b>${fmt(o.gt)}</b></div><div><span>我的佣金</span><b>¥${price}</b></div></div>
 ${o.gameId?`<div class="contact"><div><span>游戏ID</span><b>${o.gameId}</b></div><button class="mini" data-act="copy" data-v="${o.gameId}">复制</button></div>`:''}
 <div class="contact"><div><span>联系沟通</span><b>订单聊天房间</b></div><button class="mini" data-act="order-chat" data-id="${o.id}" data-parent="${orderNo}" data-sub="${o.subIndex||1}">进入聊天</button></div>
-<div class="c-foot"><div class="chips">${chips(o)}</div>${done?'':`<button class="grab" data-act="done" data-id="${o.id}">完成订单</button>`}</div>
+${o.joinImg?'<div class="contact"><div><span>上号截图</span><b>已上传</b></div><button class="mini" data-act="view-img" data-v="'+o.joinImg+'">查看</button></div>':''}
+${o.finishImg?'<div class="contact"><div><span>完成证据</span><b>已上传</b></div><button class="mini" data-act="view-img" data-v="'+o.finishImg+'">查看</button></div>':''}
+<div class="c-foot"><div class="chips">${chips(o)}</div>${actBtn}</div>
 </article>`;
 }
 
@@ -493,7 +602,7 @@ function setZone(z){
 /* ===================== 我的订单 ===================== */
 function setMineTab(v,anim){
   state.mineTab=v;
-  $('#mineSeg').style.setProperty('--i',v==='doing'?0:1);
+  $('#mineSeg').style.setProperty('--i',v==='doing'?0:(v==='reviewing'?1:2));
   renderMine(anim);
 }
 function renderMine(anim){
@@ -501,9 +610,10 @@ function renderMine(anim){
   const el=$('#mineList');
   el.innerHTML=list.map(mineCard).join('');
   $('#mineEmpty').classList.toggle('show',!list.length);
-  const doing=state.mineTab==='doing';
-  $('#mineEmptyT').textContent=doing?'暂无进行中的订单':'暂无已完成订单';
-  $('#mineEmptyS').textContent=doing?'去抢单大厅看看吧':'完成订单后会显示在这里';
+  const txtMap={doing:['暂无进行中的订单','去抢单大厅看看吧'],reviewing:['暂无审核中订单','提交证据后会显示在这里'],done:['暂无已完成订单','完成订单后会显示在这里']};
+  const t=txtMap[state.mineTab]||txtMap.doing;
+  $('#mineEmptyT').textContent=t[0];
+  $('#mineEmptyS').textContent=t[1];
   if(anim)el.animate([{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'none'}],{duration:300,easing:EASE});
 }
 function saveMine(){store.set('xy_mine_'+state.user,state.mine)}
@@ -538,6 +648,19 @@ async function grab(id,btn){
   const o=state.hall[state.zone].find(x=>x.id===id);
   if(!o||o.busy||o.gone) return;
   if(!state.online){toast('当前为休息状态，请先开启接单');return}
+  // 抢单限制：手上未结束订单 ≤ 1
+  const activeCount=state.mine.filter(x=>x.status==='doing'||x.status==='reviewing').length;
+  if(activeCount>=2){
+    toast('手上已有2单未结束，需先完成至少一单');
+    return;
+  }
+  if(activeCount===1){
+    const existing=state.mine.find(x=>x.status==='doing'||x.status==='reviewing');
+    if(existing&&!existing.finishImg){
+      toast('请先提交当前订单的完成证据');
+      return;
+    }
+  }
   o.busy=true;btn.disabled=true;btn.textContent='抢单中…';
   try{
     // 解析子单：id = parentNo_index
@@ -599,28 +722,280 @@ async function grab(id,btn){
 }
 
 async function complete(id){
-  const o=state.mine.find(x=>x.id===id);if(!o)return;
+  // 保留旧函数兼容，但实际完成由客服审核触发
+  toast('请提交完成证据，等待客服审核');
+}
+
+/* ===================== 图片压缩 ===================== */
+function compressImg(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        const maxDim=1280;
+        if(w>maxDim||h>maxDim){
+          if(w>=h){h=Math.round(h*maxDim/w);w=maxDim;}
+          else{w=Math.round(w*maxDim/h);h=maxDim;}
+        }
+        const canvas=document.createElement('canvas');
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        let out=canvas.toDataURL('image/webp',0.72);
+        if(out.indexOf('data:image/webp')===-1) out=canvas.toDataURL('image/jpeg',0.72);
+        if(out.length>500*1024){
+          const q=Math.max(0.4,0.72-(out.length-500*1024)/1024/1024*0.3);
+          out=canvas.toDataURL('image/webp',q);
+          if(out.indexOf('data:image/webp')===-1) out=canvas.toDataURL('image/jpeg',q);
+        }
+        resolve(out);
+      };
+      img.onerror=reject;
+      img.src=e.target.result;
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ===================== 上号截图/完成证据 弹层 ===================== */
+let _proofCtx=null; // {type:'join'|'finish', id, title, preview, file, reason}
+function openProofSheet(type,id){
+  const o=state.mine.find(x=>x.id===id);
+  if(!o)return;
+  _proofCtx={type,id,preview:o.joinImg||o.finishImg||'',file:null,reason:o.finishReason||''};
+  const title=type==='join'?'上传上号截图':'申请结束订单';
+  $('#sheetTitle').textContent=title;
+  const note=type==='join'?
+    '<div style="font-size:12px;color:#8e8e93;margin-bottom:8px;line-height:1.5">需截到与老板同一队伍的画面，并显示当前时间（带时间戳截图）。抢单后15分钟内必须上号。</div>':
+    '<div style="font-size:12px;color:#8e8e93;margin-bottom:8px;line-height:1.5">上传完成证据截图（如段位达成、战绩等），客服审核后即可结束订单、佣金到账。</div>';
+  const priceTxt=type==='finish'?`<div class="field-label">订单佣金：<b style="color:var(--brand)">¥${o.price}</b>（审核通过后到账）</div>`:'';
+  const reason=type==='finish'?'<div class="field-label">备注（可选）</div><textarea class="sheet-textarea" id="sheetReason" placeholder="补充说明，如战绩、用时等">'+esc(_proofCtx.reason)+'</textarea>':'';
+  $('#sheetBody').innerHTML=note+
+    '<div class="field-label">截图</div>'+
+    '<div class="upload-box" id="uploadBox">'+(_proofCtx.preview?`<img src="${_proofCtx.preview}">`:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#aeaeb2" stroke-width="1.5"><path d="M12 4v16M4 12h16"/></svg><div>点击上传图片</div><div class="upload-tip">支持 JPG/PNG/WebP，将压缩为 WebP</div>')+'</div>'+
+    priceTxt+reason+
+    '<div class="btn-row"><button class="cancel" data-act="sheet-close">取消</button><button class="confirm" data-act="sheet-submit">提交</button></div>';
+  $('#uploadBox').onclick=()=>$('#sheetFile')&&$('#sheetFile').click();
+  // 隐藏文件输入
+  if(!$('#sheetFile')){
+    const fi=document.createElement('input');
+    fi.type='file';fi.id='sheetFile';fi.accept='image/*';fi.style.display='none';
+    fi.onchange=async()=>{
+      const f=fi.files[0];if(!f)return;
+      try{
+        const data=await compressImg(f);
+        _proofCtx.preview=data;_proofCtx.file=data;
+        const box=$('#uploadBox');
+        box.classList.add('has');
+        box.innerHTML='<img src="'+data+'">';
+      }catch(e){toast('图片处理失败');}
+    };
+    document.body.appendChild(fi);
+  }
+  $('#proofSheet').classList.add('show');
+}
+function closeProofSheet(){$('#proofSheet').classList.remove('show');_proofCtx=null}
+async function submitProof(){
+  if(!_proofCtx)return;
+  const {type,id}=_proofCtx;
+  const o=state.mine.find(x=>x.id===id);if(!o){closeProofSheet();return}
+  if(!_proofCtx.preview){toast('请先上传截图');return}
+  // 上号截图校验时间
+  if(type==='join'&&o.grabbedAt&&(Date.now()-o.grabbedAt>JOIN_TIMEOUT_MS)){
+    toast('已超过15分钟，订单可能已被退回，无法补传上号截图');
+    return;
+  }
+  const reason=type==='finish'?($('#sheetReason')?$('#sheetReason').value.trim():''):'';
+  const parts=id.split('_');
+  const parentNo=parts.slice(0,-1).join('_');
+  const subIndex=parseInt(parts[parts.length-1],10);
+  const field=type==='join'?'joinImg':'finishImg';
+  const tField=type==='join'?'joinAt':'finishAt';
+  // 写入云端订单
   try{
-    const parts=id.split('_');
-    const parentNo=parts.slice(0,-1).join('_');
-    const subIndex=parseInt(parts[parts.length-1],10);
     const ok=await updateOwnerOrder(o.ownerUid,parentNo,(od)=>{
       const s=(od.subOrders||[]).find(x=>x.index===subIndex);
-      if(s){ s.status='done'; s.doneAt=Date.now(); }
-      else { od.status='done'; od.doneAt=Date.now(); }
+      if(!s){return;}
+      s[field]=_proofCtx.preview;
+      s[tField]=Date.now();
+      if(type==='finish'){
+        s.status='reviewing';
+        s.finishReason=reason;
+      }
     });
-    if(!ok){toast('操作失败：订单不存在');return}
-    o.status='done';o.doneAt=Date.now();
-    state.mine.sort((a,b)=>(b.doneAt||b.gt)-(a.doneAt||a.gt));
-    saveMine();updateCounts();
-    const node=$(`#mineList [data-id="${id}"]`);
-    const finish=()=>renderMine();
-    if(node)node.animate([{opacity:1,transform:'none'},{opacity:0,transform:'scale(.96)'}],{duration:220,easing:'ease-out',fill:'forwards'}).onfinish=finish;else finish();
-    toast('订单已完成 +¥'+o.price);
+    if(!ok){toast('订单不存在或已变更');return}
+    // 本地同步
+    o[field]=_proofCtx.preview;
+    o[tField]=Date.now();
+    if(type==='finish'){
+      o.status='reviewing';
+      o.finishReason=reason;
+      // 冻结金额到钱包
+      await walletAdjust(o.price,'frozen',1,o.id,'订单佣金冻结（待审核）');
+    }
+    saveMine();updateCounts();renderMine();renderWallet();
+    closeProofSheet();
+    toast(type==='join'?'上号截图已上传':'已提交完成证据，等待审核');
   }catch(e){
     console.error(e);
-    toast('操作失败：'+(e.message||'网络错误'));
+    toast('提交失败：'+(e.message||'网络错误'));
   }
+}
+
+function viewImg(src){
+  if(!src)return;
+  $('#sheetTitle').textContent='查看图片';
+  $('#sheetBody').innerHTML='<div style="text-align:center"><img src="'+src+'" style="max-width:100%;border-radius:12px"></div><div class="btn-row"><button class="cancel" data-act="sheet-close">关闭</button></div>';
+  $('#proofSheet').classList.add('show');
+}
+
+/* ===================== 钱包逻辑 ===================== */
+async function loadWallet(){
+  if(!state.user)return;
+  // 本地缓存
+  const cached=store.get('xy_wallet_'+state.user);
+  if(cached) state.wallet=cached;
+  // 云端
+  try{
+    const row=await sbSelectOne(WALLET_UID);
+    if(row&&Array.isArray(row.orders)){
+      const w=row.orders.find(x=>x.user===state.user);
+      if(w){
+        // 合并：以云端为准
+        state.wallet=Object.assign({balance:0,frozen:0,totalEarned:0,wechatQr:'',alipayQr:'',withdrawals:[]},w);
+        // 保留本地未同步的QR
+        if(cached){
+          if(cached.wechatQr&&!w.wechatQr)state.wallet.wechatQr=cached.wechatQr;
+          if(cached.alipayQr&&!w.alipayQr)state.wallet.alipayQr=cached.alipayQr;
+        }
+        store.set('xy_wallet_'+state.user,state.wallet);
+      }
+    }
+  }catch(e){console.error('[loadWallet]',e)}
+}
+async function saveWallet(){
+  if(!state.user)return;
+  store.set('xy_wallet_'+state.user,state.wallet);
+  try{
+    const row=await sbSelectOne(WALLET_UID);
+    let list=(row&&Array.isArray(row.orders))?row.orders:[];
+    const idx=list.findIndex(x=>x.user===state.user);
+    if(idx>=0)list[idx]=Object.assign({},state.wallet,{user:state.user,updatedAt:Date.now()});
+    else list.push(Object.assign({},state.wallet,{user:state.user,updatedAt:Date.now()}));
+    await sbUpsert({uid:WALLET_UID,orders:list});
+  }catch(e){console.error('[saveWallet]',e)}
+}
+// 调整钱包余额/冻结/收益；type: balance/frozen/earned，op: 1=加 -1=减
+async function walletAdjust(amount,type,op,refId,note){
+  const w=state.wallet;
+  if(type==='balance'){w.balance=Math.round((w.balance+(op>0?amount:-amount))*100)/100;}
+  else if(type==='frozen'){w.frozen=Math.round((w.frozen+(op>0?amount:-amount))*100)/100;}
+  if(type==='balance'&&op>0){w.totalEarned=Math.round((w.totalEarned+amount)*100)/100;}
+  if(refId)w.lastTx={amount,type,op,refId,note,ts:Date.now()};
+  await saveWallet();
+}
+function renderWallet(){
+  const w=state.wallet;
+  $('#wBalance').textContent=(w.balance||0).toFixed(2);
+  $('#wFrozen').textContent='冻结中 ¥'+(w.frozen||0).toFixed(2)+'（待审核订单）';
+  $('#wEarn').textContent='¥'+(w.totalEarned||0).toFixed(2);
+  const today=state.mine.filter(o=>o.status==='done'&&sameDay(o.doneAt)).reduce((s,o)=>s+o.price,0);
+  $('#wToday').textContent='¥'+today.toFixed(2);
+  $('#meWallet').textContent='¥'+(w.balance||0).toFixed(2);
+  // 收款码渲染
+  const wxBlock=$('#wxQrBlock'),aliBlock=$('#aliQrBlock');
+  function paintQr(block,qr,ch){
+    const wrap=block.querySelector('.qr-img-wrap');
+    if(qr){
+      block.classList.remove('unset');
+      wrap.innerHTML='<img class="qr-img" src="'+qr+'">';
+      block.querySelector('.upload-btn').textContent='更换';
+    }else{
+      block.classList.add('unset');
+      wrap.innerHTML='<div style="font-size:12px;color:#aeaeb2;padding:14px">未上传</div>';
+      block.querySelector('.upload-btn').textContent='上传';
+    }
+  }
+  paintQr(wxBlock,w.wechatQr,'wechat');
+  paintQr(aliBlock,w.alipayQr,'alipay');
+  // 提现记录
+  const hist=w.withdrawals||[];
+  $('#withdrawHistory').innerHTML=hist.length?hist.slice().sort((a,b)=>b.ts-a.ts).map(wd=>{
+    const st=wd.status==='processed'?'<span class="st-ok">已打款</span>':(wd.status==='rejected'?'<span class="st-rej">已驳回</span>':'<span class="st-wait">处理中</span>');
+    return '<div class="wh-row"><div><div>¥'+Number(wd.amount).toFixed(2)+' · '+(wd.channel==='wechat'?'微信':'支付宝')+'</div><div style="font-size:11px;color:#8e8e93;margin-top:2px">'+fmt(wd.ts)+'</div></div>'+st+'</div>';
+  }).join(''):'<div style="text-align:center;padding:20px;color:#aeaeb2;font-size:13px">暂无提现记录</div>';
+}
+async function uploadQr(channel){
+  if(!state.user)return;
+  const fi=document.createElement('input');
+  fi.type='file';fi.accept='image/*';fi.style.display='none';
+  document.body.appendChild(fi);
+  fi.onchange=async()=>{
+    const f=fi.files[0];if(!f){fi.remove();return}
+    try{
+      const data=await compressImg(f);
+      if(channel==='wechat')state.wallet.wechatQr=data;
+      else state.wallet.alipayQr=data;
+      await saveWallet();renderWallet();
+      toast('收款码已上传');
+    }catch(e){toast('上传失败');}
+    fi.remove();
+  };
+  fi.click();
+}
+async function openWithdrawSheet(){
+  if(!state.user)return;
+  const w=state.wallet;
+  // 校验：每天1次
+  const todayW=(w.withdrawals||[]).filter(x=>sameDay(x.ts)&&x.status!=='rejected');
+  if(todayW.length>0){
+    toast('今天已申请过提现，请明天再试');
+    return;
+  }
+  if((w.balance||0)<0.01){toast('余额不足');return}
+  if(!w.wechatQr&&!w.alipayQr){toast('请先上传微信或支付宝收款码');return}
+  $('#sheetTitle').textContent='申请提现';
+  const channel= w.wechatQr?(w.alipayQr?'':'微信'):'支付宝';
+  const channelOptions=[];
+  if(w.wechatQr)channelOptions.push('<option value="wechat">微信</option>');
+  if(w.alipayQr)channelOptions.push('<option value="alipay">支付宝</option>');
+  $('#sheetBody').innerHTML=
+    '<div class="field-label">可提现余额</div>'+
+    '<div style="font-size:28px;font-weight:700;color:var(--brand);margin-bottom:14px">¥'+(w.balance||0).toFixed(2)+'</div>'+
+    '<div class="field-label">提现金额（不限金额，最低0.01）</div>'+
+    '<input class="sheet-textarea" id="wdAmount" type="number" step="0.01" min="0.01" max="'+(w.balance||0).toFixed(2)+'" value="'+(w.balance||0).toFixed(2)+'" style="height:46px;margin-bottom:10px">'+
+    '<div class="field-label">提现到</div>'+
+    '<select id="wdChannel" style="width:100%;height:46px;border:1px solid rgba(0,0,0,.1);border-radius:12px;padding:0 12px;font-size:15px;background:#fff;margin-bottom:14px">'+channelOptions.join('')+'</select>'+
+    '<div style="font-size:11px;color:#aeaeb2;line-height:1.5;margin-bottom:8px">申请后24小时内客服处理。每天只能提现1次。</div>'+
+    '<div class="btn-row"><button class="cancel" data-act="sheet-close">取消</button><button class="confirm" data-act="withdraw-submit">提交申请</button></div>';
+  $('#proofSheet').classList.add('show');
+}
+async function submitWithdraw(){
+  const w=state.wallet;
+  const amount=parseFloat($('#wdAmount').value);
+  const channel=$('#wdChannel').value;
+  if(!amount||amount<0.01){toast('金额不正确');return}
+  if(amount>(w.balance||0)){toast('余额不足');return}
+  if(!w[channel+'Qr']){toast('未上传对应收款码');return}
+  const todayW=(w.withdrawals||[]).filter(x=>sameDay(x.ts)&&x.status!=='rejected');
+  if(todayW.length>0){toast('今天已申请过提现');return}
+  const req={id:'W'+Date.now()+Math.floor(Math.random()*1000),user:state.user,amount:Math.round(amount*100)/100,channel,qr:w[channel+'Qr'],status:'pending',ts:Date.now()};
+  // 扣余额
+  w.balance=Math.round((w.balance-amount)*100)/100;
+  w.withdrawals=w.withdrawals||[];
+  w.withdrawals.push(req);
+  await saveWallet();renderWallet();
+  // 写入提现申请总表（客服后台读取）
+  try{
+    const row=await sbSelectOne(WITHDRAW_UID);
+    let list=(row&&Array.isArray(row.orders))?row.orders:[];
+    list.push(req);
+    await sbUpsert({uid:WITHDRAW_UID,orders:list});
+  }catch(e){console.error('[withdraw submit]',e)}
+  closeProofSheet();
+  toast('提现申请已提交，客服将在24小时内处理');
 }
 
 function removeHall(o){
@@ -716,9 +1091,10 @@ function setTab(t){
   state.tab=t;
   $$('.page').forEach(p=>p.classList.toggle('on',p.id==='p-'+t));
   $$('.dock button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
-  $('#dock').style.setProperty('--i',['hall','mine','me'].indexOf(t));
+  $('#dock').style.setProperty('--i',['hall','mine','wallet','me'].indexOf(t));
   window.scrollTo(0,0);
   if(t==='mine')renderMine();
+  if(t==='wallet')renderWallet();
   if(t==='hall'){setZone(state.zone);fetchPendingOrders()}
 }
 function setOnline(v){
@@ -754,6 +1130,15 @@ document.addEventListener('click',e=>{
   else if(a==='copy')copy(t.dataset.v);
   else if(a==='toggle')setOnline(!state.online);
   else if(a==='logout')logout();
+  else if(a==='wallet')setTab('wallet');
+  else if(a==='upload-qr')uploadQr(t.dataset.ch);
+  else if(a==='withdraw')openWithdrawSheet();
+  else if(a==='withdraw-submit')submitWithdraw();
+  else if(a==='join-proof')openProofSheet('join',t.dataset.id);
+  else if(a==='finish-proof')openProofSheet('finish',t.dataset.id);
+  else if(a==='sheet-close')closeProofSheet();
+  else if(a==='sheet-submit')submitProof();
+  else if(a==='view-img')viewImg(t.dataset.v);
   else if(a==='order-chat')openOrderChat(t.dataset.parent,parseInt(t.dataset.sub,10));
   else if(a==='close-chat')closeChat();
   else if(a==='send-chat'){const inp=$('#chatInput');sendChat(inp.value);inp.value='';}
@@ -775,7 +1160,6 @@ setInterval(()=>{
 const login=$('#login'),lcard=$('#lcard');
 const loginForm=$('#loginForm'),regForm=$('#regForm');
 const toReg=$('#toReg'),toLogin=$('#toLogin');
-const ACC_UID='xy_dashou_accounts'; // 存储打手账号的特殊记录 uid
 const INVITE_CODE='XY2024';
 
 // MD5 哈希（blueimp-md5 精简版）
@@ -819,11 +1203,13 @@ toLogin.addEventListener('click',showLogin);
 function enter(u,instant){
   state.user=u;
   state.mine=store.get('xy_mine_'+u)||[];
+  state.wallet={balance:0,frozen:0,totalEarned:0,wechatQr:'',alipayQr:'',withdrawals:[]};
   const ch=u.charAt(0).toUpperCase();
   $('#avatar').textContent=ch;$('#meAv').textContent=ch;
   $('#hName').textContent=u;$('#meName').textContent=u;
   $('#app').classList.add('on');$('#dock').classList.add('on');
   setOnline(true);setZone('val');setMineTab('doing');updateCounts();setTab('hall');
+  loadWallet().then(()=>{renderWallet();updateCounts();});
   if(instant)login.style.display='none';
   else{login.classList.add('out');setTimeout(()=>{login.style.display='none'},360)}
   startPoll();
@@ -1005,8 +1391,8 @@ function closeChat(){
   <div class="chat-head"><span id="chatTitle">订单聊天</span><button class="chat-close" data-act="close-chat">✕</button></div>
   <div id="chatBox" class="chat-box"></div>
   <div class="chat-input">
-    <input id="chatInput" placeholder="输入消息…" maxlength="200">
-    <button id="chatSend" data-act="send-chat">发送</button>
+    <input id="chatInput" placeholder="输入消息…" maxlength="200" onkeydown="if(event.key==='Enter'){const i=$('#chatInput');sendChat(i.value);i.value='';}">
+    <button class="send-btn" id="chatSend" data-act="send-chat" aria-label="发送"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 11.5 12 5.5l6 6"/></svg></button>
   </div>
 </div>
 </body>

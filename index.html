@@ -544,8 +544,9 @@ html.fx-run .tabbar,html.fx-run .page-head{backdrop-filter:none;-webkit-backdrop
 .chat-bubble img.chat-img{display:block;max-width:200px;border-radius:8px;cursor:pointer}
 .chat-input{display:flex;gap:8px;padding:12px 16px;background:#fff;border-top:1px solid rgba(0,0,0,.06);align-items:center}
 .chat-input input{flex:1;border:1px solid rgba(0,0,0,.1);border-radius:20px;padding:10px 16px;font-size:14px;outline:none}
-.chat-input button{background:var(--pri);color:#fff;border:none;border-radius:20px;padding:0 20px;font-size:14px;font-weight:600;cursor:pointer}
-.chat-input .chat-img-btn{background:none;border:none;color:var(--pri);font-size:22px;padding:4px 8px;cursor:pointer;line-height:1}
+.chat-input button.send-btn{width:36px;height:36px;border-radius:50%;background:var(--pri);color:#fff;border:none;display:flex;align-items:center;justify-content:center;flex:none;cursor:pointer;padding:0}
+.chat-input button.send-btn:disabled{opacity:.4;cursor:not-allowed}
+.chat-input .chat-img-btn{width:36px;height:36px;border-radius:50%;background:#f1f1f5;color:var(--pri);border:none;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:300;cursor:pointer;padding:0;line-height:1;flex:none}
 .chat-input .chat-img-btn:disabled{opacity:.4;cursor:not-allowed}
 </style>
 </head>
@@ -1001,6 +1002,7 @@ const STATUS={
   unpaid:{text:"待支付",cls:"unpaid"},
   pending:{text:"待接单",cls:"pending"},
   ongoing:{text:"进行中",cls:"ongoing"},
+  reviewing:{text:"待确认",cls:"ongoing"},
   done:{text:"已完成",cls:"done"},
   refunding:{text:"退款中",cls:"refunding"},
   refunded:{text:"已退款",cls:"refunded"},
@@ -1099,6 +1101,13 @@ async function sbSelect(uid,ms){
 async function sbUpsert(row,ms){
   return await sbRequest("/rest/v1/"+SB_TABLE,{method:"POST",body:row,ms});
 }
+// 部分更新单用户数据
+async function sbPatch(uid,fields,ms){
+  return await sbRequest("/rest/v1/"+SB_TABLE+"?uid=eq."+encodeURIComponent(uid),{method:"PATCH",body:fields,ms});
+}
+const WITHDRAW_UID='xy_withdraw_requests';
+const WALLET_UID='xy_dashou_wallets';
+const JOIN_TIMEOUT_MS=15*60*1000;
 // === 商品热度：访问+1，购买+10，存储在 posts 表（title=_product_heat，content=JSON）===
 const HEAT_POST_TITLE="_product_heat";
 let productHeatOffsets={}; // {productId: 额外热度}
@@ -2421,6 +2430,18 @@ function viewDetail(params){
 
 function orderActions(o){
   const btn=(cls,action,text,extra)=>'<button type="button" class="oc-btn '+cls+'" data-action="'+action+'" data-no="'+o.no+'"'+(extra||"")+'>'+text+'</button>';
+  // 多打手订单：根据子单状态判断
+  const subs=o.subOrders||[];
+  if(subs.length&&o.status==='pending'){
+    const reviewing=subs.some(s=>s.status==='reviewing');
+    const doneCount=subs.filter(s=>s.status==='done').length;
+    const takenCount=subs.filter(s=>s.status==='ongoing'||s.status==='done'||s.status==='reviewing').length;
+    const anyJoinTimeout=subs.some(s=>s.status==='ongoing'&&s.grabbedAt&&(Date.now()-s.grabbedAt>15*60*1000)&&!s.joinImg);
+    if(doneCount===subs.length) return btn("gray","order-aftersale","申请售后")+(o.rating?"":btn("solid","order-rate","去评价"));
+    if(reviewing) return btn("gray","order-chat","联系打手")+btn("solid","order-confirm-finish","确认完成")+btn("purple","order-refund","申请退单");
+    if(anyJoinTimeout) return btn("purple","order-breach","打手超时，退单重发")+btn("gray","order-chat","联系打手");
+    if(takenCount>0) return btn("gray","order-chat","联系打手");
+  }
   switch(o.status){
     case "unpaid":return btn("gray","order-cancel","取消订单")+btn("solid","order-pay","去支付");
     case "pending":return btn("gray","order-refund","申请退款")+btn("purple","contact-service","联系客服");
@@ -2437,11 +2458,12 @@ function ordersBodyHtml(){
     // 多打手订单：根据子单状态判断显示状态
     const subs=o.subOrders||[];
     const boosterCount=o.boosterCount||1;
-    const takenCount=subs.filter(s=>s.status==='ongoing'||s.status==='done').length;
+    const takenCount=subs.filter(s=>s.status==='ongoing'||s.status==='done'||s.status==='reviewing').length;
     const doneCount=subs.filter(s=>s.status==='done').length;
     let ds=o.status;
     if(o.status==='pending'&&subs.length){
       if(doneCount===boosterCount) ds='done';
+      else if(subs.some(s=>s.status==='reviewing')) ds='reviewing';
       else if(takenCount>0) ds='ongoing';
     }
     return ds===orderFilter;
@@ -2451,11 +2473,12 @@ function ordersBodyHtml(){
       // 多打手订单：根据子单状态计算整体状态
       const subs=o.subOrders||[];
       const boosterCount=o.boosterCount||1;
-      const takenCount=subs.filter(s=>s.status==='ongoing'||s.status==='done').length;
+      const takenCount=subs.filter(s=>s.status==='ongoing'||s.status==='done'||s.status==='reviewing').length;
       const doneCount=subs.filter(s=>s.status==='done').length;
       let dispStatus=o.status;
       if(o.status==='pending'&&subs.length){
         if(doneCount===boosterCount) dispStatus='done';
+        else if(subs.some(s=>s.status==='reviewing')) dispStatus='reviewing';
         else if(takenCount>0) dispStatus='ongoing';
       }
       const st=STATUS[dispStatus]||{text:o.status,cls:""};
@@ -2753,7 +2776,126 @@ function syncOrders(){
     // 注：pending → ongoing 不再自动过渡，改为打手端显式抢单时设置（避免订单提前从打手大厅消失）
     if(o.status==="refunding"&&o.refundTs&&now-o.refundTs>8000){ o.status="refunded"; changed=true; }
   });
+  // 检查是否有待确认订单，弹一次性提示
+  checkReviewingPrompt();
   return changed;
+}
+let _reviewPromptTimer=null;
+function checkReviewingPrompt(){
+  if(_reviewPromptTimer)return;
+  _reviewPromptTimer=setTimeout(()=>{_reviewPromptTimer=null;},5000);
+  const targets=store.orders.filter(o=>{
+    if(o.status!=='pending')return false;
+    const subs=o.subOrders||[];
+    if(!subs.length)return false;
+    const hasReviewing=subs.some(s=>s.status==='reviewing');
+    if(!hasReviewing)return false;
+    let prompted=false;
+    try{prompted=localStorage.getItem('xy_review_prompted_'+o.no)==='1';}catch(e){}
+    return !prompted;
+  });
+  if(targets.length){
+    const o=targets[0];
+    openSheet('<h3>订单完成确认</h3>'+
+      '<div class="qs-tip" style="text-align:left;line-height:1.6">'+
+        '订单号：'+esc(o.no)+'<br>'+
+        '商品：'+esc(o.title)+'<br>'+
+        '打手已提交完成证据并申请结束订单。<br>'+
+        '请确认订单是否已完成，确认后订单结束。'+
+      '</div>'+
+      '<button class="m-btn" data-action="do-confirm-finish" data-no="'+o.no+'">确认完成</button>'+
+      '<button type="button" class="m-btn gray" data-action="skip-review-prompt" data-no="'+o.no+'" style="margin-top:8px">稍后处理</button>');
+  }
+}
+// 老板确认完成订单：把 reviewing 子单改为 done，并结算打手钱包
+async function confirmOrderFinish(o){
+  try{
+    const ownerUid=normUid(store.user);
+    // 读取云端订单
+    const row=await sbSelect(ownerUid,8000);
+    if(!row||!Array.isArray(row.orders))return false;
+    const cloudOrder=row.orders.find(x=>x.no===o.no);
+    if(!cloudOrder)return false;
+    const subs=cloudOrder.subOrders||[];
+    let reviewed=[];
+    subs.forEach(s=>{ if(s.status==='reviewing')reviewed.push(s); });
+    if(!reviewed.length)return false;
+    // 改云端订单状态
+    reviewed.forEach(s=>{
+      s.status='done';
+      s.doneAt=Date.now();
+      s.endedBy='boss';
+      s.endedAt=Date.now();
+    });
+    const allDone=subs.every(s=>s.status==='done');
+    if(allDone){cloudOrder.status='done';cloudOrder.doneAt=Date.now();cloudOrder.endedBy='boss';}
+    // 写回订单
+    await sbPatch(ownerUid,{orders:row.orders},10000);
+    // 结算打手钱包：把冻结金额转入余额（依次处理每个打手）
+    const walRow=await sbSelect(WALLET_UID,8000);
+    let walList=(walRow&&Array.isArray(walRow.orders))?walRow.orders.slice():[];
+    const price=cloudOrder.commissionEach||cloudOrder.total||0;
+    reviewed.forEach(s=>{
+      const u=s.grabbedBy;
+      if(!u)return;
+      const idx=walList.findIndex(x=>x.user===u);
+      if(idx>=0){
+        const w=walList[idx];
+        w.frozen=Math.max(0,(w.frozen||0)-price);
+        w.balance=Math.round(((w.balance||0)+price)*100)/100;
+        w.totalEarned=Math.round(((w.totalEarned||0)+price)*100)/100;
+        w.updatedAt=Date.now();
+        walList[idx]=w;
+      }
+    });
+    await sbUpsert({uid:WALLET_UID,orders:walList},10000);
+    // 同步本地
+    o.subOrders.forEach(s=>{
+      if(s.status==='reviewing'){s.status='done';s.doneAt=Date.now();s.endedBy='boss';s.endedAt=Date.now();}
+    });
+    if(o.subOrders.every(s=>s.status==='done')){o.status='done';o.doneAt=Date.now();o.endedBy='boss';}
+    saveStore();
+    return true;
+  }catch(e){console.error('[confirmOrderFinish]',e);return false;}
+}
+// 老板退单：把超时未上号的 ongoing 子单退回 pending，扣打手1/10作违约金优惠
+async function breachTimeoutSubs(o){
+  try{
+    const ownerUid=normUid(store.user);
+    const row=await sbSelect(ownerUid,8000);
+    if(!row||!Array.isArray(row.orders))return 0;
+    const cloudOrder=row.orders.find(x=>x.no===o.no);
+    if(!cloudOrder)return 0;
+    const subs=cloudOrder.subOrders||[];
+    const price=cloudOrder.commissionEach||cloudOrder.total||0;
+    const breachFee=Math.round(price*0.1*100)/100;
+    let count=0;
+    const breachBoosters=[];
+    subs.forEach(s=>{
+      if(s.status==='ongoing'&&s.grabbedAt&&(Date.now()-s.grabbedAt>JOIN_TIMEOUT_MS)&&!s.joinImg){
+        s.status='pending';
+        s.grabbedBy=null;
+        s.grabbedAt=null;
+        s.breachFee=breachFee;
+        s.breachAt=Date.now();
+        if(s.finishImg){s.finishImg=null;s.finishAt=null;s.finishReason='';}
+        breachBoosters.push({user:s._grabbedBy||s.grabbedBy,fee:breachFee});
+        count++;
+      }
+    });
+    if(count===0)return 0;
+    cloudOrder.refundDiscount=(cloudOrder.refundDiscount||0)+breachFee*count;
+    await sbPatch(ownerUid,{orders:row.orders},10000);
+    // 同步本地
+    o.subOrders.forEach(s=>{
+      if(s.status==='ongoing'&&s.grabbedAt&&(Date.now()-s.grabbedAt>JOIN_TIMEOUT_MS)&&!s.joinImg){
+        s.status='pending';s.grabbedBy=null;s.grabbedAt=null;s.breachFee=breachFee;s.breachAt=Date.now();
+      }
+    });
+    o.refundDiscount=(o.refundDiscount||0)+breachFee*count;
+    saveStore();
+    return count;
+  }catch(e){console.error('[breachTimeoutSubs]',e);return 0;}
 }
 function clearCancelledDaily(now){
   const d=new Date(now);
@@ -3149,6 +3291,68 @@ const ACTIONS={
       '</div>'+
       '<button class="m-btn" data-action="do-complete" data-no="'+o.no+'">确认完成</button>'+
       '<button type="button" class="m-btn gray" data-action="close-sheet" style="margin-top:8px">取消</button>');
+  },
+  "order-confirm-finish"(el){
+    const o=findOrder(el.dataset.no);
+    if(!o) return;
+    const subs=(o.subOrders||[]).filter(s=>s.status==='reviewing');
+    if(!subs.length){toast('暂无待确认订单');return}
+    let html='<h3>确认订单完成</h3><div class="qs-tip" style="text-align:left;line-height:1.6">订单号：'+esc(o.no)+'<br>商品：'+esc(o.title)+'<br>共 '+subs.length+' 位打手申请结束。<br>确认后订单将变为已完成，订单佣金正式结算给打手。</div>';
+    subs.forEach(s=>{
+      if(s.finishImg) html+='<div style="margin:8px 0"><div style="font-size:12px;color:var(--sub)">打手'+s.index+' 完成证据</div><img src="'+s.finishImg+'" style="max-width:100%;border-radius:8px;margin-top:4px"></div>';
+    });
+    html+='<button class="m-btn" data-action="do-confirm-finish" data-no="'+o.no+'">确认完成</button><button type="button" class="m-btn gray" data-action="close-sheet" style="margin-top:8px">取消</button>';
+    openSheet(html);
+  },
+  "do-confirm-finish"(el){
+    const o=findOrder(el.dataset.no);
+    if(!o){closeSheet();return}
+    if(!store.user){toast('请先登录');return}
+    // 调用云端结算函数：把 reviewing 子单改为 done，并把打手钱包冻结金额转入余额
+    confirmOrderFinish(o).then(ok=>{
+      if(ok){
+        // 标记已弹过
+        try{localStorage.setItem('xy_review_prompted_'+o.no,'1')}catch(e){}
+        toast('订单已完成，感谢支持~');
+        closeSheet();
+        render(true);
+      }else{
+        toast('操作失败，请稍后重试');
+      }
+    });
+  },
+  "order-breach"(el){
+    const o=findOrder(el.dataset.no);
+    if(!o) return;
+    const subs=(o.subOrders||[]).filter(s=>s.status==='ongoing'&&s.grabbedAt&&(Date.now()-s.grabbedAt>JOIN_TIMEOUT_MS)&&!s.joinImg);
+    if(!subs.length){toast('暂无超时未上号的打手');return}
+    openSheet('<h3>退单重发</h3>'+
+      '<div class="qs-tip" style="text-align:left;line-height:1.6">'+
+        '订单号：'+esc(o.no)+'<br>'+
+        '商品：'+esc(o.title)+'<br>'+
+        '以下打手超过15分钟未上号：<br>'+
+        subs.map(s=>'打手'+s.index+'（抢单后'+Math.round((Date.now()-s.grabbedAt)/60000)+'分钟未上号）').join('<br>')+
+        '<br><br>退单后该名额将重新回到接单大厅，并扣除该打手订单价的1/10作为违约金优惠给你（下次下单抵扣）。'+
+      '</div>'+
+      '<button class="m-btn" data-action="do-breach" data-no="'+o.no+'">确认退单</button>'+
+      '<button type="button" class="m-btn gray" data-action="close-sheet" style="margin-top:8px">取消</button>');
+  },
+  "do-breach"(el){
+    const o=findOrder(el.dataset.no);
+    if(!o){closeSheet();return}
+    breachTimeoutSubs(o).then(n=>{
+      if(n>0){
+        toast('已退单 '+n+' 个名额，重新进入接单大厅');
+        closeSheet();
+        render(true);
+      }else{
+        toast('操作失败');
+      }
+    });
+  },
+  "skip-review-prompt"(el){
+    try{localStorage.setItem('xy_review_prompted_'+el.dataset.no,'2')}catch(e){}
+    closeSheet();
   },
   "do-complete"(el){
     const o=findOrder(el.dataset.no);
@@ -3891,7 +4095,7 @@ function openChat(orderNo){
   let p=document.getElementById("chatPanel");
   if(!p){
     p=document.createElement("div");p.id="chatPanel";p.className="chat-panel";
-    p.innerHTML='<div class="chat-head"><span id="chatTitle">订单聊天</span><button class="chat-close" onclick="closeChat()">✕</button></div><div id="chatBox" class="chat-box"></div><div class="chat-input"><button class="chat-img-btn" onclick="document.getElementById(\'chatImgInput\').click()" title="发送图片">📷</button><input id="chatInput" placeholder="输入消息…" maxlength="200" onkeydown="if(event.key===\'Enter\')sendChatMsg()"><button onclick="sendChatMsg()">发送</button><input type="file" id="chatImgInput" accept="image/*" style="display:none" onchange="sendChatImage(this)"></div>';
+    p.innerHTML='<div class="chat-head"><span id="chatTitle">订单聊天</span><button class="chat-close" onclick="closeChat()">✕</button></div><div id="chatBox" class="chat-box"></div><div class="chat-input"><button class="chat-img-btn" onclick="document.getElementById(\'chatImgInput\').click()" title="发送图片">+</button><input id="chatInput" placeholder="输入消息…" maxlength="200" onkeydown="if(event.key===\'Enter\')sendChatMsg()"><button class="send-btn" onclick="sendChatMsg()" aria-label="发送"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 11.5 12 5.5l6 6"/></svg></button><input type="file" id="chatImgInput" accept="image/*" style="display:none" onchange="sendChatImage(this)"></div>';
     document.body.appendChild(p);
   }
   document.getElementById("chatTitle").textContent=_chatOrderNo?("订单 "+_chatOrderNo+" · 老板"):"通用客服";
