@@ -371,83 +371,143 @@ const GAME_TO_ZONE={val:'val',df:'delta',wz:'wzry'};
 const ZONE_TO_GAME={val:'val',delta:'df',wzry:'wz'};
 const EASE='cubic-bezier(.32,.72,0,1)';
 
-/* ===================== Supabase 直连客户端 ===================== */
+/* ===================== Supabase 多线路竞速客户端 ===================== */
+// 直连 Supabase（海外），国内不稳定，需配合 CORS 代理
 const SB_BASE_URLS=["https://jsrxbpysgaywdhnntqnl.supabase.co"];
+// 多地区 CORS 代理线路（不同IP/地域，竞速并发，谁先回用谁）
 function sbProxyUrls(target){
+  const enc=encodeURIComponent(target);
   return [
     "https://cors.eu.org/"+target,
-    "https://corsproxy.io/?url="+encodeURIComponent(target),
-    "https://api.allorigins.win/raw?url="+encodeURIComponent(target),
-    "https://api.codetabs.com/v1/proxy/?quest="+encodeURIComponent(target),
-    "https://thingproxy.freeboard.io/fetch/"+target
+    "https://corsproxy.io/?url="+enc,
+    "https://api.allorigins.win/raw?url="+enc,
+    "https://api.codetabs.com/v1/proxy/?quest="+enc,
+    "https://thingproxy.freeboard.io/fetch/"+target,
+    "https://r.jina.ai/"+target,
+    "https://api.allorigins.win/get?url="+enc,
+    "https://proxy.cors.sh/"+target,
+    "https://corsproxy.github.io/?"+enc
   ];
 }
 const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
 const SB_TABLE="user_data";
-const SB_TIMEOUT=10000;
-let _sbActiveUrl=SB_BASE_URLS[0];
+const SB_TIMEOUT=8000;      // 单条线路超时
+const SB_RACE_TIMEOUT=4000; // 竞速整体超时（快速失败）
 let _sbReachable=false;
+let _sbFastestProxies=[];   // 缓存最快的代理，优先使用
 
+// 构建所有目标线路（直连 + 代理），按"上次最快"排序
+function buildTargets(path){
+  const sep=path.includes("?")?"&":"?";
+  const proxiedPath=path+sep+"apikey="+encodeURIComponent(SB_ANON);
+  const all=[];
+  for(const base of SB_BASE_URLS){
+    all.push({url:base+path,base,proxy:false});
+    for(const pu of sbProxyUrls(base+proxiedPath)) all.push({url:pu,base,proxy:true});
+  }
+  // 把历史最快的代理排前面
+  if(_sbFastestProxies.length){
+    all.sort((a,b)=>{
+      const ia=_sbFastestProxies.indexOf(a.url);
+      const ib=_sbFastestProxies.indexOf(b.url);
+      return (ia<0?99:ia)-(ib<0?99:ib);
+    });
+  }
+  return all;
+}
+
+// 单条线路请求，带超时
+function fetchOne(t,method,headers,body,isRpc){
+  return new Promise((resolve,reject)=>{
+    const ctrl=("AbortController" in window)?new AbortController():null;
+    const timer=ctrl?setTimeout(()=>ctrl.abort(),SB_TIMEOUT):null;
+    fetch(t.url,{method,headers,body:body!==undefined?JSON.stringify(body):undefined,signal:ctrl?ctrl.signal:undefined})
+      .then(async res=>{
+        if(timer) clearTimeout(timer);
+        const text=await res.text();
+        let json=null; try{json=text?JSON.parse(text):null;}catch(e){}
+        if(!res.ok){const err=new Error((json&&json.message)||("HTTP "+res.status));err.code=json&&json.code;throw err;}
+        // 记录最快代理
+        if(t.proxy){
+          _sbFastestProxies=[t.url,..._sbFastestProxies.filter(u=>u!==t.url)].slice(0,3);
+        }
+        resolve(json);
+      })
+      .catch(e=>{
+        if(timer) clearTimeout(timer);
+        if(e&&e.name==="AbortError"){const err=new Error("超时");err.code="TIMEOUT";reject(err);}
+        else reject(e);
+      });
+  });
+}
+
+// 并发竞速：所有线路同时发，谁先成功用谁；都失败才抛错
 async function sbRequest(path,opts){
   const method=(opts&&opts.method)||"GET";
   const body=opts&&opts.body;
-  const ms=(opts&&opts.ms)||SB_TIMEOUT;
   const isRpc=path.includes("/rpc/");
   const headers={"apikey":SB_ANON,"Authorization":"Bearer "+SB_ANON};
   if(body!==undefined){
     headers["Content-Type"]="application/json";
-    // RPC 调用不需要 resolution=merge-duplicates
     headers["Prefer"]=isRpc?"return=representation":"resolution=merge-duplicates,return=representation";
   }
-  const sep=path.includes("?")?"&":"?";
-  const proxiedPath=path+sep+"apikey="+encodeURIComponent(SB_ANON);
-  const targets=[];
-  for(const base of [_sbActiveUrl].concat(SB_BASE_URLS.filter(u=>u!==_sbActiveUrl))){
-    targets.push({url:base+path,base,proxy:false});
-    for(const pu of sbProxyUrls(base+proxiedPath)) targets.push({url:pu,base,proxy:true});
-  }
-  let lastErr=null;
-  for(const t of targets){
-    const ctrl=("AbortController" in window)?new AbortController():null;
-    const timer=ctrl?setTimeout(()=>ctrl.abort(),ms):null;
-    try{
-      const res=await fetch(t.url,{method,headers,body:body!==undefined?JSON.stringify(body):undefined,signal:ctrl?ctrl.signal:undefined});
-      if(timer) clearTimeout(timer);
-      if(!t.proxy) _sbActiveUrl=t.base;
-      const text=await res.text();
-      let json=null; try{json=text?JSON.parse(text):null;}catch(e){}
-      if(!res.ok){
-        const err=new Error((json&&json.message)||("HTTP "+res.status));
-        err.code=json&&json.code; err.status=res.status; err.rpc=isRpc;
-        throw err;
-      }
-      _sbReachable=true;
-      return json;
-    }catch(e){
-      if(timer) clearTimeout(timer);
-      lastErr=e;
-      if(e&&e.name==="AbortError"){ lastErr=new Error("云端请求超时"); lastErr.code="TIMEOUT"; }
-    }
-  }
+  const targets=buildTargets(path);
+  // 竞速：同时发，收集结果
+  const results=await Promise.allSettled(targets.map(t=>fetchOne(t,method,headers,body,isRpc)));
+  const ok=results.find(r=>r.status==='fulfilled');
+  if(ok){_sbReachable=true;return ok.value;}
   _sbReachable=false;
-  throw (lastErr||new Error("云端请求失败"));
+  // 都失败，取最后一个错误
+  const lastErr=results[results.length-1];
+  throw (lastErr&&lastErr.reason)||new Error("云端请求失败");
 }
+
+// 带重试的请求（写操作用）
+async function sbRequestRetry(path,opts,retries){
+  retries=retries||3;
+  let lastErr=null;
+  for(let i=0;i<retries;i++){
+    try{return await sbRequest(path,opts);}
+    catch(e){lastErr=e;await new Promise(r=>setTimeout(r,300*(i+1)));}
+  }
+  throw lastErr||new Error("云端请求失败");
+}
+// 本地缓存（读操作兜底，云端挂了也有数据）
+const _sbCache={all:null,users:{}};
 // 读取所有用户数据（用于聚合待接单订单）
 async function sbSelectAll(){
-  return await sbRequest("/rest/v1/"+SB_TABLE+"?select=*",{method:"GET",ms:SB_TIMEOUT});
+  const cached=_sbCache.all;
+  try{
+    const rows=await sbRequestRetry("/rest/v1/"+SB_TABLE+"?select=*",{method:"GET"},2);
+    _sbCache.all=rows;
+    return rows;
+  }catch(e){
+    if(cached)return cached; // 云端失败，返回本地缓存
+    throw e;
+  }
 }
 // 读取单用户数据
 async function sbSelectOne(uid){
-  const rows=await sbRequest("/rest/v1/"+SB_TABLE+"?uid=eq."+encodeURIComponent(uid)+"&select=*",{method:"GET",ms:SB_TIMEOUT});
-  return (Array.isArray(rows)&&rows[0])||null;
+  const cached=_sbCache.users[uid];
+  try{
+    const rows=await sbRequestRetry("/rest/v1/"+SB_TABLE+"?uid=eq."+encodeURIComponent(uid)+"&select=*",{method:"GET"},2);
+    const row=(Array.isArray(rows)&&rows[0])||null;
+    if(row)_sbCache.users[uid]=row;
+    return row;
+  }catch(e){
+    if(cached)return cached; // 云端失败，返回本地缓存
+    throw e;
+  }
 }
-// 写入/更新单用户数据
+// 写入/更新单用户数据（带重试）
 async function sbUpsert(row){
-  return await sbRequest("/rest/v1/"+SB_TABLE,{method:"POST",body:row,ms:SB_TIMEOUT});
+  const res=await sbRequestRetry("/rest/v1/"+SB_TABLE,{method:"POST",body:row},3);
+  if(row&&row.uid)_sbCache.users[row.uid]=row;
+  return res;
 }
 // 部分更新单用户数据（仅更新指定字段，不覆盖同行其他数据）
 async function sbPatch(uid,fields){
-  return await sbRequest("/rest/v1/"+SB_TABLE+"?uid=eq."+encodeURIComponent(uid),{method:"PATCH",body:fields,ms:SB_TIMEOUT});
+  return await sbRequestRetry("/rest/v1/"+SB_TABLE+"?uid=eq."+encodeURIComponent(uid),{method:"PATCH",body:fields},3);
 }
 
 /* ===================== 工具 ===================== */
@@ -815,7 +875,15 @@ async function submitProof(){
   const subIndex=parseInt(parts[parts.length-1],10);
   const field=type==='join'?'joinImg':'finishImg';
   const tField=type==='join'?'joinAt':'finishAt';
-  // 写入云端订单
+  // 按钮状态：上传中
+  const btn=$('[data-act="sheet-submit"]');
+  if(btn){btn.disabled=true;btn.textContent='上传中…';}
+  // 本地预存（即使云端失败，图片也保存在本地，可重试）
+  o[field]=_proofCtx.preview;
+  o[tField]=Date.now();
+  if(type==='finish'){o.status='reviewing';o.finishReason=reason;}
+  saveMine();renderMine();
+  // 写入云端订单（带重试）
   try{
     const ok=await updateOwnerOrder(o.ownerUid,parentNo,(od)=>{
       const s=(od.subOrders||[]).find(x=>x.index===subIndex);
@@ -827,22 +895,18 @@ async function submitProof(){
         s.finishReason=reason;
       }
     });
-    if(!ok){toast('订单不存在或已变更');return}
-    // 本地同步
-    o[field]=_proofCtx.preview;
-    o[tField]=Date.now();
+    if(!ok){toast('订单不存在或已变更');if(btn){btn.disabled=false;btn.textContent='提交';}return}
     if(type==='finish'){
-      o.status='reviewing';
-      o.finishReason=reason;
       // 冻结金额到钱包
       await walletAdjust(o.price,'frozen',1,o.id,'订单佣金冻结（待审核）');
     }
-    saveMine();updateCounts();renderMine();renderWallet();
+    updateCounts();renderWallet();
     closeProofSheet();
     toast(type==='join'?'上号截图已上传':'已提交完成证据，等待审核');
   }catch(e){
     console.error(e);
-    toast('提交失败：'+(e.message||'网络错误'));
+    if(btn){btn.disabled=false;btn.textContent='重新提交';}
+    toast('上传失败：'+(e.message||'网络错误')+'，请重新提交');
   }
 }
 
@@ -1355,45 +1419,84 @@ $('#regForm').addEventListener('submit',async e=>{
 const saved=store.get('xy_user');
 if(saved){enter(saved,true)}
 
-/* ===================== 订单聊天房间 ===================== */
+/* ===================== 订单聊天房间（本地优先 + 异步同步） ===================== */
 const CHAT_UID='xy_chat_messages';
+const CHAT_LOCAL_KEY='xy_chat_local';
 let chatOrderNo='',chatSubIndex=1,chatPollTimer=null,_chatCache=[];
+let _chatSendQueue=[]; // 待同步到云端的消息队列
+let _chatSyncing=false;
+// 从 localStorage 读取本地缓存的聊天记录
+function loadLocalChat(){
+  try{
+    const raw=localStorage.getItem(CHAT_LOCAL_KEY);
+    _chatCache=raw?JSON.parse(raw):[];
+  }catch(e){_chatCache=[];}
+}
+function saveLocalChat(){
+  try{localStorage.setItem(CHAT_LOCAL_KEY,JSON.stringify(_chatCache));}catch(e){}
+}
 async function getMessages(){
   const row=await sbSelectOne(CHAT_UID);
-  _chatCache=(row&&Array.isArray(row.orders))?row.orders:[];
-  return _chatCache;
+  return (row&&Array.isArray(row.orders))?row.orders:[];
 }
 async function saveMessages(list){
-  _chatCache=list;
   await sbUpsert({uid:CHAT_UID,orders:list});
 }
 // 打手在房间中的显示名：打手1、打手2...
 function chatDisplayName(){return '打手'+chatSubIndex;}
-async function sendChat(content){
+
+// 本地优先发送：立即存本地+渲染，后台异步同步云端
+function sendChat(content){
   if(!content.trim())return;
   const msg={id:'M'+Date.now()+Math.floor(Math.random()*1000),from:chatDisplayName(),fromRole:'booster',to:'all',toRole:'all',content:content.trim(),ts:Date.now(),orderNo:chatOrderNo,readBy:[],sending:true};
   _chatCache.push(msg);
+  saveLocalChat();
   renderChat(_chatCache);
-  try{
-    const toSave=_chatCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
-    await saveMessages(toSave);
-    msg.sending=false;
-    renderChat(_chatCache);
-  }catch(e){
-    console.error(e);
-    msg.sending=false;
-    msg.failed=true;
-    renderChat(_chatCache);
-    toast('发送失败：'+(e.message||'网络错误'));
+  // 加入同步队列，后台异步发送
+  _chatSendQueue.push(msg.id);
+  flushChatQueue();
+}
+// 后台同步队列：逐个推送到云端，失败自动重试
+async function flushChatQueue(){
+  if(_chatSyncing||!_chatSendQueue.length)return;
+  _chatSyncing=true;
+  while(_chatSendQueue.length){
+    const mid=_chatSendQueue.shift();
+    const msg=_chatCache.find(m=>m.id===mid);
+    if(!msg)continue;
+    try{
+      // 读取云端当前消息列表，追加这条消息（增量）
+      const cloud=await getMessages();
+      if(!cloud.some(m=>m.id===mid)){
+        cloud.push({...msg});
+        delete cloud[cloud.length-1].sending;
+        delete cloud[cloud.length-1].failed;
+        await saveMessages(cloud);
+      }
+      msg.sending=false;
+      saveLocalChat();
+      renderChat(_chatCache);
+    }catch(e){
+      // 失败重试：重新加入队列
+      if(msg.retries===undefined)msg.retries=0;
+      msg.retries++;
+      if(msg.retries<5){
+        setTimeout(()=>{_chatSendQueue.push(mid);flushChatQueue();},2000);
+      }else{
+        msg.sending=false;msg.failed=true;
+        saveLocalChat();renderChat(_chatCache);
+        toast('发送失败，请检查网络');
+      }
+    }
   }
+  _chatSyncing=false;
 }
 function renderChat(list){
   const box=$('#chatBox');if(!box)return;
-  const mine=list.filter(m=>m.orderNo===chatOrderNo);
+  const mine=list.filter(m=>m.orderNo===chatOrderNo&&!m.recalled);
   mine.sort((a,b)=>a.ts-b.ts);
   box.innerHTML=mine.map(m=>{
     const isMe=m.from===chatDisplayName();
-    // 已读人数 = readBy 中排除发送者自己
     const readCount=(m.readBy||[]).filter(r=>r!==m.from).length;
     let readTxt='';
     if(!m.sending){
@@ -1404,19 +1507,37 @@ function renderChat(list){
     }
     const spinner=m.sending?'<span class="chat-spin"></span>':'';
     const fail=m.failed?'<span class="chat-fail">发送失败</span>':'';
-    return `<div class="chat-msg ${isMe?'me':'them'}"><div class="chat-name">${esc(m.from)}</div><div class="chat-bubble">${esc(m.content)}${spinner}</div><div class="chat-time">${fmt(m.ts)}${readTxt}${fail}</div></div>`;
+    // 图片消息
+    const body=m.type==='image'?`<img src="${m.content}" class="chat-img" onclick="window.open(this.src)">`:`${esc(m.content)}`;
+    return `<div class="chat-msg ${isMe?'me':'them'}"><div class="chat-name">${esc(m.from)}</div><div class="chat-bubble">${body}${spinner}</div><div class="chat-time">${fmt(m.ts)}${readTxt}${fail}</div></div>`;
   }).join('');
   box.scrollTop=box.scrollHeight;
 }
+// 轮询：拉取云端消息，合并到本地，处理撤回
 async function pollChat(){
   try{
-    await getMessages();
-    // 云端消息已保存，清除临时 sending 字段
-    let hasSending=false;
-    _chatCache.forEach(m=>{if(m.sending!==undefined){hasSending=true;delete m.sending;}});
-    // 标记当前房间**别人发的**消息为已读（自己发的不算）
+    const cloud=await getMessages();
+    // 合并：云端有但本地没有的消息加入
+    const localIds=new Set(_chatCache.map(m=>m.id));
+    cloud.forEach(m=>{
+      if(!localIds.has(m.id)){
+        _chatCache.push({...m});
+      }else{
+        // 同步撤回标记、已读状态
+        const local=_chatCache.find(x=>x.id===m.id);
+        if(local){
+          if(m.recalled)local.recalled=true;
+          if(m.readBy)local.readBy=m.readBy;
+          if(!m.sending)local.sending=false;
+        }
+      }
+    });
+    // 清除已撤回的消息（客服撤回则本地删除）
+    _chatCache=_chatCache.filter(m=>!m.recalled);
+    saveLocalChat();
+    // 标记当前房间别人发的消息为已读
     const me=chatDisplayName();
-    let changed=hasSending;
+    let changed=false;
     _chatCache.forEach(m=>{
       if(m.orderNo===chatOrderNo&&m.from!==me){
         if(!m.readBy)m.readBy=[];
@@ -1424,17 +1545,30 @@ async function pollChat(){
       }
     });
     if(changed){
-      const toSave=_chatCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
-      await saveMessages(toSave);
+      saveLocalChat();
+      // 异步保存已读状态到云端（不阻塞）
+      getMessages().then(cloud=>{
+        cloud.forEach(m=>{
+          if(m.orderNo===chatOrderNo&&m.from!==me){
+            if(!m.readBy)m.readBy=[];
+            if(!m.readBy.includes(me))m.readBy.push(me);
+          }
+        });
+        saveMessages(cloud).catch(()=>{});
+      }).catch(()=>{});
     }
     renderChat(_chatCache);
-  }catch(e){}
+  }catch(e){/* 云端失败不影响本地显示 */}
 }
 function openOrderChat(orderNo,subIndex){
   chatOrderNo=orderNo||'';
   chatSubIndex=subIndex||1;
   $('#chatTitle').textContent='订单 '+chatOrderNo+' · 打手'+chatSubIndex;
   $('#chatPanel').classList.add('show');
+  // 先渲染本地缓存（0延迟）
+  loadLocalChat();
+  renderChat(_chatCache);
+  // 后台拉取云端
   pollChat();
   chatPollTimer=setInterval(pollChat,3000);
 }

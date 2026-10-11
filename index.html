@@ -1035,75 +1035,109 @@ const normUid=u=>(u&&UID_OVERRIDE[u])||u;
 // 一旦加载失败 window.supabase 为 undefined，所有云端读写会静默失效，
 // 导致订单/收藏/优惠券只在本地、跨浏览器完全不互通。这里改为用 fetch 直接
 // 调用 Supabase REST(PostgREST)，去掉对外部 CDN 的依赖，根治同步断链。
-// 若直连 supabase.co 在部分网络不可达（被墙/DNS污染），自动降级到 CORS 代理。
-// sbRequest 会优先用直连，直连失败时依次尝试代理端点。
+// 多线路竞速：直连 + 多个 CORS 代理同时并发，谁先成功用谁。
 const SB_BASE_URLS=[
   "https://jsrxbpysgaywdhnntqnl.supabase.co"
 ];
-// 代理 URL 拼接方式不同：cors.eu.org 直接拼目标 URL（转发 header/body，支持 POST/PATCH），
-// allorigins 用 url 参数（需 URL 编码，仅 GET 可靠）。
+// 多地区 CORS 代理线路（不同IP/地域，竞速并发）
 function sbProxyUrls(target){
+  const enc=encodeURIComponent(target);
   return [
     "https://cors.eu.org/"+target,
-    "https://api.allorigins.win/raw?url="+encodeURIComponent(target)
+    "https://corsproxy.io/?url="+enc,
+    "https://api.allorigins.win/raw?url="+enc,
+    "https://api.codetabs.com/v1/proxy/?quest="+enc,
+    "https://thingproxy.freeboard.io/fetch/"+target,
+    "https://r.jina.ai/"+target,
+    "https://api.allorigins.win/get?url="+enc,
+    "https://proxy.cors.sh/"+target
   ];
 }
 const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
 const SB_TABLE="user_data";
-const SB_TIMEOUT=5000;
+const SB_TIMEOUT=8000;
 
-let _sbActiveUrl=SB_BASE_URLS[0]; // 缓存当前可用端点，避免每次都从第一个重试
+let _sbFastestProxies=[]; // 缓存最快的代理
+function buildTargets(path){
+  const sep=path.includes("?")?"&":"?";
+  const proxiedPath=path+sep+"apikey="+encodeURIComponent(SB_ANON);
+  const all=[];
+  for(const base of SB_BASE_URLS){
+    all.push({url:base+path,base,proxy:false});
+    for(const pu of sbProxyUrls(base+proxiedPath)) all.push({url:pu,base,proxy:true});
+  }
+  if(_sbFastestProxies.length){
+    all.sort((a,b)=>{const ia=_sbFastestProxies.indexOf(a.url);const ib=_sbFastestProxies.indexOf(b.url);return (ia<0?99:ia)-(ib<0?99:ib);});
+  }
+  return all;
+}
+function fetchOne(t,method,headers,body){
+  return new Promise((resolve,reject)=>{
+    const ctrl=("AbortController" in window)?new AbortController():null;
+    const timer=ctrl?setTimeout(()=>ctrl.abort(),SB_TIMEOUT):null;
+    fetch(t.url,{method,headers,body:body!==undefined?JSON.stringify(body):undefined,signal:ctrl?ctrl.signal:undefined})
+      .then(async res=>{
+        if(timer) clearTimeout(timer);
+        const text=await res.text();
+        let json=null; try{json=text?JSON.parse(text):null;}catch(e){}
+        if(!res.ok){const err=new Error((json&&json.message)||("HTTP "+res.status));err.code=json&&json.code;throw err;}
+        if(t.proxy){_sbFastestProxies=[t.url,..._sbFastestProxies.filter(u=>u!==t.url)].slice(0,3);}
+        resolve(json);
+      })
+      .catch(e=>{
+        if(timer) clearTimeout(timer);
+        if(e&&e.name==="AbortError"){const err=new Error("超时");err.code="TIMEOUT";reject(err);}
+        else reject(e);
+      });
+  });
+}
+// 并发竞速：所有线路同时发，谁先成功用谁
 async function sbRequest(path,opts){
   const method=(opts&&opts.method)||"GET";
   const body=opts&&opts.body;
-  const ms=(opts&&opts.ms)||SB_TIMEOUT;
   const headers={"apikey":SB_ANON,"Authorization":"Bearer "+SB_ANON};
   if(body!==undefined){ headers["Content-Type"]="application/json"; headers["Prefer"]="resolution=merge-duplicates,return=representation"; }
-  // 代理需要把 apikey 放到 URL query 里（部分代理不转发自定义 header）
-  const sep=path.includes("?")?"&":"?";
-  const proxiedPath=path+sep+"apikey="+encodeURIComponent(SB_ANON);
-  // 构建请求链：直连 → 代理
-  const targets=[];
-  for(const base of [_sbActiveUrl].concat(SB_BASE_URLS.filter(u=>u!==_sbActiveUrl))){
-    targets.push({url:base+path,base});
-    for(const pu of sbProxyUrls(base+proxiedPath)) targets.push({url:pu,base});
-  }
-  let lastErr=null;
-  for(const t of targets){
-    const ctrl=("AbortController" in window)?new AbortController():null;
-    const timer=ctrl?setTimeout(()=>ctrl.abort(),ms):null;
-    try{
-      const res=await fetch(t.url,{method,headers,body:body!==undefined?JSON.stringify(body):undefined,signal:ctrl?ctrl.signal:undefined});
-      if(timer) clearTimeout(timer);
-      if(t.url===t.base+path) _sbActiveUrl=t.base;
-      const text=await res.text();
-      let json=null; try{json=text?JSON.parse(text):null;}catch(e){}
-      if(!res.ok){
-        const err=new Error((json&&json.message)||("HTTP "+res.status));
-        err.code=json&&json.code; err.status=res.status;
-        throw err;
-      }
-      return json;
-    }catch(e){
-      if(timer) clearTimeout(timer);
-      lastErr=e;
-      if(e&&e.name==="AbortError"){ lastErr=new Error("云端请求超时"); lastErr.code="TIMEOUT"; }
-    }
-  }
-  throw (lastErr||new Error("云端请求失败"));
+  const targets=buildTargets(path);
+  const results=await Promise.allSettled(targets.map(t=>fetchOne(t,method,headers,body)));
+  const ok=results.find(r=>r.status==='fulfilled');
+  if(ok)return ok.value;
+  const lastErr=results[results.length-1];
+  throw (lastErr&&lastErr.reason)||new Error("云端请求失败");
 }
+// 带重试的请求
+async function sbRequestRetry(path,opts,retries){
+  retries=retries||3;
+  let lastErr=null;
+  for(let i=0;i<retries;i++){
+    try{return await sbRequest(path,opts);}
+    catch(e){lastErr=e;await new Promise(r=>setTimeout(r,300*(i+1)));}
+  }
+  throw lastErr||new Error("云端请求失败");
+}
+// 本地缓存
+const _sbCache={users:{}};
 // 读取单个用户的云端数据（返回对象或 null）
 async function sbSelect(uid,ms){
-  const rows=await sbRequest("/rest/v1/"+SB_TABLE+"?uid=eq."+encodeURIComponent(uid)+"&select=*",{method:"GET",ms});
-  return (Array.isArray(rows)&&rows[0])||null;
+  const cached=_sbCache.users[uid];
+  try{
+    const rows=await sbRequestRetry("/rest/v1/"+SB_TABLE+"?uid=eq."+encodeURIComponent(uid)+"&select=*",{method:"GET"},2);
+    const row=(Array.isArray(rows)&&rows[0])||null;
+    if(row)_sbCache.users[uid]=row;
+    return row;
+  }catch(e){
+    if(cached)return cached;
+    throw e;
+  }
 }
-// 写入/更新单用户数据（按 uid 合并）
+// 写入/更新单用户数据（按 uid 合并，带重试）
 async function sbUpsert(row,ms){
-  return await sbRequest("/rest/v1/"+SB_TABLE,{method:"POST",body:row,ms});
+  const res=await sbRequestRetry("/rest/v1/"+SB_TABLE,{method:"POST",body:row},3);
+  if(row&&row.uid)_sbCache.users[row.uid]=row;
+  return res;
 }
-// 部分更新单用户数据
+// 部分更新单用户数据（带重试）
 async function sbPatch(uid,fields,ms){
-  return await sbRequest("/rest/v1/"+SB_TABLE+"?uid=eq."+encodeURIComponent(uid),{method:"PATCH",body:fields,ms});
+  return await sbRequestRetry("/rest/v1/"+SB_TABLE+"?uid=eq."+encodeURIComponent(uid),{method:"PATCH",body:fields},3);
 }
 const WITHDRAW_UID='xy_withdraw_requests';
 const WALLET_UID='xy_dashou_wallets';
@@ -3955,18 +3989,20 @@ if(store.noticeClosed) $("#noticeBar").classList.add("hide");
 
 /* ===================== 订单聊天房间（老板端） ===================== */
 const CHAT_UID='xy_chat_messages';
+const CHAT_LOCAL_KEY='xy_chat_local';
 let _chatOrderNo='',_chatTimer=null,_chatCache=[];
+let _chatSendQueue=[],_chatSyncing=false;
+// 本地缓存聊天记录
+function _loadLocalChat(){try{const r=localStorage.getItem(CHAT_LOCAL_KEY);_chatCache=r?JSON.parse(r):[];}catch(e){_chatCache=[];}}
+function _saveLocalChat(){try{localStorage.setItem(CHAT_LOCAL_KEY,JSON.stringify(_chatCache));}catch(e){}}
 async function _getChatMsgs(){
   try{
-    const res=await fetch(SB_BASE_URLS[0]+"/rest/v1/"+SB_TABLE+"?uid=eq."+CHAT_UID+"&select=*",{headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON}});
-    const rows=await res.json();
-    _chatCache=(rows&&rows[0]&&Array.isArray(rows[0].orders))?rows[0].orders:[];
-    return _chatCache;
+    const row=await sbSelect(CHAT_UID);
+    return (row&&Array.isArray(row.orders))?row.orders:[];
   }catch(e){return [];}
 }
 async function _saveChatMsgs(list){
-  _chatCache=list;
-  await fetch(SB_BASE_URLS[0]+"/rest/v1/"+SB_TABLE+"?uid=eq."+CHAT_UID,{method:"PATCH",headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON,"Content-Type":"application/json"},body:JSON.stringify({orders:list})});
+  await sbUpsert({uid:CHAT_UID,orders:list});
 }
 function _fmtHMS(ts){try{const d=new Date(ts);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0");}catch(e){return "";}}
 // 老板在房间中的显示名
@@ -3995,10 +4031,8 @@ function _compressChatImage(file){
         const canvas=document.createElement("canvas");
         canvas.width=w;canvas.height=h;
         canvas.getContext("2d").drawImage(img,0,0,w,h);
-        // 优先 WebP（省内存），不支持时回退 JPEG
         let out=canvas.toDataURL("image/webp",0.72);
         if(out.indexOf("data:image/webp")===-1){ out=canvas.toDataURL("image/jpeg",0.72); }
-        // 超过 500KB 进一步压缩
         if(out.length>500*1024){
           const q=Math.max(0.4,0.72-(out.length-500*1024)/1024/1024*0.3);
           out=canvas.toDataURL("image/webp",q);
@@ -4013,9 +4047,41 @@ function _compressChatImage(file){
     reader.readAsDataURL(file);
   });
 }
+// 本地优先发送 + 异步同步队列
+function _enqueueChat(msg){
+  _chatCache.push(msg);
+  _saveLocalChat();
+  renderChatMsgs(_chatCache);
+  _chatSendQueue.push(msg.id);
+  _flushChatQueue();
+}
+async function _flushChatQueue(){
+  if(_chatSyncing||!_chatSendQueue.length)return;
+  _chatSyncing=true;
+  while(_chatSendQueue.length){
+    const mid=_chatSendQueue.shift();
+    const msg=_chatCache.find(m=>m.id===mid);
+    if(!msg)continue;
+    try{
+      const cloud=await _getChatMsgs();
+      if(!cloud.some(m=>m.id===mid)){
+        cloud.push({...msg});delete cloud[cloud.length-1].sending;delete cloud[cloud.length-1].failed;
+        await _saveChatMsgs(cloud);
+      }
+      msg.sending=false;
+      _saveLocalChat();renderChatMsgs(_chatCache);
+    }catch(e){
+      if(msg.retries===undefined)msg.retries=0;
+      msg.retries++;
+      if(msg.retries<5){setTimeout(()=>{_chatSendQueue.push(mid);_flushChatQueue();},2000);}
+      else{msg.sending=false;msg.failed=true;_saveLocalChat();renderChatMsgs(_chatCache);toast("发送失败，请检查网络");}
+    }
+  }
+  _chatSyncing=false;
+}
 async function sendChatImage(input){
   const file=input.files&&input.files[0];
-  input.value=""; // 重置，确保选同一文件也能再触发
+  input.value="";
   if(!file) return;
   if(!file.type.startsWith("image/")){ toast("请选择图片文件",false); return; }
   if(file.size>15*1024*1024){ toast("图片不能超过15MB",false); return; }
@@ -4024,36 +4090,18 @@ async function sendChatImage(input){
   try{ dataUrl=await _compressChatImage(file); }
   catch(e){ toast("图片处理失败",false); _chatMsgTimestamps.pop(); return; }
   const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:_chatName(),fromRole:"customer",to:"all",toRole:"all",content:dataUrl,type:"image",ts:Date.now(),orderNo:_chatOrderNo,readBy:[],sending:true};
-  _chatCache.push(msg);renderChatMsgs(_chatCache);
-  try{
-    const toSave=_chatCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
-    await _saveChatMsgs(toSave);
-    msg.sending=false;
-    renderChatMsgs(_chatCache);
-  }catch(e){
-    msg.sending=false;msg.failed=true;
-    renderChatMsgs(_chatCache);
-  }
+  _enqueueChat(msg);
 }
-async function sendChatMsg(){
+function sendChatMsg(){
   const inp=document.getElementById("chatInput");if(!inp)return;
   const content=inp.value.trim();if(!content)return;
   const msg={id:"M"+Date.now()+Math.floor(Math.random()*1000),from:_chatName(),fromRole:"customer",to:"all",toRole:"all",content,ts:Date.now(),orderNo:_chatOrderNo,readBy:[],sending:true};
-  _chatCache.push(msg);renderChatMsgs(_chatCache);
-  try{
-    const toSave=_chatCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
-    await _saveChatMsgs(toSave);
-    msg.sending=false;
-    renderChatMsgs(_chatCache);
-  }catch(e){
-    msg.sending=false;msg.failed=true;
-    renderChatMsgs(_chatCache);
-  }
+  _enqueueChat(msg);
   inp.value="";
 }
 function renderChatMsgs(list){
   const box=document.getElementById("chatBox");if(!box)return;
-  const mine=list.filter(m=>m.orderNo===_chatOrderNo);
+  const mine=list.filter(m=>m.orderNo===_chatOrderNo&&!m.recalled);
   mine.sort((a,b)=>a.ts-b.ts);
   box.innerHTML=mine.map(m=>{
     const isMe=m.from===_chatName();
@@ -4073,22 +4121,39 @@ function renderChatMsgs(list){
   box.scrollTop=box.scrollHeight;
 }
 async function pollChatMsgs(){
-  await _getChatMsgs();
-  _chatCache.forEach(m=>{delete m.sending;});
-  // 标记已读（只标记别人发的）
-  const me=_chatName();
-  let changed=false;
-  _chatCache.forEach(m=>{
-    if(m.orderNo===_chatOrderNo&&m.from!==me){
-      if(!m.readBy)m.readBy=[];
-      if(!m.readBy.includes(me)){m.readBy.push(me);changed=true;}
+  try{
+    const cloud=await _getChatMsgs();
+    const localIds=new Set(_chatCache.map(m=>m.id));
+    cloud.forEach(m=>{
+      if(!localIds.has(m.id)){_chatCache.push({...m});}
+      else{
+        const local=_chatCache.find(x=>x.id===m.id);
+        if(local){if(m.recalled)local.recalled=true;if(m.readBy)local.readBy=m.readBy;if(!m.sending)local.sending=false;}
+      }
+    });
+    // 客服撤回则本地删除
+    _chatCache=_chatCache.filter(m=>!m.recalled);
+    _saveLocalChat();
+    // 标记已读
+    const me=_chatName();
+    let changed=false;
+    _chatCache.forEach(m=>{
+      if(m.orderNo===_chatOrderNo&&m.from!==me){
+        if(!m.readBy)m.readBy=[];
+        if(!m.readBy.includes(me)){m.readBy.push(me);changed=true;}
+      }
+    });
+    if(changed){
+      _saveLocalChat();
+      _getChatMsgs().then(cloud=>{
+        cloud.forEach(m=>{
+          if(m.orderNo===_chatOrderNo&&m.from!==me){if(!m.readBy)m.readBy=[];if(!m.readBy.includes(me))m.readBy.push(me);}
+        });
+        _saveChatMsgs(cloud).catch(()=>{});
+      }).catch(()=>{});
     }
-  });
-  if(changed){
-    const toSave=_chatCache.map(m=>{const c={...m};delete c.sending;delete c.failed;return c;});
-    await _saveChatMsgs(toSave);
-  }
-  renderChatMsgs(_chatCache);
+    renderChatMsgs(_chatCache);
+  }catch(e){/* 云端失败不影响本地 */}
 }
 function openChat(orderNo){
   _chatOrderNo=orderNo||"";
@@ -4099,7 +4164,10 @@ function openChat(orderNo){
     document.body.appendChild(p);
   }
   document.getElementById("chatTitle").textContent=_chatOrderNo?("订单 "+_chatOrderNo+" · 老板"):"通用客服";
-  p.classList.add("show");pollChatMsgs();
+  p.classList.add("show");
+  // 先渲染本地缓存（0延迟）
+  _loadLocalChat();renderChatMsgs(_chatCache);
+  pollChatMsgs();
   if(_chatTimer)clearInterval(_chatTimer);
   _chatTimer=setInterval(pollChatMsgs,3000);
 }

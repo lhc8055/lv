@@ -1554,10 +1554,20 @@ function openCouponForm(i){
 const SB_URL = "https://jsrxbpysgaywdhnntqnl.supabase.co";
 const SB_ANON_DEFAULT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0";
 $("#sbAnonKey").value = SB_ANON_DEFAULT;
-// 直连 supabase.co 在国内部分网络可能不通，失败时自动走 CORS 代理
+// 多地区 CORS 代理线路（不同IP/地域，竞速并发）
 function sbProxyUrls(target){
-  return ["https://cors.eu.org/"+target, "https://api.allorigins.win/raw?url="+encodeURIComponent(target)];
+  const enc = encodeURIComponent(target);
+  return [
+    "https://cors.eu.org/"+target,
+    "https://corsproxy.io/?url="+enc,
+    "https://api.allorigins.win/raw?url="+enc,
+    "https://api.codetabs.com/v1/proxy/?quest="+enc,
+    "https://thingproxy.freeboard.io/fetch/"+target,
+    "https://r.jina.ai/"+target,
+    "https://proxy.cors.sh/"+target
+  ];
 }
+let _sbFastestProxies = [];
 let _ucUsers = [];
 function sbCfg(){
   const inputVal = ($("#sbAnonKey").value || "").trim();
@@ -1565,6 +1575,29 @@ function sbCfg(){
   const table = $("#sbTable").value.trim() || "user_data";
   return {key, table};
 }
+const SB_TIMEOUT = 8000;
+function fetchOne(t, method, hdrs, body){
+  return new Promise((resolve, reject) => {
+    const ctrl = ("AbortController" in window) ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), SB_TIMEOUT) : null;
+    fetch(t.url, {method, headers:hdrs, body, signal:ctrl ? ctrl.signal : undefined})
+      .then(async res => {
+        if(timer) clearTimeout(timer);
+        const text = await res.text();
+        let json = null; try{ json = text ? JSON.parse(text) : null; }catch(e){}
+        if(!res.ok){ throw new Error("HTTP "+res.status+": "+((json && json.message) || text)); }
+        if(t.proxy){ _sbFastestProxies = [t.url, ..._sbFastestProxies.filter(u=>u!==t.url)].slice(0,3); }
+        resolve(json);
+      })
+      .catch(e => {
+        if(timer) clearTimeout(timer);
+        if(e && e.name === "AbortError"){ const err = new Error("超时"); err.code = "TIMEOUT"; reject(err); }
+        else reject(e);
+      });
+  });
+}
+// 本地缓存
+const _sbAdminCache = {};
 async function sbApi(path, opts){
   const {key} = sbCfg();
   const hdrs = {"apikey":key,"Authorization":"Bearer "+key};
@@ -1573,25 +1606,35 @@ async function sbApi(path, opts){
   const body = opts && opts.body !== undefined ? JSON.stringify(opts.body) : undefined;
   const sep = path.includes("?") ? "&" : "?";
   const proxyTarget = SB_URL + path + sep + "apikey=" + encodeURIComponent(key);
-  const targets = [{url:SB_URL+path}];
-  sbProxyUrls(proxyTarget).forEach(u => targets.push({url:u}));
-  let lastErr = null;
-  for(const t of targets){
-    const ctrl = ("AbortController" in window) ? new AbortController() : null;
-    const timer = ctrl ? setTimeout(() => ctrl.abort(), 15000) : null;
-    try{
-      const res = await fetch(t.url, {method, headers:hdrs, body, signal:ctrl ? ctrl.signal : undefined});
-      if(timer) clearTimeout(timer);
-      const text = await res.text();
-      let json = null; try{ json = text ? JSON.parse(text) : null; }catch(e){}
-      if(!res.ok){ lastErr = new Error("HTTP "+res.status+": "+((json && json.message) || text)); continue; }
-      return json;
-    }catch(e){
-      if(timer) clearTimeout(timer);
-      lastErr = e && e.name === "AbortError" ? new Error("请求超时（15秒）") : e;
-    }
+  let targets = [{url:SB_URL+path, proxy:false}];
+  sbProxyUrls(proxyTarget).forEach(u => targets.push({url:u, proxy:true}));
+  // 历史最快代理排前面
+  if(_sbFastestProxies.length){
+    targets.sort((a,b)=>{const ia=_sbFastestProxies.indexOf(a.url);const ib=_sbFastestProxies.indexOf(b.url);return (ia<0?99:ia)-(ib<0?99:ib);});
   }
-  throw lastErr || new Error("所有端点均不可达");
+  // GET 请求走本地缓存兜底
+  const cacheKey = method + path;
+  const cached = method === "GET" ? _sbAdminCache[cacheKey] : null;
+  const results = await Promise.allSettled(targets.map(t => fetchOne(t, method, hdrs, body)));
+  const ok = results.find(r => r.status === 'fulfilled');
+  if(ok){
+    if(method === "GET") _sbAdminCache[cacheKey] = ok.value;
+    return ok.value;
+  }
+  // 都失败，GET 返回缓存
+  if(cached !== undefined) return cached;
+  const lastErr = results[results.length-1];
+  throw (lastErr && lastErr.reason) || new Error("所有端点均不可达");
+}
+// 带重试的请求
+async function sbApiRetry(path, opts, retries){
+  retries = retries || 3;
+  let lastErr = null;
+  for(let i=0;i<retries;i++){
+    try{ return await sbApi(path, opts); }
+    catch(e){ lastErr = e; await new Promise(r=>setTimeout(r, 300*(i+1))); }
+  }
+  throw lastErr || new Error("请求失败");
 }
 function fmtTs(ts){ if(!ts) return "-"; const d = new Date(ts); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
 function couponStatusOf(c, def){
