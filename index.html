@@ -407,10 +407,10 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
 <div class="login-mask" id="loginMask" role="dialog" aria-modal="true" aria-label="登录">
   <div class="login-panel">
     <div class="login-head"><h3>欢迎来到乌托邦</h3><button class="ib press" id="closeLogin" aria-label="关闭"><svg class="i"><use href="#x"/></svg></button></div>
-    <button class="login-wx press" id="wxLogin" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.7 3C4.9 3 1.8 5.6 1.8 8.8c0 1.8 .9 3.4 2.4 4.5l-.7 2.2 2.5-1.3c.8 .2 1.7 .4 2.7 .4 .3 0 .5 0 .8-.1-.2-.5-.3-1-.3-1.6 0-3.1 3-5.6 6.7-5.6h.4C15.6 4.6 12.4 3 8.7 3z" fill="currentColor" stroke="none"/><path d="M22.2 12.9c0-2.8-2.7-5-6-5s-6 2.2-6 5 2.7 5 6 5c.7 0 1.4-.1 2-.3l2 1.1-.6-1.9c1.6-.9 2.6-2.3 2.6-3.9z" fill="currentColor" stroke="none"/></svg>微信一键登录</button><div class="login-or"><span>或使用本机体验账号</span></div>
-    <input class="login-field" id="loginPhone" type="text" maxlength="40" placeholder="手机号 / 用户名" autocomplete="username">
-    <p class="login-note">微信登录由 Aze 聚合登录提供，账号自动写入云端数据库；下方体验账号仅保存在本机浏览器。</p>
-    <button class="login-submit press" id="loginSubmit">登录 / 创建体验账号</button>
+    <button class="login-wx press" id="wxLogin" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.7 3C4.9 3 1.8 5.6 1.8 8.8c0 1.8 .9 3.4 2.4 4.5l-.7 2.2 2.5-1.3c.8 .2 1.7 .4 2.7 .4 .3 0 .5 0 .8-.1-.2-.5-.3-1-.3-1.6 0-3.1 3-5.6 6.7-5.6h.4C15.6 4.6 12.4 3 8.7 3z" fill="currentColor" stroke="none"/><path d="M22.2 12.9c0-2.8-2.7-5-6-5s-6 2.2-6 5 2.7 5 6 5c.7 0 1.4-.1 2-.3l2 1.1-.6-1.9c1.6-.9 2.6-2.3 2.6-3.9z" fill="currentColor" stroke="none"/></svg>微信一键登录</button><div class="login-or" style="display:none"><span>或使用本机体验账号</span></div>
+    <input class="login-field" id="loginPhone" type="text" maxlength="40" placeholder="手机号 / 用户名" autocomplete="username" style="display:none">
+    <p class="login-note">仅支持微信登录，首次登录自动创建账号，资料同步到云端。</p>
+    <button class="login-submit press" id="loginSubmit" style="display:none">登录 / 创建体验账号</button>
     <button class="login-out press" id="logoutBtn" style="display:none">退出登录</button>
   </div>
 </div>
@@ -770,7 +770,7 @@ function botAct(state='idle',message='',duration=1700){
 window.utBotTest=(s,m)=>botAct(s||'idle',m||s||'',2400);
 window.utBotStates=Object.keys(BOT_MOTION);
 
-function paintUser(){const logged=!!user;$('#loginEntry').textContent=logged?'账户':'登录';$('#meName').textContent=logged?(user.name||user.id):'未登录';$('#meDesc').textContent=logged?'本机体验账号 · 信息保存在此设备':'登录后查看账户与权益';$('#myStatus').textContent=logged?'已登录':'访客';$('#logoutBtn').style.display=logged?'block':'none';$('#loginSubmit').textContent=logged?'切换体验账号':'登录 / 创建体验账号'}
+function paintUser(){const logged=!!user;$('#loginEntry').textContent=logged?'账户':'微信登录';$('#meName').textContent=logged?(user.name||user.id):'未登录';$('#meDesc').textContent=logged?'本机体验账号 · 信息保存在此设备':'登录后查看账户与权益';$('#myStatus').textContent=logged?'已登录':'访客';$('#logoutBtn').style.display=logged?'block':'none';$('#loginSubmit').textContent=logged?'切换体验账号':'登录 / 创建体验账号'}
 function openLogin(){botAct('closed','',0);loginMask.classList.add('on');setTimeout(()=>$('#loginPhone').focus(),120)}
 $('#loginEntry').addEventListener('click',openLogin);
 myPage.addEventListener('click',e=>{const item=e.target.closest('[data-account-action]');if(!item)return;if(!user){openLogin();return}const action=item.dataset.accountAction;toast(action==='orders'?'暂无订单记录':action==='benefits'?'权益记录暂未开放':'当前为本地体验账号')});
