@@ -840,8 +840,8 @@ document.fonts&&document.fonts.ready.then(()=>{moveSl();measureDock();const acti
 (async()=>{
   const containers=[...document.querySelectorAll('[data-utbot-engine]')];
   if(!containers.length)return;
-  const PLAYER='https://cdn.jsdelivr.net/gh/ArvinYin1/grokbot-animation-anatomy@main/js/vendor/grok-player.js';
-  const RECIPES='https://cdn.jsdelivr.net/gh/ArvinYin1/grokbot-animation-anatomy@main/js/vendor/grok-recipes.json';
+  const PLAYER='vendor/grok-player.js';
+  const RECIPES='vendor/grok-recipes.json';
   const NS='http://www.w3.org/2000/svg';
   try{
     const [{createGrokBot},response]=await Promise.all([
