@@ -264,6 +264,13 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
 }
 @media (max-width:380px){.main .num{font-size:40px}.task .amt{font-size:25px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01s!important}.rv{opacity:1;transform:none}}
+
+.login-wx{width:100%;height:48px;border-radius:14px;background:#07c160;color:#fff;font-weight:600;font-size:15.5px;display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 0 12px;box-shadow:0 8px 24px rgba(7,193,96,.28)}
+.login-wx .i{width:19px;height:19px}
+.login-or{display:flex;align-items:center;gap:10px;color:var(--sub);font-size:12.5px;margin:0 0 12px}
+.login-or::before,.login-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.me-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:-6px;margin-right:6px}
+.sb-state{font-size:11.5px;color:var(--sub);text-align:center;margin-top:8px}
 </style>
 </head>
 <body>
@@ -400,8 +407,9 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
 <div class="login-mask" id="loginMask" role="dialog" aria-modal="true" aria-label="登录">
   <div class="login-panel">
     <div class="login-head"><h3>欢迎来到乌托邦</h3><button class="ib press" id="closeLogin" aria-label="关闭"><svg class="i"><use href="#x"/></svg></button></div>
+    <button class="login-wx press" id="wxLogin" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.7 3C4.9 3 1.8 5.6 1.8 8.8c0 1.8 .9 3.4 2.4 4.5l-.7 2.2 2.5-1.3c.8 .2 1.7 .4 2.7 .4 .3 0 .5 0 .8-.1-.2-.5-.3-1-.3-1.6 0-3.1 3-5.6 6.7-5.6h.4C15.6 4.6 12.4 3 8.7 3z" fill="currentColor" stroke="none"/><path d="M22.2 12.9c0-2.8-2.7-5-6-5s-6 2.2-6 5 2.7 5 6 5c.7 0 1.4-.1 2-.3l2 1.1-.6-1.9c1.6-.9 2.6-2.3 2.6-3.9z" fill="currentColor" stroke="none"/></svg>微信一键登录</button><div class="login-or"><span>或使用本机体验账号</span></div>
     <input class="login-field" id="loginPhone" type="text" maxlength="40" placeholder="手机号 / 用户名" autocomplete="username">
-    <p class="login-note">当前为本地体验登录，信息仅保存在此浏览器。正式账号验证与订单同步需要接入服务器。</p>
+    <p class="login-note">微信登录由 Aze 聚合登录提供，账号自动写入云端数据库；下方体验账号仅保存在本机浏览器。</p>
     <button class="login-submit press" id="loginSubmit">登录 / 创建体验账号</button>
     <button class="login-out press" id="logoutBtn" style="display:none">退出登录</button>
   </div>
@@ -773,6 +781,112 @@ $('#loginSubmit').addEventListener('click',()=>{const id=$('#loginPhone').value.
 $('#logoutBtn').addEventListener('click',()=>{user=null;store.set('u_user',null);paintUser();loginMask.classList.remove('on');botAct('drowsy','期待你下次回来',2000)});
 paintUser();
 
+/* ============ 云端账号（Supabase utopia_users） ============ */
+const SB={
+  key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0',
+  table:'utopia_users',
+  hosts:['https://sb-proxy.3552453862.workers.dev','https://jsrxbpysgaywdhnntqnl.supabase.co'],
+  url:''
+};
+function sbPick(fn){
+  const hosts=SB.url?[SB.url,...SB.hosts]:SB.hosts.slice();
+  return (async()=>{
+    let lastErr=null;
+    for(const h of hosts){
+      try{const r=await fn(h);SB.url=h;return r}catch(e){lastErr=e}
+    }
+    throw lastErr||new Error('无可用线路');
+  })();
+}
+function sbHeaders(){return {'apikey':SB.key,'Authorization':'Bearer '+SB.key,'Content-Type':'application/json'}}
+async function sbUpsert(row){
+  return sbPick(async h=>{
+    const r=await fetch(h+'/rest/v1/'+SB.table,{method:'POST',cache:'no-store',
+      headers:Object.assign(sbHeaders(),{'Prefer':'resolution=merge-duplicates,return=representation'}),
+      body:JSON.stringify([row])});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const list=await r.json();
+    return (list&&list[0])||row;
+  });
+}
+async function sbFind(social_uid){
+  return sbPick(async h=>{
+    const r=await fetch(h+'/rest/v1/'+SB.table+'?social_uid=eq.'+encodeURIComponent(social_uid)+'&select=*',{cache:'no-store',headers:sbHeaders()});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const list=await r.json();
+    return (list&&list[0])||null;
+  });
+}
+
+/* ============ Aze 微信登录（appid 1077） ============ */
+const AZE={appid:'1077',appkey:'59df768465c656c1afe08091b3840261',proxy:'https://aze-login-proxy.pages.dev/'};
+function wxStart(){
+  const back=location.origin+location.pathname;
+  const url=AZE.proxy+'?act=login&appid='+AZE.appid+'&appkey='+AZE.appkey+'&type=wx&redirect_uri='+encodeURIComponent(back);
+  toast('正在跳转微信登录…');botAct('listening','',0);
+  fetch(url,{mode:'cors'}).then(r=>r.json()).then(d=>{
+    if(d&&d.code===0&&d.url){location.href=d.url}
+    else{toast('登录跳转失败：'+((d&&d.msg)||'未知错误'));botAct('blocked','',1200)}
+  }).catch(()=>{toast('网络异常，请重试');botAct('blocked','',1200)});
+}
+function wxRender(){
+  if(!user) return;
+  const nameEl=$('#meName');
+  if(nameEl){
+    if(user.avatar){
+      const img=document.createElement('img');img.className='me-avatar';img.alt='';img.src=user.avatar;
+      nameEl.textContent='';nameEl.appendChild(img);nameEl.appendChild(document.createTextNode(user.name));
+    }else nameEl.textContent=user.name;
+  }
+  const desc=$('#meDesc'); if(desc) desc.textContent=(user.type==='wx'?'微信登录':'本机体验账号')+' · '+(user.uid||'');
+  const st=$('#myStatus'); if(st) st.textContent='已登录';
+}
+async function wxApply(d){
+  if(!(d&&d.code===0&&d.social_uid)){toast('微信登录失败：'+((d&&d.msg)||'未知错误'));return}
+  const sid=String(d.social_uid);
+  const nick=String(d.nickname||('微信用户'+sid.slice(-4))).slice(0,20);
+  let avatar=String(d.faceimg||'').replace(/^http:/,'https:');
+  if(!/^https:\/\//.test(avatar)) avatar='';
+  const row={social_uid:sid,provider:'wx',nickname:nick,avatar:avatar,uid:'wx_'+sid,updated_at:new Date().toISOString()};
+  user={id:row.uid,uid:row.uid,name:nick,avatar:avatar,type:'wx',socialUid:sid,loginAt:Date.now()};
+  store.set('u_user',user);
+  paintUser();wxRender();
+  loginMask.classList.remove('on');
+  try{
+    const saved=await sbUpsert(row);
+    if(saved&&saved.nickname){user.name=saved.nickname;store.set('u_user',user);paintUser();wxRender()}
+    botAct('happy','微信登录成功，欢迎回来！',2400);
+    toast('已同步到云端账号');
+  }catch(e){
+    botAct('happy','微信登录成功（本地缓存）',2400);
+    toast('云端同步失败，已本地保存');
+  }
+}
+function wxHandleReturn(){
+  const q=new URLSearchParams(location.search);
+  const code=q.get('code'),type=q.get('type'),ret=q.get('aze_login'),u=q.get('u');
+  if(!code&&!ret) return;
+  history.replaceState(null,'',location.pathname+location.hash);
+  if(code&&type){
+    toast('微信登录中…');
+    const url=AZE.proxy+'?act=callback&appid='+AZE.appid+'&appkey='+AZE.appkey+'&type='+encodeURIComponent(type)+'&code='+encodeURIComponent(code);
+    fetch(url,{mode:'cors'}).then(r=>r.json()).then(wxApply).catch(()=>toast('登录校验失败，请重试'));
+  }else if(ret==='1'&&u){
+    try{
+      let b=u.replace(/ /g,'+').replace(/-/g,'+').replace(/_/g,'/');
+      while(b.length%4) b+='=';
+      const bin=atob(b);let pct='';
+      for(let i=0;i<bin.length;i++) pct+='%'+('00'+bin.charCodeAt(i).toString(16)).slice(-2);
+      wxApply(JSON.parse(decodeURIComponent(pct)));
+    }catch(e){toast('登录数据解析失败')}
+  }
+}
+$('#wxLogin').addEventListener('click',wxStart);
+wxHandleReturn();
+if(user&&user.socialUid){
+  sbFind(user.socialUid).then(r=>{if(r&&r.nickname){user.name=r.nickname;user.avatar=r.avatar||user.avatar;store.set('u_user',user);paintUser();wxRender()}}).catch(()=>{});
+}
+
 /* —— 空闲休眠 + 自然眨眼 —— */
 let idleTimer=0,naturalBlinkTimer=0;
 function kickAmbient(){
@@ -840,8 +954,8 @@ document.fonts&&document.fonts.ready.then(()=>{moveSl();measureDock();const acti
 (async()=>{
   const containers=[...document.querySelectorAll('[data-utbot-engine]')];
   if(!containers.length)return;
-  const PLAYER='vendor/grok-player.js';
-  const RECIPES='vendor/grok-recipes.json';
+  const PLAYER='https://cdn.jsdelivr.net/gh/ArvinYin1/grokbot-animation-anatomy@main/js/vendor/grok-player.js';
+  const RECIPES='https://cdn.jsdelivr.net/gh/ArvinYin1/grokbot-animation-anatomy@main/js/vendor/grok-recipes.json';
   const NS='http://www.w3.org/2000/svg';
   try{
     const [{createGrokBot},response]=await Promise.all([
