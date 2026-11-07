@@ -349,6 +349,10 @@ body.my-open #myBotAnchor{opacity:1}
 .pm-ico.wechat svg{fill:#07c160}
 .pm-ico.alipay{background:#eaf2ff}
 .pm-ico.wechat{background:#e8f9ef}
+
+.ord-code{display:flex;align-items:center;gap:8px;margin:8px 0 2px;padding:9px 12px;border-radius:12px;background:rgba(48,209,88,.1);box-shadow:inset 0 0 0 1px rgba(48,209,88,.22);font-size:12.5px;color:#30d158}
+.ord-code b{font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em;font-size:13.5px}
+.ord-code button{margin-left:auto;padding:4px 10px;border-radius:9px;background:rgba(48,209,88,.18);color:#30d158;font-size:12px;font-weight:600}
 </style>
 </head>
 <body>
@@ -724,17 +728,19 @@ $('#pnlClose').onclick=closePanel;pnlMask.onclick=closePanel;
 
 /* 订单 */
 function orderHTML(o){
-  const sm={paid:['已支付','ok'],pending:['待支付','wait'],cancelled:['已取消','off']}[o.status]||['未知','off'];
+  const sm={delivered:['已发货','ok'],paid:['已支付','ok'],pending:['待支付','wait'],cancelled:['已取消','off']}[o.status]||['未知','off'];
   const names=o.items.map(i=>esc(i.n)+(i.q>1?' ×'+i.q:'')).join('、');
-  return `<div class="ord" data-id="${esc(o.id)}"><div class="ord-h"><span>订单 ${esc(o.no)}</span><i class="st ${sm[1]}">${sm[0]}</i></div><div class="ord-b">${names}</div><div class="ord-f"><small>${fmt(o.t)}</small><b>${money(o.amount)}</b></div>${o.status==='pending'?'<div class="ord-a"><button data-ord-cancel>取消订单</button><button class="pri" data-ord-pay>继续支付</button></div>':''}</div>`;
+  const code=(o.status==='delivered'&&o.code)?`<div class="ord-code"><span>核销码</span><b>${esc(o.code)}</b><button data-copy="${esc(o.code)}">复制</button></div>`:'';
+  return `<div class="ord" data-id="${esc(o.id)}"><div class="ord-h"><span>订单 ${esc(o.no)}</span><i class="st ${sm[1]}">${sm[0]}</i></div><div class="ord-b">${names}</div>${code}<div class="ord-f"><small>${fmt(o.t)}</small><b>${money(o.amount)}</b></div>${o.status==='pending'?'<div class="ord-a"><button data-ord-cancel>取消订单</button><button class="pri" data-ord-pay>继续支付</button></div>':''}</div>`;
 }
 let ordersCache=[];
 /* ===== 订单：每次都以云端为准（不落本地） ===== */
 function orderFromRow(r){
-  const st=r.status==='paid'?'paid':(r.status==='closed'?'cancelled':'pending');
+  const st=r.status==='delivered'?'delivered':(r.status==='paid'?'paid':(r.status==='closed'?'cancelled':'pending'));
   return {id:r.out_trade_no,no:r.out_trade_no,amount:Number(r.amount)||0,status:st,
     pay:r.pay_type||'alipay',t:+new Date(r.created_at||Date.now()),
     paidAt:r.paid_at?+new Date(r.paid_at):null,
+    code:r.deliver_code||'',deliveredAt:r.delivered_at?+new Date(r.delivered_at):null,
     items:(r.items||[]).map(i=>({id:i.id||0,n:i.n||'商品',p:Number(i.p)||0,q:Number(i.q)||1}))};
 }
 async function cloudOrders(){
@@ -1184,6 +1190,7 @@ window.addEventListener('pageshow',function(e){
 });
 setTimeout(function(){prefetchOrders();checkPendingPay();startPayPoll()},1500);
 document.addEventListener('visibilitychange',function(){if(!document.hidden){unlockPayUI();setTimeout(function(){checkPendingPay();startPayPoll()},500)}});
+document.addEventListener('click',function(e){var b=e.target.closest('[data-copy]');if(!b)return;var t=b.getAttribute('data-copy');try{navigator.clipboard.writeText(t)}catch(_){}toast('核销码已复制');});
 $('#wxLogin').addEventListener('click',function(){socStart('wx')});
 $('#qqLogin').addEventListener('click',function(){socStart('qq')});
 socHandleReturn();
