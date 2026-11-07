@@ -743,23 +743,65 @@ function openPay(src){
     ${CONFIG.PAY_METHODS.map(m=>`<button class="pm ${m.id===payMethod?'on':''}" data-pm="${m.id}"><i style="background:${m.c}">${m.t}</i><span>${m.n}</span><span class="rd"></span></button>`).join('')}
     <div class="pay-total"><small>应付金额</small><b>${money(amount)}</b></div>
     <button class="login-submit press" data-pay-go>确认支付 ${money(amount)}</button>
-    <p class="login-note" style="text-align:center;margin-bottom:0">${demo?'演示环境：不会产生真实扣款。':'支付由第三方安全完成，订单状态以服务端为准。'}</p>`,'pay');
+    <p class="login-note" style="text-align:center;margin-bottom:0">由 1987 易支付提供收款，支付完成后自动回到本站并核对订单。</p>`,'pay');
+}
+/* ===== 真实支付（1987 易支付，经 sbrelay 服务端签名） ===== */
+const PAYGATE='https://sbrelay.pages.dev';
+async function payCreate(items,amount,method){
+  const body={
+    uid:(user&&(user.uacct||user.uid))||'guest',
+    name:(items.map(i=>i.n).join('+')||'乌托邦订单').slice(0,40),
+    money:amount,
+    type:method==='wechat'?'wxpay':'alipay',
+    items:items.map(i=>({n:i.n,q:i.q,p:i.p})),
+    returnUrl:location.origin+location.pathname
+  };
+  const r=await fetch(PAYGATE+'/pay/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json();
+  if(!d||!d.ok||!d.url)throw new Error((d&&d.msg)||'下单失败');
+  return d;
+}
+async function payQuery(no){
+  try{
+    const r=await fetch(PAYGATE+'/pay/query?no='+encodeURIComponent(no),{cache:'no-store'});
+    const d=await r.json();
+    return !!(d&&d.paid);
+  }catch(_){return false}
+}
+function paySaveLocal(no,items,amount,method){
+  const list=store.get('u_orders',[]);
+  if(!list.some(o=>o.id===no)){
+    list.unshift({id:no,no:no,items:items.map(i=>({id:i.id,n:i.n,p:i.p,q:i.q})),amount:amount,status:'pending',pay:method,t:Date.now()});
+    store.set('u_orders',list.slice(0,60));
+  }
+}
+async function checkPendingPay(){
+  const list=store.get('u_orders',[]);
+  const pend=list.filter(o=>o.status==='pending').slice(0,5);
+  let changed=false;
+  for(const o of pend){
+    if(await payQuery(o.id)){o.status='paid';o.paidAt=Date.now();changed=true;toast('订单 '+o.no+' 支付成功')}
+  }
+  if(changed){
+    store.set('u_orders',list);
+    botAct('finished','支付成功，感谢支持！',2200);
+    if(pnlKind==='orders')openOrders();
+  }
 }
 async function submitPay(){
   const go=$('[data-pay-go]',pnlBody);if(!go||go.disabled||!payCtx)return;
   const label=go.textContent;
-  pnlLock=true;go.disabled=true;go.textContent='支付处理中…';botAct('working','',0);
+  pnlLock=true;go.disabled=true;go.textContent='正在跳转支付…';botAct('working','',0);
   try{
-    let order=payCtx.order,pp;
-    if(order){pp=(await API.prepay(order.id,payMethod)).payParams}
-    else{
-      const r=await API.createOrder({items:cartItems().map(i=>({id:i.id,q:i.q})),pay:payMethod});
-      order=r.order;pp=r.payParams;payCtx.order=order;cart={};saveCart();
-    }
-    const done=await API.payOrder(order,pp,payMethod);
-    pnlLock=false;payResult(done||order,(done||order).status==='paid');
+    const items=payCtx.order?payCtx.order.items:cartItems();
+    const amount=payCtx.amount;
+    const d=await payCreate(items,amount,payMethod);
+    paySaveLocal(d.no,items,amount,payMethod);
+    cart={};saveCart();
+    location.href=d.url;
   }catch(e){
-    pnlLock=false;go.disabled=false;go.textContent=label;toast(e.message||'支付失败，请重试');botAct('alerting','',1200);
+    pnlLock=false;go.disabled=false;go.textContent=label;
+    toast(e.message||'支付通道异常，请稍后重试');botAct('alerting','',1200);
   }
 }
 function payResult(o,ok){
@@ -1075,6 +1117,8 @@ if(new URLSearchParams(location.search).get('sbtest')==='1'){
     alert('云端线路自检\n\n'+lines.join('\n'));
   },800);
 }
+setTimeout(checkPendingPay,1500);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(checkPendingPay,600)});
 $('#wxLogin').addEventListener('click',function(){socStart('wx')});
 $('#qqLogin').addEventListener('click',function(){socStart('qq')});
 socHandleReturn();
