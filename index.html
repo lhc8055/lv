@@ -35,8 +35,8 @@ svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 header{position:fixed;z-index:50;top:calc(8px + var(--sat));left:0;right:0;pointer-events:none;display:flex;justify-content:center;padding:0 12px}
 .nav{pointer-events:auto;width:100%;max-width:760px;height:52px;min-height:52px;max-height:52px;padding:0 8px 0 16px;border-radius:26px;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box;overflow:hidden;
   background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(26px);backdrop-filter:saturate(180%) blur(26px);box-shadow:inset 0 0 0 1px var(--glass-line),0 10px 40px rgba(0,0,0,.45);
-  transition:opacity .55s var(--ease)}
-body.my-open .nav{opacity:0;pointer-events:none}
+  transition:opacity .18s linear}
+body.my-open .nav{opacity:0;pointer-events:none;visibility:hidden}
 .logo{display:flex;align-items:center;gap:10px;font-weight:650;font-size:17px;letter-spacing:.06em;position:relative;height:100%;white-space:nowrap}
 .links{display:none}
 .right{display:flex;align-items:center;gap:8px}
@@ -332,12 +332,13 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
 
 .my-profile{position:relative}
 #meAv{display:block;position:absolute;left:0;top:50%;margin-top:-30px;width:60px;height:60px;border-radius:50%;overflow:hidden;z-index:3;
-  opacity:0;transform:scale(.84);transition:opacity .72s var(--ease),transform .72s var(--ease),box-shadow .72s var(--ease);
+  opacity:0;transform:scale(.9);transition:opacity .34s var(--ease),transform .4s var(--ease),box-shadow .34s var(--ease);
   pointer-events:none;background:#111;box-shadow:0 0 0 0 rgba(41,151,255,0)}
 #meAv.on{opacity:1;transform:scale(1);pointer-events:auto;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 8px 24px rgba(0,0,0,.45)}
 #meAv img{width:100%;height:100%;object-fit:cover;display:block}
 #meAv:active{transform:scale(.94)}
-#myBotAnchor{transition:opacity .3s var(--ease)}
+#myBotAnchor{transition:opacity .2s var(--ease)}
+#myBotAnchor.av-cover .utbot{opacity:0;transform:scale(.88);transition:opacity .2s ease,transform .26s var(--ease)}
 body.my-open #myBotAnchor{opacity:1}
 </style>
 </head>
@@ -1192,9 +1193,19 @@ async function moveSharedBot(toMy,preFrom,preTo){
 }
 /* ===== 头像 ↔ 小宠物 动效 ===== */
 let avTimer=0;
+let avFadeA=0,avFadeB=0;
 function avPhoto(on){
-  const el=$('#meAv');if(!el)return;
-  el.classList.toggle('on',!!on&&!!(user&&user.avatar));
+  const el=$('#meAv'),anchor=$('#myBotAnchor');
+  if(!el)return;
+  clearTimeout(avFadeA);clearTimeout(avFadeB);
+  const show=!!on&&!!(user&&user.avatar);
+  if(show){
+    if(anchor)anchor.classList.add('av-cover');          /* 宠物先缩退 */
+    avFadeA=setTimeout(function(){el.classList.add('on')},160); /* 头像再淡入 */
+  }else{
+    el.classList.remove('on');                            /* 头像淡出 */
+    avFadeB=setTimeout(function(){if(anchor)anchor.classList.remove('av-cover')},170);
+  }
 }
 /* 让头像的圆精确等于宠物身体圆的直径和圆心（运行时测量 SVG，不靠猜） */
 function syncAvToPet(){
