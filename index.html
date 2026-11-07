@@ -1196,9 +1196,45 @@ function avPhoto(on){
   const el=$('#meAv');if(!el)return;
   el.classList.toggle('on',!!on&&!!(user&&user.avatar));
 }
+/* 让头像的圆精确等于宠物身体圆的直径和圆心（运行时测量 SVG，不靠猜） */
+function syncAvToPet(){
+  const av=$('#meAv'),bot=$('#myBotAnchor .utbot')||$('.utbot');
+  if(!av||!bot)return;
+  const svg=bot.querySelector('svg');
+  if(!svg)return;
+  const vb=svg.viewBox&&svg.viewBox.baseVal;
+  const box=svg.getBoundingClientRect();
+  if(!vb||!vb.width||!box.width)return;
+  let best=null,area=0;
+  svg.querySelectorAll('path').forEach(function(p){
+    if(!p.getAttribute('d'))return;
+    try{
+      const b=p.getBBox();
+      const a=b.width*b.height;
+      if(a>area){area=a;best=b}
+    }catch(_){}
+  });
+  if(!best||!best.width)return;
+  const k=box.width/vb.width;
+  const size=Math.round(best.width*k);
+  if(size<18||size>200)return;
+  const cx=box.left+(best.x+best.width/2)*k;
+  const cy=box.top+(best.y+best.height/2)*k;
+  const prof=$('.my-profile');
+  if(!prof)return;
+  const pr=prof.getBoundingClientRect();
+  av.style.width=size+'px';
+  av.style.height=size+'px';
+  av.style.left=(cx-pr.left-size/2)+'px';
+  av.style.top=(cy-pr.top-size/2)+'px';
+  av.style.marginTop='0';
+}
+window.addEventListener('utbot:ready',function(){setTimeout(syncAvToPet,180)});
+window.addEventListener('resize',function(){setTimeout(syncAvToPet,120)});
 function avEnter(){
   clearTimeout(avTimer);
   avPhoto(false);
+  syncAvToPet();
   if(!(user&&user.avatar))return;
   avTimer=setTimeout(()=>avPhoto(true),2000);   /* 先给宠物 2 秒，再丝滑换成头像 */
 }
