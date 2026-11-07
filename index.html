@@ -317,6 +317,8 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
 .soc-btn.wx{background:#07c160;box-shadow:0 10px 26px rgba(7,193,96,.3)}
 .soc-btn.qq{background:#12b7f5;box-shadow:0 10px 26px rgba(18,183,245,.28)}
 .soc-btn[disabled]{opacity:.6}
+
+.me-av{width:30px;height:30px;border-radius:50%;object-fit:cover;vertical-align:-9px;margin-right:8px;box-shadow:inset 0 0 0 1px var(--line)}
 </style>
 </head>
 <body>
@@ -424,7 +426,7 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
       </button>
       <button class="my-menu-item" type="button" data-account-action="settings">
         <span class="my-menu-icon"><svg class="i"><use href="#shield"/></svg></span>
-        <span class="my-menu-copy"><b>账户设置</b><small>昵称、退出登录</small></span>
+        <span class="my-menu-copy"><b>账户设置</b><small>账号资料与退出登录</small></span>
         <span class="my-chevron">›</span>
       </button>
     </div>
@@ -756,7 +758,7 @@ async function openBenefits(){
 /* 设置 */
 function openSettings(){
   openPanel('账户设置',`
-    <div class="set-card"><div class="set-row"><span>账号</span><b>${esc(user.socialUid||user.id)}</b></div>
+    <div class="set-card"><div class="set-row"><span>账号</span><b>${esc(shortId(user.socialUid||user.id))}</b></div>
     <div class="set-row"><span>昵称</span><input class="set-in" id="nickIn" maxlength="12" placeholder="设置昵称" value="${esc(user.nick||'')}"></div></div>
     <button class="login-submit press" data-save-nick style="margin-top:16px">保存昵称</button>
     ${CONFIG.API_BASE?'':'<button class="login-out press" data-reset-demo>重置体验数据</button>'}
@@ -798,11 +800,19 @@ pnlBody.addEventListener('click',async e=>{
 const loginMask=$('#loginMask');
 let afterLogin=null,cdT=0;
 const displayName=()=>user?(user.nick||user.name||maskPhone(user.id)):'未登录';
+const shortId=v=>{const t=String(v||'');return t.length>12?t.slice(0,4)+'…'+t.slice(-4):t};
 function paintUser(){
   const logged=!!user;
   $('#loginEntry').textContent=logged?'账户':'登录';
-  $('#meName').textContent=displayName();
-  $('#meDesc').textContent=logged?(CONFIG.API_BASE?'已登录':'本机体验账号 · 信息保存在此设备'):'登录后查看账户与权益';
+  const nameEl=$('#meName');
+  if(nameEl){
+    if(logged&&user.avatar){
+      nameEl.innerHTML='<img class="me-av" src="'+esc(user.avatar)+'" alt="">'+esc(displayName());
+    }else{
+      nameEl.textContent=displayName();
+    }
+  }
+  $('#meDesc').textContent=logged?'账号':'登录后查看账户与权益';
   $('#myStatus').textContent=logged?'已登录':'访客';
 }
 function requireLogin(cb){if(user)return cb();afterLogin=cb;openLogin()}
