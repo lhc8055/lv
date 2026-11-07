@@ -872,7 +872,7 @@ function socApply(d){
   store.set('u_user',user);store.set('u_token',token);
   paintUser();closeLogin();botAct('happy','欢迎回来！',2200);
   const cb=afterLogin;afterLogin=null;if(cb)setTimeout(cb,380);
-  sbSave({social_uid:sid,provider:type,nickname:nick,avatar:avatar,uid:uid,updated_at:new Date().toISOString()});
+  cloudSave({social_uid:sid,provider:type,nickname:nick,avatar:avatar,uid:uid,updated_at:new Date().toISOString()});
 }
 function socHandleReturn(){
   const q=new URLSearchParams(location.search);
@@ -894,57 +894,130 @@ function socHandleReturn(){
   }
 }
 
-/* ============ 云端账号（Supabase：多线路竞速 + 记忆 + 超时重试） ============ */
+/* ============ 云端账号：多线路并发竞速 + 记忆 + 离线队列 ============ */
 const SB={
   key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0',
   table:'utopia_users',
-  hosts:['https://sb-proxy.3552453862.workers.dev','https://jsrxbpysgaywdhnntqnl.supabase.co'],
-  timeout:6000
+  base:'https://jsrxbpysgaywdhnntqnl.supabase.co',
+  worker:'https://sb-proxy.3552453862.workers.dev',
+  timeout:9000,
+  ROADS:'u_sb_road',
+  PEND:'u_sb_pending'
 };
-SB.order=function(){
-  const good=store.get('u_sb_host','');
-  return good?[good].concat(SB.hosts.filter(h=>h!==good)):SB.hosts.slice();
-};
-function sbBaseHeaders(){return{'apikey':SB.key,'Authorization':'Bearer '+SB.key};}
-async function sbCall(path,init,attempts){
-  let last=null;
-  const tries=attempts||2;
-  for(let a=0;a<tries;a++){
-    const hosts=SB.order();
-    for(let i=0;i<hosts.length;i++){
-      const h=hosts[i];
-      const ctl=new AbortController();
-      const timer=setTimeout(()=>ctl.abort(),SB.timeout);
-      try{
-        const res=await fetch(h+path,Object.assign({cache:'no-store',signal:ctl.signal},init||{},{
-          headers:Object.assign(sbBaseHeaders(),(init&&init.headers)||{})
-        }));
-        clearTimeout(timer);
-        if(!res.ok)throw new Error('HTTP '+res.status);
-        const data=await res.json();
-        if(store.get('u_sb_host','')!==h)store.set('u_sb_host',h);
-        return data;
-      }catch(e){clearTimeout(timer);last=e}
-    }
+function sbRoads(path){
+  const full=SB.base+path, enc=encodeURIComponent(full);
+  const list=[
+    {tag:'worker',url:SB.worker+path},
+    {tag:'direct',url:full},
+    {tag:'euorg',url:'https://cors.eu.org/'+full},
+    {tag:'corsproxy',url:'https://corsproxy.io/?url='+enc},
+    {tag:'codetabs',url:'https://api.codetabs.com/v1/proxy/?quest='+enc},
+    {tag:'corssh',url:'https://proxy.cors.sh/'+full},
+    {tag:'thingproxy',url:'https://thingproxy.freeboard.io/fetch/'+full}
+  ];
+  const last=store.get(SB.ROADS,'');
+  if(last){
+    const i=list.findIndex(x=>x.tag===last);
+    if(i>0){const [x]=list.splice(i,1);list.unshift(x)}
   }
-  throw last||new Error('cloud unreachable');
+  return list;
 }
-function sbSave(row){
-  return sbCall('/rest/v1/'+SB.table,{
+function sbHed(extra){
+  return Object.assign({'apikey':SB.key,'Authorization':'Bearer '+SB.key},extra||{});
+}
+/* 并发竞速：第一个成功的返回，其余立刻中止 */
+function sbRace(path,init){
+  const roads=sbRoads(path);
+  const ctrls=roads.map(()=>new AbortController());
+  let done=false;
+  const errors=[];
+  return new Promise((resolve,reject)=>{
+    let pending=roads.length;
+    const finish=(fn,arg)=>{
+      if(done)return;done=true;
+      ctrls.forEach(c=>{try{c.abort()}catch(_){}});
+      fn(arg);
+    };
+    roads.forEach((r,i)=>{
+      const ctl=ctrls[i];
+      const timer=setTimeout(()=>{try{ctl.abort()}catch(_){}},SB.timeout);
+      fetch(r.url,Object.assign({cache:'no-store',signal:ctl.signal},init||{},{
+        headers:sbHed((init&&init.headers)||{})
+      })).then(res=>{
+        clearTimeout(timer);
+        if(!res.ok)throw new Error(r.tag+' HTTP '+res.status);
+        return res.json().catch(()=>({}));
+      }).then(data=>{
+        if(done)return;
+        store.set(SB.ROADS,r.tag);
+        finish(resolve,data);
+      }).catch(err=>{
+        clearTimeout(timer);
+        errors.push(r.tag+':'+(err&&err.name==='AbortError'?'timeout':(err&&err.message||'err')));
+        if(--pending===0) finish(reject,new Error('all roads failed → '+errors.join(' | ')));
+      });
+    });
+  });
+}
+function cloudSave(row){
+  return sbRace('/rest/v1/'+SB.table,{
     method:'POST',
     headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=representation'},
     body:JSON.stringify([row])
-  }).then(function(){toast('已同步到云端')}).catch(function(){toast('云端同步失败，已本地保存')});
+  }).then(()=>{
+    toast('云端已同步');
+  }).catch(err=>{
+    const q=store.get(SB.PEND,[]);
+    q.unshift({row:row,t:Date.now()});
+    store.set(SB.PEND,q.slice(0,20));
+    toast('已保存到本机，网络恢复后自动同步');
+    console.warn('[cloud]',err&&err.message);
+  });
 }
-function sbLoad(sid){
-  return sbCall('/rest/v1/'+SB.table+'?social_uid=eq.'+encodeURIComponent(sid)+'&select=*')
-    .then(function(r){return (r&&r[0])||null}).catch(function(){return null});
+function cloudFlush(){
+  const q=store.get(SB.PEND,[]);
+  if(!q.length)return;
+  const item=q[0];
+  sbRace('/rest/v1/'+SB.table,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=representation'},
+    body:JSON.stringify([item.row])
+  }).then(()=>{
+    const rest=store.get(SB.PEND,[]).filter(x=>x!==item);
+    store.set(SB.PEND,rest);
+    toast('待同步数据已补传');
+    if(rest.length)setTimeout(cloudFlush,1200);
+  }).catch(()=>{});
+}
+function cloudLoad(sid){
+  return sbRace('/rest/v1/'+SB.table+'?social_uid=eq.'+encodeURIComponent(sid)+'&select=*')
+    .then(r=>(r&&r[0])||null).catch(()=>null);
+}
+/* 调试：?sbtest=1 查看每条线路的真实结果 */
+if(new URLSearchParams(location.search).get('sbtest')==='1'){
+  setTimeout(async()=>{
+    const lines=[];
+    for(const r of sbRoads('/rest/v1/'+SB.table+'?select=social_uid&limit=1')){
+      const t0=Date.now();
+      try{
+        const ctl=new AbortController();
+        const tm=setTimeout(()=>ctl.abort(),8000);
+        const res=await fetch(r.url,{cache:'no-store',signal:ctl.signal,headers:sbHed()});
+        clearTimeout(tm);
+        lines.push(r.tag+' → HTTP '+res.status+' ('+(Date.now()-t0)+'ms)');
+      }catch(e){lines.push(r.tag+' → '+(e.name==='AbortError'?'超时':'失败')+' ('+(Date.now()-t0)+'ms)')}
+    }
+    alert('云端线路自检\n\n'+lines.join('\n'));
+  },800);
 }
 $('#wxLogin').addEventListener('click',function(){socStart('wx')});
 $('#qqLogin').addEventListener('click',function(){socStart('qq')});
 socHandleReturn();
+cloudFlush();
+addEventListener('online',cloudFlush);
+setInterval(cloudFlush,45000);
 if(user&&user.socialUid){
-  sbLoad(user.socialUid).then(function(r){
+  cloudLoad(user.socialUid).then(function(r){
     if(!r)return;
     let changed=false;
     if(r.nickname&&r.nickname!==user.nick){user.nick=r.nickname;user.name=r.nickname;changed=true}
@@ -952,7 +1025,6 @@ if(user&&user.socialUid){
     if(changed){store.set('u_user',user);paintUser()}
   });
 }
-
 
 const myPage=$('#myPage');
 myPage.addEventListener('click',e=>{
