@@ -357,8 +357,11 @@ body.my-open #myBotAnchor{opacity:1}
 .ord-bar{display:flex;justify-content:flex-end;margin:-6px 0 10px}
 .ord-bar button{padding:7px 13px;border-radius:11px;background:rgba(41,151,255,.14);color:#2997ff;font-size:12.5px;font-weight:600}
 
-.cover.has-img{background-size:cover;background-position:center;background-repeat:no-repeat}
-.cover.has-img::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.04) 30%,rgba(0,0,0,.62) 100%);pointer-events:none}
+.cover.has-img{background-size:contain;background-position:center;background-repeat:no-repeat;box-shadow:inset 0 0 0 1px var(--line)}
+.cover.has-img::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(72% 78% at 50% 6%,color-mix(in srgb,var(--c) 46%,transparent),transparent 72%);
+  mix-blend-mode:screen}
+.cover.has-img::after{content:"";position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(0,0,0,.02) 46%,rgba(0,0,0,.42) 100%);pointer-events:none;border-radius:inherit}
 .cover.has-img .lab,.cover.has-img .tg{position:relative;z-index:2}
 .cover.has-img .lab{color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.65)}
 </style>
@@ -440,7 +443,7 @@ body.my-open #myBotAnchor{opacity:1}
   </div>
 </div></section>
 </main>
-<footer id="foot">© 2026 乌托邦 Utopia · v17</footer>
+<footer id="foot">© 2026 乌托邦 Utopia · v18</footer>
 
 <section class="my-page" id="myPage" aria-label="账户中心" aria-hidden="true">
   <div class="my-page-inner">
@@ -680,7 +683,8 @@ setInterval(()=>{if(document.hidden)return;rollDay();if(claimSig()!==sig)renderT
 const seg=$('#seg'),sl=$('.sl',seg);let cat='全部',shopT=0;
 seg.insertAdjacentHTML('beforeend',CATS.map(c=>`<button class="${c===cat?'on':''}">${c}</button>`).join(''));
 const moveSl=()=>{const b=$('button.on',seg);if(b){sl.style.width=b.offsetWidth+'px';sl.style.transform=`translate3d(${b.offsetLeft}px,0,0)`}};
-const card=(p,i)=>`<div class="item rv" style="--i:${i%4};--c:${COL[p.k]}"><div class="cover${p.img?' has-img':''}"${p.img?` style="background-image:url('${p.img}')"`:''}>${p.t?`<span class="tg">${p.t}</span>`:''}${p.img?'':`<span class="big">${ic(p.k)}</span>`}<span class="lab">${p.l}</span></div><div class="info"><h4>${p.n}</h4><small>${p.d}</small><div class="buy"><span class="price"><b>¥${p.p}</b>${p.o>p.p?`<s>¥${p.o}</s>`:''}</span><button class="add press" data-id="${p.id}" aria-label="加入购物车">${ic('plus')}</button></div></div></div>`;
+const card=(p,i)=>`<div class="item rv" style="--i:${i%4};--c:${COL[p.k]}"><div class="cover${p.img?' has-img':''}"${p.img?` style="background-image:url('${p.img}')"`:''}>${(!p.img&&p.t)?`<span class="tg">${p.t}</span>`:''}${p.img?'':`<span class="big">${ic(p.k)}</span>`}${p.img?'':`<span class="lab">${p.l}</span>`}</div><div class="info"><h4>${p.n}</h4><small>${p.d}</small><div class="buy"><span class="price"><b>¥${p.p}</b>${p.o>p.p?`<s>¥${p.o}</s>`:''}</span><button class="add press" data-id="${p.id}" aria-label="加入购物车">${ic('plus')}</button></div></div></div>`;
+
 function renderShop(first){
   const g=$('#shopGrid'),list=P.filter(p=>cat==='全部'||p.c===cat);
   clearTimeout(shopT);
