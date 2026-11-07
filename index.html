@@ -340,6 +340,13 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
 body:not(.my-open) #meAv{opacity:0!important}
 #myBotAnchor{transition:opacity .3s var(--ease)}
 body.my-open #myBotAnchor{opacity:1}
+
+.pm-ico{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#fff;flex:none;overflow:hidden}
+.pm-ico svg{width:20px;height:20px;display:block}
+.pm-ico.alipay svg{fill:#1677ff}
+.pm-ico.wechat svg{fill:#07c160}
+.pm-ico.alipay{background:#eaf2ff}
+.pm-ico.wechat{background:#e8f9ef}
 </style>
 </head>
 <body>
@@ -521,7 +528,7 @@ const P=[
  {id:7,c:'影视会员',n:'影视会员 月卡',d:'热门平台 · 会员权益',p:15,o:25,k:'video',l:'1 个月'},
  {id:8,c:'影视会员',n:'影视会员 季卡',d:'热门平台 · 会员权益',p:42,o:75,k:'video',l:'3 个月'},
  {id:9,c:'影视会员',n:'影视会员 年卡',d:'热门平台 · 会员权益',p:168,o:298,k:'video',l:'12 个月',t:'限时'},
- {id:10,c:'游戏权益',n:'游戏点券 60',d:'即时到账',p:6,o:6,k:'game',l:'60 点券'},
+ {id:10,c:'游戏权益',n:'游戏点券 60',d:'即时到账 · 测试商品',p:0.01,o:6,k:'game',l:'60 点券',t:'测试'},
  {id:11,c:'游戏权益',n:'游戏点券 300',d:'即时到账 · 赠 10',p:30,o:30,k:'game',l:'300 点券',t:'赠送'},
  {id:12,c:'流量券',n:'夜间流量包 10GB',d:'23:00–07:00 可用',p:9.9,o:15,k:'data',l:'10 GB'}
 ];
@@ -720,16 +727,40 @@ function orderHTML(o){
   return `<div class="ord" data-id="${esc(o.id)}"><div class="ord-h"><span>订单 ${esc(o.no)}</span><i class="st ${sm[1]}">${sm[0]}</i></div><div class="ord-b">${names}</div><div class="ord-f"><small>${fmt(o.t)}</small><b>${money(o.amount)}</b></div>${o.status==='pending'?'<div class="ord-a"><button data-ord-cancel>取消订单</button><button class="pri" data-ord-pay>继续支付</button></div>':''}</div>`;
 }
 let ordersCache=[];
+/* ===== 订单：每次都以云端为准（不落本地） ===== */
+function orderFromRow(r){
+  const st=r.status==='paid'?'paid':(r.status==='closed'?'cancelled':'pending');
+  return {id:r.out_trade_no,no:r.out_trade_no,amount:Number(r.amount)||0,status:st,
+    pay:r.pay_type||'alipay',t:+new Date(r.created_at||Date.now()),
+    paidAt:r.paid_at?+new Date(r.paid_at):null,
+    items:(r.items||[]).map(i=>({id:i.id||0,n:i.n||'商品',p:Number(i.p)||0,q:Number(i.q)||1}))};
+}
+async function cloudOrders(){
+  if(!user)return [];
+  const uid=user.uacct||user.uid||'';
+  if(!uid)return [];
+  const rows=await sbCall('/rest/v1/utopia_orders?uid=eq.'+encodeURIComponent(uid)+'&select=*&order=created_at.desc&limit=50');
+  return (rows||[]).map(orderFromRow);
+}
+async function prefetchOrders(){
+  if(!user)return;
+  try{ordersCache=await cloudOrders()}catch(_){}
+}
 async function openOrders(){
-  openPanel('我的订单','<div class="empty">加载中…</div>','orders');
+  const had=ordersCache.length;
+  openPanel('我的订单',had?ordersCache.map(orderHTML).join(''):'<div class="empty">加载中…</div>','orders');
   try{
-    const list=await API.listOrders();if(pnlKind!=='orders')return;
+    const list=user?await cloudOrders():await API.listOrders();
+    if(pnlKind!=='orders')return;
     ordersCache=list||[];
     pnlBody.innerHTML=ordersCache.length?ordersCache.map(orderHTML).join(''):'<div class="empty">暂无订单<br>去商城挑选心仪的权益吧</div>';
-  }catch(e){if(pnlKind==='orders')pnlBody.innerHTML='<div class="empty">加载失败，请稍后重试</div>'}
+  }catch(e){
+    if(pnlKind==='orders'&&!had)pnlBody.innerHTML='<div class="empty">加载失败，请稍后重试</div>';
+  }
 }
 
 /* 支付 */
+const PAY_ICONS={alipay:'<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Alipay</title><path d="M19.695 15.07c3.426 1.158 4.203 1.22 4.203 1.22V3.846c0-2.124-1.705-3.845-3.81-3.845H3.914C1.808.001.102 1.722.102 3.846v16.31c0 2.123 1.706 3.845 3.813 3.845h16.173c2.105 0 3.81-1.722 3.81-3.845v-.157s-6.19-2.602-9.315-4.119c-2.096 2.602-4.8 4.181-7.607 4.181-4.75 0-6.361-4.19-4.112-6.949.49-.602 1.324-1.175 2.617-1.497 2.025-.502 5.247.313 8.266 1.317a16.796 16.796 0 0 0 1.341-3.302H5.781v-.952h4.799V6.975H4.77v-.953h5.81V3.591s0-.409.411-.409h2.347v2.84h5.744v.951h-5.744v1.704h4.69a19.453 19.453 0 0 1-1.986 5.06c1.424.52 2.702 1.011 3.654 1.333m-13.81-2.032c-.596.06-1.71.325-2.321.869-1.83 1.608-.735 4.55 2.968 4.55 2.151 0 4.301-1.388 5.99-3.61-2.403-1.182-4.438-2.028-6.637-1.809" fill="#1677FF"/></svg>',wechat:'<svg viewBox="0 0 24 24"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/></svg>'};
 function openPay(src){
   const order=src&&src.order;
   const items=order?order.items:cartItems();
@@ -740,10 +771,10 @@ function openPay(src){
   openPanel('确认订单',`
     <div class="pay-items">${items.map(i=>`<div class="pay-it"><span>${esc(i.n)}</span><em>×${i.q}</em><b>${money(i.p*i.q)}</b></div>`).join('')}</div>
     <div class="my-section-label" style="margin:18px 2px 10px">支付方式</div>
-    ${CONFIG.PAY_METHODS.map(m=>`<button class="pm ${m.id===payMethod?'on':''}" data-pm="${m.id}"><i style="background:${m.c}">${m.t}</i><span>${m.n}</span><span class="rd"></span></button>`).join('')}
+    ${CONFIG.PAY_METHODS.map(m=>`<button class="pm ${m.id===payMethod?'on':''}" data-pm="${m.id}"><i class="pm-ico ${m.id}">${PAY_ICONS[m.id]||''}</i><span>${m.n}</span><span class="rd"></span></button>`).join('')}
     <div class="pay-total"><small>应付金额</small><b>${money(amount)}</b></div>
     <button class="login-submit press" data-pay-go>确认支付 ${money(amount)}</button>
-    <p class="login-note" style="text-align:center;margin-bottom:0">由 1987 易支付提供收款，支付完成后自动回到本站并核对订单。</p>`,'pay');
+    <p class="login-note" style="text-align:center;margin-bottom:0">交易由平台担保，支付完成后自动核对订单。</p>`,'pay');
 }
 /* ===== 真实支付（1987 易支付，经 sbrelay 服务端签名） ===== */
 const PAYGATE='https://sbrelay.pages.dev';
@@ -796,8 +827,9 @@ async function submitPay(){
     const items=payCtx.order?payCtx.order.items:cartItems();
     const amount=payCtx.amount;
     const d=await payCreate(items,amount,payMethod);
-    paySaveLocal(d.no,items,amount,payMethod);
+    if(!user)paySaveLocal(d.no,items,amount,payMethod);
     cart={};saveCart();
+    pnlLock=false;go.disabled=false;go.textContent=label;
     location.href=d.url;
   }catch(e){
     pnlLock=false;go.disabled=false;go.textContent=label;
@@ -976,6 +1008,7 @@ function socApply(d){
   store.set('u_user',user);store.set('u_token',token);
   paintUser();closeLogin();botAct('happy','欢迎回来！',2200);
   if(myPage.classList.contains('on'))avEnter();
+  setTimeout(prefetchOrders,800);
   const cb=afterLogin;afterLogin=null;if(cb)setTimeout(cb,380);
   cloudSave({social_uid:sid,provider:type,nickname:nick,avatar:avatar,uid:uacct,extra:{account:account},updated_at:new Date().toISOString()});
 }
@@ -1117,8 +1150,19 @@ if(new URLSearchParams(location.search).get('sbtest')==='1'){
     alert('云端线路自检\n\n'+lines.join('\n'));
   },800);
 }
-setTimeout(checkPendingPay,1500);
-document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(checkPendingPay,600)});
+function unlockPayUI(){
+  pnlLock=false;
+  const go=$('[data-pay-go]',pnlBody);
+  if(go&&payCtx){go.disabled=false;go.textContent='确认支付 '+money(payCtx.amount)}
+}
+window.addEventListener('pageshow',function(e){
+  unlockPayUI();
+  if(e.persisted&&pnlKind==='pay'){try{closePanel()}catch(_){};toast('支付未完成，可重新下单')}
+  setTimeout(checkPendingPay,400);
+  setTimeout(prefetchOrders,600);
+});
+setTimeout(function(){prefetchOrders();checkPendingPay()},1500);
+document.addEventListener('visibilitychange',function(){if(!document.hidden){unlockPayUI();setTimeout(checkPendingPay,600)}});
 $('#wxLogin').addEventListener('click',function(){socStart('wx')});
 $('#qqLogin').addEventListener('click',function(){socStart('qq')});
 socHandleReturn();
