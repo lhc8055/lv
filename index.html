@@ -319,6 +319,8 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
 .soc-btn[disabled]{opacity:.6}
 
 .me-av{width:30px;height:30px;border-radius:50%;object-fit:cover;vertical-align:-9px;margin-right:8px;box-shadow:inset 0 0 0 1px var(--line)}
+
+.me-id{font-size:12px;color:var(--sub);opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:56vw}
 </style>
 </head>
 <body>
@@ -408,6 +410,7 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
         <div class="my-profile-copy">
           <strong id="meName">未登录</strong>
           <span id="meDesc">登录后查看账户与权益</span>
+          <span id="meId" class="me-id"></span>
         </div>
       </div>
       <span class="my-status" id="myStatus">访客</span>
@@ -758,7 +761,8 @@ async function openBenefits(){
 /* 设置 */
 function openSettings(){
   openPanel('账户设置',`
-    <div class="set-card"><div class="set-row"><span>账号</span><b>${esc(shortId(user.socialUid||user.id))}</b></div>
+    <div class="set-card"><div class="set-row"><span>登录方式</span><b>${esc(providerText())}</b></div>
+    <div class="set-row"><span>账号</span><b>${esc(user.account||user.uacct||uacctOf(user.socialUid))}</b></div>
     <div class="set-row"><span>昵称</span><input class="set-in" id="nickIn" maxlength="12" placeholder="设置昵称" value="${esc(user.nick||'')}"></div></div>
     <button class="login-submit press" data-save-nick style="margin-top:16px">保存昵称</button>
     ${CONFIG.API_BASE?'':'<button class="login-out press" data-reset-demo>重置体验数据</button>'}
@@ -801,6 +805,15 @@ const loginMask=$('#loginMask');
 let afterLogin=null,cdT=0;
 const displayName=()=>user?(user.nick||user.name||maskPhone(user.id)):'未登录';
 const shortId=v=>{const t=String(v||'');return t.length>12?t.slice(0,4)+'…'+t.slice(-4):t};
+/* 乌托邦账号：uid + 纯数字（由 social_uid 稳定推导，同一账号永远同一个） */
+function uacctOf(sid){
+  const t=String(sid||'');
+  let h=2166136261;
+  for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619)}
+  h=h>>>0;
+  return 'uid'+String(h%100000000).padStart(8,'0');
+}
+const providerText=()=>user&&user.type==='qq'?'QQ登录':'微信登录';
 function paintUser(){
   const logged=!!user;
   $('#loginEntry').textContent=logged?'账户':'登录';
@@ -812,7 +825,18 @@ function paintUser(){
       nameEl.textContent=displayName();
     }
   }
-  $('#meDesc').textContent=logged?'账号':'登录后查看账户与权益';
+  const idEl=$('#meId');
+  if(logged){
+    $('#meDesc').textContent=providerText();
+    if(idEl){
+      const num=String(user.account||'').trim();
+      idEl.textContent=num?num:(user.uacct||uacctOf(user.socialUid));
+      idEl.style.display='';
+    }
+  }else{
+    $('#meDesc').textContent='登录后查看账户与权益';
+    if(idEl){idEl.textContent='';idEl.style.display='none'}
+  }
   $('#myStatus').textContent=logged?'已登录':'访客';
 }
 function requireLogin(cb){if(user)return cb();afterLogin=cb;openLogin()}
@@ -876,13 +900,14 @@ function socApply(d){
   const nick=String(d.nickname||((type==='qq'?'QQ':'微信')+'用户'+sid.slice(-4))).slice(0,20);
   let avatar=String(d.faceimg||'').replace(/^http:/,'https:');
   if(!/^https:\/\//.test(avatar))avatar='';
-  const uid='u_'+type+'_'+sid;
-  user={id:uid,name:nick,nick:nick,avatar:avatar,type:type,socialUid:sid,loginAt:Date.now()};
+  const uacct=uacctOf(sid);
+  const account=String(d.qq||d.qqnumber||d.qq_number||d.wx||d.wxnumber||d.wx_number||d.username||d.account||d.mobile||d.phone||'').trim();
+  user={id:uacct,uid:uacct,uacct:uacct,account:account,name:nick,nick:nick,avatar:avatar,type:type,socialUid:sid,loginAt:Date.now()};
   token='aze.'+type+'.'+sid;
   store.set('u_user',user);store.set('u_token',token);
   paintUser();closeLogin();botAct('happy','欢迎回来！',2200);
   const cb=afterLogin;afterLogin=null;if(cb)setTimeout(cb,380);
-  cloudSave({social_uid:sid,provider:type,nickname:nick,avatar:avatar,uid:uid,updated_at:new Date().toISOString()});
+  cloudSave({social_uid:sid,provider:type,nickname:nick,avatar:avatar,uid:uacct,extra:{account:account},updated_at:new Date().toISOString()});
 }
 function socHandleReturn(){
   const q=new URLSearchParams(location.search);
@@ -1034,7 +1059,15 @@ if(user&&user.socialUid){
     let changed=false;
     if(r.nickname&&r.nickname!==user.nick){user.nick=r.nickname;user.name=r.nickname;changed=true}
     if(r.avatar&&r.avatar!==user.avatar){user.avatar=r.avatar;changed=true}
+    const acct=r.extra&&r.extra.account?String(r.extra.account):'';
+    if(acct!==user.account){user.account=acct;changed=true}
+    const ua=uacctOf(user.socialUid);
+    if(user.uacct!==ua){user.uacct=ua;user.uid=ua;user.id=ua;changed=true}
+    if(/^uid\d{8}$/.test(String(r.uid||''))&&r.uid!==ua){changed=true}
     if(changed){store.set('u_user',user);paintUser()}
+    if(!r.uid||!r.extra||!r.extra.account||!/^uid\d{8}$/.test(String(r.uid))){
+      cloudSave({social_uid:user.socialUid,provider:user.type,nickname:user.nick,avatar:user.avatar,uid:ua,extra:{account:acct},updated_at:new Date().toISOString()});
+    }
   });
 }
 
