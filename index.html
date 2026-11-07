@@ -435,7 +435,7 @@ body.my-open #myBotAnchor{opacity:1}
   </div>
 </div></section>
 </main>
-<footer id="foot">© 2026 乌托邦 Utopia</footer>
+<footer id="foot">© 2026 乌托邦 Utopia · v15</footer>
 
 <section class="my-page" id="myPage" aria-label="账户中心" aria-hidden="true">
   <div class="my-page-inner">
@@ -767,7 +767,14 @@ async function openOrders(){
     ordersCache=list||[];
     pnlBody.innerHTML=bar+(ordersCache.length?ordersCache.map(orderHTML).join(''):'<div class="empty">暂无订单<br>去商城挑选心仪的权益吧</div>');
   }catch(e){
-    if(pnlKind==='orders'&&!had)pnlBody.innerHTML=bar+'<div class="empty">加载失败，请稍后重试</div>';
+    let local=[];
+    try{local=await API.listOrders()}catch(_){}
+    ordersCache=local||[];
+    if(pnlKind==='orders'){
+      pnlBody.innerHTML=bar+(ordersCache.length
+        ? ordersCache.map(orderHTML).join('')
+        : '<div class="empty">云端连接失败，稍后自动重试<br>下拉或点右上角刷新</div>');
+    }
   }
 }
 
