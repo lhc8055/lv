@@ -337,6 +337,8 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
 #meAv.on{opacity:1;transform:scale(1);pointer-events:auto;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 8px 24px rgba(0,0,0,.45)}
 #meAv img{width:100%;height:100%;object-fit:cover;display:block}
 #meAv:active{transform:scale(.94)}
+#meAv.on ~ #myBotAnchor{opacity:0!important}
+#myBotAnchor{transition:opacity .32s var(--ease)}
 body:not(.my-open) #meAv{opacity:0!important}
 #myBotAnchor{transition:opacity .3s var(--ease)}
 body.my-open #myBotAnchor{opacity:1}
@@ -807,17 +809,34 @@ function paySaveLocal(no,items,amount,method){
   }
 }
 async function checkPendingPay(){
-  const list=store.get('u_orders',[]);
-  const pend=list.filter(o=>o.status==='pending').slice(0,5);
+  if(!user)return;
+  let list;
+  try{list=await cloudOrders()}catch(_){return}
+  ordersCache=list;
+  const pend=list.filter(o=>o.status==='pending').slice(0,6);
   let changed=false;
   for(const o of pend){
-    if(await payQuery(o.id)){o.status='paid';o.paidAt=Date.now();changed=true;toast('订单 '+o.no+' 支付成功')}
+    if(await payQuery(o.id)){changed=true}
   }
   if(changed){
-    store.set('u_orders',list);
+    try{ordersCache=await cloudOrders()}catch(_){}
+    toast('支付成功，订单已同步');
     botAct('finished','支付成功，感谢支持！',2200);
     if(pnlKind==='orders')openOrders();
   }
+  return changed;
+}
+let payPollTimer=0;
+function startPayPoll(){
+  clearInterval(payPollTimer);
+  let n=0;
+  payPollTimer=setInterval(async function(){
+    if(document.hidden)return;
+    n++;
+    const pend=(ordersCache||[]).filter(o=>o.status==='pending');
+    if(!pend.length||n>60){clearInterval(payPollTimer);return}
+    await checkPendingPay();
+  },4000);
 }
 async function submitPay(){
   const go=$('[data-pay-go]',pnlBody);if(!go||go.disabled||!payCtx)return;
@@ -1118,16 +1137,18 @@ function cloudFlush(){
   const q=store.get(SB.PEND,[]);
   if(!q.length)return;
   const item=q[0];
+  const key=item&&item.row&&item.row.social_uid;
   sbRace('/rest/v1/'+SB.table,{
     method:'POST',
     headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=representation'},
     body:JSON.stringify([item.row])
   }).then(()=>{
-    const rest=store.get(SB.PEND,[]).filter(x=>x!==item);
+    const rest=store.get(SB.PEND,[]).filter(function(x){
+      return !(x&&x.row&&x.row.social_uid===key);
+    });
     store.set(SB.PEND,rest);
-    toast('待同步数据已补传');
-    if(rest.length)setTimeout(cloudFlush,1200);
-  }).catch(()=>{});
+    if(rest.length)setTimeout(cloudFlush,1500);
+  }).catch(function(){});
 }
 function cloudLoad(sid){
   return sbRace('/rest/v1/'+SB.table+'?social_uid=eq.'+encodeURIComponent(sid)+'&select=*')
@@ -1158,17 +1179,17 @@ function unlockPayUI(){
 window.addEventListener('pageshow',function(e){
   unlockPayUI();
   if(e.persisted&&pnlKind==='pay'){try{closePanel()}catch(_){};toast('支付未完成，可重新下单')}
-  setTimeout(checkPendingPay,400);
+  setTimeout(function(){checkPendingPay();startPayPoll()},400);
   setTimeout(prefetchOrders,600);
 });
-setTimeout(function(){prefetchOrders();checkPendingPay()},1500);
-document.addEventListener('visibilitychange',function(){if(!document.hidden){unlockPayUI();setTimeout(checkPendingPay,600)}});
+setTimeout(function(){prefetchOrders();checkPendingPay();startPayPoll()},1500);
+document.addEventListener('visibilitychange',function(){if(!document.hidden){unlockPayUI();setTimeout(function(){checkPendingPay();startPayPoll()},500)}});
 $('#wxLogin').addEventListener('click',function(){socStart('wx')});
 $('#qqLogin').addEventListener('click',function(){socStart('qq')});
 socHandleReturn();
 cloudFlush();
 addEventListener('online',cloudFlush);
-setInterval(cloudFlush,45000);
+setInterval(cloudFlush,60000);
 if(user&&user.socialUid){
   cloudLoad(user.socialUid).then(function(r){
     if(!r)return;
@@ -1313,6 +1334,7 @@ async function openMyPage(){
   if(pageTransitionBusy||myPage.classList.contains('on'))return;
   pageTransitionBusy=true;
   try{
+    avPhoto(false);
     myPage.classList.add('on');myPage.setAttribute('aria-hidden','false');document.body.classList.add('my-open');
     moveDock(3);await nextFrame();await moveSharedBot(true);setHash('#my-page');avEnter();
   }finally{pageTransitionBusy=false}
