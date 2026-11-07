@@ -154,7 +154,7 @@ footer{text-align:center;color:#6e6e73;font-size:12.5px;padding:64px 20px 28px}
 .utbot.engine-ready::after{display:none}
 .utbot.engine-ready .utbot-engine{opacity:1;transform:scale(1)}
 .logo .utbot{width:44px;height:44px}
-.my-bot-anchor{width:66px;height:66px}
+.my-bot-anchor{width:76px;height:76px}
 
 /* 我的页面 */
 .my-page{position:fixed;z-index:45;inset:0;display:none;overflow:auto;overscroll-behavior:contain;background:#000;padding:calc(22px + var(--sat)) 20px calc(104px + var(--sab))}
@@ -331,8 +331,8 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
 #meId{font-size:11.5px;opacity:.66;font-variant-numeric:tabular-nums;letter-spacing:.04em}
 
 .my-profile{position:relative}
-#meAv{display:block;position:absolute;left:0;top:0;width:66px;height:66px;border-radius:50%;overflow:hidden;z-index:3;
-  opacity:0;transform:scale(.86);transition:opacity .62s var(--ease),transform .62s var(--ease),box-shadow .62s var(--ease);
+#meAv{display:block;position:absolute;left:0;top:0;width:76px;height:76px;border-radius:50%;overflow:hidden;z-index:3;
+  opacity:0;transform:scale(.84);transition:opacity .72s var(--ease),transform .72s var(--ease),box-shadow .72s var(--ease);
   pointer-events:none;background:#111;box-shadow:0 0 0 0 rgba(41,151,255,0)}
 #meAv.on{opacity:1;transform:scale(1);pointer-events:auto;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 8px 24px rgba(0,0,0,.45)}
 #meAv img{width:100%;height:100%;object-fit:cover;display:block}
@@ -1184,7 +1184,7 @@ async function moveSharedBot(toMy,preFrom,preTo){
   const dx=to.left-from.left,dy=to.top-from.top,sx=to.width/from.width,sy=to.height/from.height;
   Object.assign(bot.style,{position:'fixed',left:from.left+'px',top:from.top+'px',width:from.width+'px',height:from.height+'px',margin:'0',zIndex:'120',transformOrigin:'top left',transition:'none',pointerEvents:'none',willChange:'transform'});
   document.body.appendChild(bot);
-  const anim=bot.animate([{transform:'translate3d(0,0,0) scale(1,1)'},{transform:`translate3d(${dx}px,${dy}px,0) scale(${sx},${sy})`}],{duration:520,easing:MOTION_EASE,fill:'both'});
+  const anim=bot.animate([{transform:'translate3d(0,0,0) scale(1,1)'},{transform:`translate3d(${dx}px,${dy}px,0) scale(${sx},${sy})`}],{duration:700,easing:MOTION_EASE,fill:'both'});
   botAnimation=anim;
   try{await anim.finished}catch(_){return}
   if(token!==botMoveToken)return;
@@ -1214,7 +1214,7 @@ async function closeMyPage(){
   pageTransitionBusy=true;
   try{
     avPhoto(false);
-    if(bot)await new Promise(r=>setTimeout(r,240));
+    if(bot)await new Promise(r=>setTimeout(r,280));
     const from=bot.getBoundingClientRect(),to=headerBotAnchor.getBoundingClientRect();
     myPage.classList.remove('on');myPage.setAttribute('aria-hidden','true');document.body.classList.remove('my-open');
     await nextFrame();await moveSharedBot(false,from,to);
