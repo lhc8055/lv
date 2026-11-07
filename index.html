@@ -2,7 +2,8 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- 注意：刻意不使用 viewport-fit=cover。部分系统浏览器首次加载时 env(safe-area-inset-*) 会返回错误的非零值，导致固定导航整体下移，刷新后才恢复 -->
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#000000">
 <title>乌托邦 · 流量与数字权益</title>
 <style>
@@ -12,87 +13,81 @@
   --glass:rgba(28,28,32,.62); --glass-line:rgba(255,255,255,.14);
   --ease:cubic-bezier(.22,1,.36,1);
   --ease-io:cubic-bezier(.65,0,.35,1);
-  --max:1080px; --gx:20px; --gap:14px; --r:22px; --hh:52px;
+  --max:1080px; --gx:20px; --gap:14px; --r:22px;
+  /* 安全区统一为 0：不再依赖 env()，避免系统浏览器首屏错位 */
+  --sat:0px; --sab:0px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;background:var(--bg)}
-body{background:var(--bg);color:var(--text);font:400 16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden;padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100% !important;text-size-adjust:100% !important;background:var(--bg)}
+body{background:var(--bg);color:var(--text);font:400 16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden;padding-bottom:calc(92px + var(--sab))}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+button:disabled{cursor:default}
 a{color:inherit;text-decoration:none}
 svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .wrap{max-width:var(--max);margin:0 auto;padding:0 var(--gx)}
-section{content-visibility:auto;contain-intrinsic-size:1px 640px}
 
 .rv{opacity:0;transform:translate3d(0,24px,0);transition:opacity .9s var(--ease),transform .9s var(--ease);transition-delay:calc(var(--i,0)*80ms)}
 .rv.in{opacity:1;transform:none}
 .press{transition:transform .5s var(--ease),background-color .4s var(--ease),opacity .4s var(--ease)}
 .press:active{transform:scale(.95);transition-duration:.16s}
 
-header{position:fixed;z-index:50;top:calc(6px + env(safe-area-inset-top));left:0;right:0;pointer-events:none;display:flex;justify-content:center;padding:0 12px}
-.nav{pointer-events:auto;width:100%;max-width:760px;height:var(--hh);padding:0 8px 0 16px;border-radius:26px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+/* 顶部导航：固定高度 + 固定偏移，不依赖任何动态变量 */
+header{position:fixed;z-index:50;top:calc(8px + var(--sat));left:0;right:0;pointer-events:none;display:flex;justify-content:center;padding:0 12px}
+.nav{pointer-events:auto;width:100%;max-width:760px;height:52px;min-height:52px;max-height:52px;padding:0 8px 0 16px;border-radius:26px;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box;overflow:hidden;
   background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(26px);backdrop-filter:saturate(180%) blur(26px);box-shadow:inset 0 0 0 1px var(--glass-line),0 10px 40px rgba(0,0,0,.45);
-  transition:transform .7s var(--ease),opacity .55s var(--ease)}
-body.my-open .nav{opacity:0;transform:none;pointer-events:none}
-.logo{display:flex;align-items:center;gap:9px;font-weight:650;font-size:17px;letter-spacing:.06em;position:relative}
-.mark{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 30% 28%,#fff,#9ec9ff 38%,#2997ff 70%,#1a3a8f);box-shadow:0 0 18px rgba(41,151,255,.55)}
+  transition:opacity .55s var(--ease)}
+body.my-open .nav{opacity:0;pointer-events:none}
+.logo{display:flex;align-items:center;gap:10px;font-weight:650;font-size:17px;letter-spacing:.06em;position:relative;height:100%;white-space:nowrap}
 .links{display:none}
-.right{display:flex;align-items:center;gap:8px;justify-self:end}
-.bal{display:flex;align-items:baseline;gap:3px;height:36px;padding:0 13px;align-items:center;border-radius:18px;background:var(--s1);font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.right{display:flex;align-items:center;gap:8px}
+.bal{display:flex;align-items:center;gap:3px;height:36px;padding:0 13px;border-radius:18px;background:var(--s1);font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums}
 .bal small{color:var(--sub);font-weight:500;margin-right:3px}
 .ib{position:relative;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--s1);font-size:18px}
 .badge{position:absolute;top:-3px;right:-3px;min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:#ff453a;color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center;transform:scale(0);transition:transform .5s var(--ease)}
 .badge.on{transform:scale(1)}.badge.pop{animation:pop .55s var(--ease)}
 @keyframes pop{40%{transform:scale(1.55)}}
 
-.hero{position:relative;padding:calc(var(--hh) + 40px + env(safe-area-inset-top)) 0 32px;text-align:center;overflow:hidden}
+.hero{position:relative;padding:92px 0 28px;text-align:center;overflow:hidden}
 .glow{position:absolute;left:50%;top:-12%;width:min(1100px,150vw);height:620px;transform:translate3d(-50%,0,0);pointer-events:none;
   background:
     radial-gradient(42% 48% at 48% 38%,rgba(54,145,255,.28),transparent 72%),
     radial-gradient(34% 42% at 24% 58%,rgba(105,116,255,.17),transparent 72%),
-    radial-gradient(34% 42% at 76% 58%,rgba(65,196,255,.16),transparent 72%);
-  background-size:145% 145%;
-  animation:flowGlow 16s cubic-bezier(.45,0,.55,1) infinite alternate;
-  will-change:transform,opacity,background-position}
-@keyframes flowGlow{
-  0%{opacity:.72;transform:translate3d(-50%,0,0) scale(1);background-position:0% 35%}
-  50%{opacity:1;background-position:70% 65%}
-  100%{opacity:.8;transform:translate3d(-50%,18px,0) scale(1.08);background-position:100% 25%}
-}
+    radial-gradient(34% 42% at 76% 58%,rgba(65,196,255,.16),transparent 72%)}
 .hero .wrap{position:relative;z-index:1}
-.hero h1{position:relative;isolation:isolate}
-.hero h1::before{
-  content:"";position:absolute;z-index:-1;left:50%;top:48%;width:145%;height:155%;
-  transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;
-  background:
-    radial-gradient(ellipse at 42% 48%,rgba(64,139,255,.23),transparent 53%),
-    radial-gradient(ellipse at 65% 55%,rgba(111,105,255,.16),transparent 58%);
-  filter:blur(24px);opacity:.8;
-  animation:titleAura 11s ease-in-out infinite alternate;
-}
-@keyframes titleAura{
-  0%{transform:translate(-54%,-48%) scale(.92);opacity:.55}
-  100%{transform:translate(-46%,-53%) scale(1.12);opacity:1}
-}
 .pill{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 14px;border-radius:15px;background:var(--s1);box-shadow:inset 0 0 0 1px var(--line);font-size:13px;color:#c7c7cc}
 .pill i{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
-h1{margin-top:22px;font-size:clamp(36px,9.6vw,72px);line-height:1.06;font-weight:700;letter-spacing:-.025em;background:linear-gradient(180deg,#fff 30%,#8e8e93);-webkit-background-clip:text;background-clip:text;color:transparent}
-.lead{max-width:520px;margin:18px auto 0;color:var(--sub);font-size:clamp(15px,2vw,19px);line-height:1.55}
-.cta{display:flex;justify-content:center;gap:10px;margin-top:28px}
+
+/* 标题：渐变文字 + 低频高光扫过（每 11 秒一次，约 1.5 秒） */
+h1{position:relative;isolation:isolate;width:fit-content;margin:20px auto 0;padding:0 .03em;font-size:clamp(36px,9.6vw,72px);line-height:1.08;font-weight:700;letter-spacing:-.025em;color:transparent;
+  background:
+    linear-gradient(105deg,rgba(255,255,255,0) 42%,rgba(255,255,255,.98) 50%,rgba(255,255,255,0) 58%) no-repeat,
+    linear-gradient(180deg,#e6e6ec 28%,#85858c);
+  background-size:260% 100%,100% 100%;
+  background-position:100% 0,0 0;
+  -webkit-background-clip:text;background-clip:text;
+  animation:sheen 11s var(--ease-io) 2.4s infinite}
+h1::before{content:"";position:absolute;z-index:-1;left:50%;top:50%;width:175%;height:170%;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;
+  background:radial-gradient(ellipse at 45% 50%,rgba(64,139,255,.2),transparent 60%),radial-gradient(ellipse at 66% 55%,rgba(111,105,255,.13),transparent 62%)}
+@keyframes sheen{0%{background-position:100% 0,0 0}14%,100%{background-position:-30% 0,0 0}}
+.lead{max-width:520px;margin:16px auto 0;color:var(--sub);font-size:clamp(15px,2vw,19px);line-height:1.55}
+.cta{display:flex;justify-content:center;gap:10px;margin-top:24px}
 .btn{height:46px;padding:0 26px;border-radius:23px;font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
 .btn.w{background:#f5f5f7;color:#000}.btn.w:hover{background:#fff}
 .btn.o{background:var(--s2);box-shadow:inset 0 0 0 1px var(--line)}.btn.o:hover{background:rgba(255,255,255,.13)}
+.btn:disabled,.login-submit:disabled{opacity:.55}
 
-.stage{position:relative;margin:32px auto 0;max-width:880px;display:grid;grid-template-columns:1fr;justify-items:center;perspective:1400px}
-.card3d{width:100%;max-width:340px;transform-style:preserve-3d;transition:transform .9s var(--ease);will-change:transform}
+.stage{position:relative;margin:28px auto 0;max-width:880px;display:grid;grid-template-columns:1fr;justify-items:center;perspective:1400px}
+.card3d{width:100%;max-width:340px;transform-style:preserve-3d;transition:transform .9s var(--ease)}
 .gl{position:relative;border-radius:26px;background:linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.03));-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);box-shadow:inset 0 0 0 1px var(--glass-line),0 30px 80px rgba(0,0,0,.55);overflow:hidden}
 .gl::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 80% at 18% -10%,rgba(255,255,255,.22),transparent 55%);pointer-events:none}
 .main{padding:22px;text-align:left}
 .main .top{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#c7c7cc}
 .main .top b{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text)}
-.main .num{margin:30px 0 4px;font-size:46px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.mark{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 30% 28%,#fff,#9ec9ff 38%,#2997ff 70%,#1a3a8f);box-shadow:0 0 18px rgba(41,151,255,.55)}
+.main .num{margin:26px 0 4px;font-size:46px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
 .main .num small{font-size:17px;font-weight:600;color:var(--sub);margin-left:5px}
 .main .sub{font-size:13px;color:var(--sub)}
-.track{margin-top:22px;height:5px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
+.track{margin-top:20px;height:5px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
 .fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#2997ff,#7ee0ff);transform-origin:left;transform:scaleX(0);transition:transform 1.1s var(--ease)}
 .main .meta{display:flex;justify-content:space-between;margin-top:10px;font-size:12px;color:var(--sub)}
 .sd{display:none}
@@ -100,8 +95,8 @@ h1{margin-top:22px;font-size:clamp(36px,9.6vw,72px);line-height:1.06;font-weight
 .sd .ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--s2);font-size:20px;margin-bottom:46px}
 .sd b{display:block;font-size:18px;letter-spacing:-.01em}.sd small{color:var(--sub);font-size:13px}
 
-.sec{padding:64px 0 0}
-.head{text-align:center;margin-bottom:32px}
+.sec{padding:56px 0 0}
+.head{text-align:center;margin-bottom:28px}
 .head h2{font-size:clamp(28px,5vw,44px);line-height:1.1;font-weight:700;letter-spacing:-.02em}
 .head p{margin-top:10px;color:var(--sub);font-size:clamp(14.5px,1.8vw,18px)}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap)}
@@ -115,9 +110,9 @@ h1{margin-top:22px;font-size:clamp(36px,9.6vw,72px);line-height:1.06;font-weight
 .task p{font-size:12.5px;color:var(--sub)}
 .claim{margin-top:16px;width:100%;height:38px;border-radius:19px;background:#f5f5f7;color:#000;font-weight:600;font-size:14px;transition:transform .5s var(--ease),background-color .4s var(--ease),color .4s var(--ease)}
 .claim:active{transform:scale(.95)}
-.claim.done{background:rgba(48,209,88,.14);color:var(--green);cursor:default}
+.claim.done{background:rgba(48,209,88,.14);color:var(--green)}
 
-.seg{position:relative;display:flex;width:max-content;max-width:100%;margin:0 auto 28px;padding:4px;border-radius:21px;background:var(--s1);box-shadow:inset 0 0 0 1px var(--line);overflow-x:auto;scrollbar-width:none}
+.seg{position:relative;display:flex;width:max-content;max-width:100%;margin:0 auto 24px;padding:4px;border-radius:21px;background:var(--s1);box-shadow:inset 0 0 0 1px var(--line);overflow-x:auto;scrollbar-width:none}
 .seg::-webkit-scrollbar{display:none}
 .seg button{position:relative;z-index:1;height:34px;padding:0 16px;border-radius:17px;font-size:14px;font-weight:600;color:var(--sub);white-space:nowrap;transition:color .4s var(--ease)}
 .seg button.on{color:#000}
@@ -143,9 +138,9 @@ h1{margin-top:22px;font-size:clamp(36px,9.6vw,72px);line-height:1.06;font-weight
 .f{background:var(--s1);box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--r);padding:26px 20px;text-align:center}
 .f .ico{margin:0 auto 14px}
 .f h3{font-size:17px;margin-bottom:4px}.f p{font-size:14px;color:var(--sub)}
-footer{text-align:center;color:#6e6e73;font-size:12.5px;padding:72px 20px 28px}
+footer{text-align:center;color:#6e6e73;font-size:12.5px;padding:64px 20px 28px}
 
-.logo{gap:10px}
+/* UT Bot */
 .bot-anchor{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;flex:none;vertical-align:middle;position:relative}
 .header-bot-slot{width:44px;height:44px}
 .utbot{position:relative;display:inline-grid;place-items:center;width:46px;height:46px;flex:none;border-radius:50%;
@@ -160,18 +155,22 @@ footer{text-align:center;color:#6e6e73;font-size:12.5px;padding:72px 20px 28px}
 .utbot.engine-ready .utbot-engine{opacity:1;transform:scale(1)}
 .logo .utbot{width:44px;height:44px}
 .my-bot-anchor{width:54px;height:54px}
-.my-page{position:fixed;z-index:45;inset:0;display:none;overflow:auto;overscroll-behavior:contain;background:#000;padding:calc(22px + env(safe-area-inset-top)) 20px calc(104px + env(safe-area-inset-bottom));}
+
+/* 我的页面 */
+.my-page{position:fixed;z-index:45;inset:0;display:none;overflow:auto;overscroll-behavior:contain;background:#000;padding:calc(22px + var(--sat)) 20px calc(104px + var(--sab))}
 .my-page.on{display:block;animation:myPageIn .42s var(--ease) both}
 @keyframes myPageIn{from{opacity:0}to{opacity:1}}
 .my-page-inner{width:min(100%,680px);margin:0 auto}
-.my-page-top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 2px 28px;border-bottom:1px solid var(--line)}
+.my-page-top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 2px 22px}
 .my-profile{display:flex;align-items:center;gap:14px;min-width:0}
 .my-bot{width:54px;height:54px;flex:none}
 .my-profile-copy{display:flex;flex-direction:column;gap:4px;min-width:0}
 .my-profile-copy strong{font-size:19px;font-weight:680;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .my-profile-copy span{font-size:13px;color:var(--sub)}
 .my-status{padding:6px 11px;border-radius:14px;background:var(--s1);box-shadow:inset 0 0 0 1px var(--line);font-size:11px;color:var(--sub);white-space:nowrap}
-.my-section-label{margin:28px 2px 12px;font-size:13px;font-weight:650;color:#a1a1a6}
+.my-wallet{display:flex;align-items:baseline;justify-content:space-between;padding:16px 18px;border-radius:20px;background:linear-gradient(155deg,rgba(41,151,255,.16),rgba(255,255,255,.03));box-shadow:inset 0 0 0 1px var(--line);font-size:13px;color:#c7c7cc}
+.my-wallet b{font-size:24px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}.my-wallet b small{font-size:13px;color:var(--sub);margin-left:3px}
+.my-section-label{margin:26px 2px 12px;font-size:13px;font-weight:650;color:#a1a1a6}
 .my-menu{overflow:hidden;border-radius:22px;background:linear-gradient(155deg,rgba(255,255,255,.075),rgba(255,255,255,.025));box-shadow:inset 0 0 0 1px var(--line)}
 .my-menu-item{width:100%;min-height:76px;padding:13px 17px;display:flex;align-items:center;gap:13px;text-align:left;border-bottom:1px solid rgba(255,255,255,.07);transition:background .25s ease}
 .my-menu-item:last-child{border-bottom:0}.my-menu-item:active{background:rgba(255,255,255,.07)}
@@ -182,37 +181,81 @@ footer{text-align:center;color:#6e6e73;font-size:12.5px;padding:72px 20px 28px}
 body.my-open{overflow:hidden;overscroll-behavior:none}
 body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
 .login-entry{height:34px;padding:0 12px;border-radius:18px;background:var(--s2);box-shadow:inset 0 0 0 1px var(--line);font-size:12px;font-weight:600;white-space:nowrap}
-.float-cart{position:fixed;z-index:59;right:max(20px,calc((100vw - 340px)/2));bottom:calc(88px + env(safe-area-inset-bottom));width:50px;height:50px;border-radius:50%;display:grid;place-items:center;background:rgba(35,37,43,.88);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.17),0 8px 26px rgba(0,0,0,.38);font-size:20px}
-.float-cart:active{transform:scale(.92)}.float-cart .badge{top:-3px;right:-3px}
+.float-cart{position:fixed;z-index:59;right:max(20px,calc((100vw - 340px)/2));bottom:calc(88px + var(--sab));width:50px;height:50px;border-radius:50%;display:grid;place-items:center;background:rgba(35,37,43,.88);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.17),0 8px 26px rgba(0,0,0,.38);font-size:20px}
+.float-cart:active{transform:scale(.92)}
+
+/* 登录 */
 .login-mask{position:fixed;inset:0;z-index:110;display:grid;place-items:center;padding:22px;background:rgba(0,0,0,.58);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);opacity:0;pointer-events:none;transition:opacity .35s var(--ease)}
 .login-mask.on{opacity:1;pointer-events:auto}
-.login-panel{width:min(100%,390px);padding:25px;border-radius:26px;background:rgba(28,29,34,.96);border:1px solid rgba(255,255,255,.13);box-shadow:0 28px 90px rgba(0,0,0,.55);transform:translateY(14px) scale(.98);transition:transform .4s var(--ease)}
+.login-panel{width:min(100%,390px);max-height:92vh;max-height:92dvh;overflow:auto;padding:25px;border-radius:26px;background:rgba(28,29,34,.96);border:1px solid rgba(255,255,255,.13);box-shadow:0 28px 90px rgba(0,0,0,.55);transform:translateY(14px) scale(.98);transition:transform .4s var(--ease)}
 .login-mask.on .login-panel{transform:none}
-.login-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.login-head h3{font-size:21px}
+.login-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.login-head h3{font-size:21px}
 .login-field{display:block;width:100%;height:48px;margin:12px 0;padding:0 14px;border-radius:13px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);outline:none;color:#fff;font:inherit}
-.login-note{color:var(--sub);font-size:11.5px;line-height:1.6;margin:12px 0 17px}
+.login-field:focus{border-color:rgba(41,151,255,.7)}
+.code-row{display:flex;gap:10px;align-items:center}
+.code-row .login-field{flex:1;min-width:0}
+.code-row button{height:48px;padding:0 14px;border-radius:13px;background:var(--s2);font-size:13px;font-weight:600;white-space:nowrap}
+.code-row button:disabled{opacity:.5}
+.agree{display:flex;gap:8px;align-items:flex-start;margin:8px 0 2px;font-size:12px;line-height:1.5;color:var(--sub)}
+.agree input{margin-top:3px;accent-color:#2997ff}.agree a{color:var(--blue)}
+.login-note{color:var(--sub);font-size:11.5px;line-height:1.6;margin:10px 0 16px}
 .login-submit{width:100%;height:46px;border-radius:23px;background:#f5f5f7;color:#111;font-weight:700}
-.login-out{width:100%;height:40px;margin-top:9px;border-radius:20px;background:rgba(255,255,255,.07);color:#ddd;font-size:13px}
-@media(min-width:960px){.float-cart{display:none}.login-entry{font-size:13px}}
-@media(max-width:959px){.right #cartBtn{display:none}.login-entry{height:32px;padding:0 10px}}
-@media(max-width:380px){.float-cart{right:16px;width:46px;height:46px}.my-page{padding-left:16px;padding-right:16px}.my-menu-item{padding-left:13px;padding-right:13px}}
+.login-out{width:100%;height:42px;margin-top:10px;border-radius:21px;background:rgba(255,255,255,.07);color:#ddd;font-size:13.5px;font-weight:600}
 
-.dock{position:fixed;z-index:60;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;padding:5px;width:min(340px,calc(100% - 32px));border-radius:30px;
-  background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(26px);backdrop-filter:saturate(180%) blur(26px);box-shadow:inset 0 0 0 1px var(--glass-line),0 14px 44px rgba(0,0,0,.6);touch-action:pan-y;user-select:none;-webkit-user-select:none;will-change:transform}
+/* 通用面板：支付 / 订单 / 权益 / 设置 */
+.pnl-mask{position:fixed;inset:0;z-index:105;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .45s var(--ease)}
+.pnl-mask.on{opacity:1;pointer-events:auto}
+.pnl{position:fixed;z-index:106;left:50%;bottom:0;width:min(100%,520px);max-height:86vh;max-height:86dvh;display:flex;flex-direction:column;border-radius:28px 28px 0 0;background:rgba(24,24,28,.94);-webkit-backdrop-filter:saturate(180%) blur(30px);backdrop-filter:saturate(180%) blur(30px);box-shadow:inset 0 0 0 1px var(--glass-line),0 -20px 80px rgba(0,0,0,.6);transform:translate3d(-50%,105%,0);visibility:hidden;transition:transform .7s var(--ease),opacity .5s var(--ease),visibility 0s .7s}
+.pnl.on{transform:translate3d(-50%,0,0);visibility:visible;transition:transform .7s var(--ease),opacity .5s var(--ease),visibility 0s 0s}
+.pnl-body{overflow:auto;padding:4px 20px calc(22px + var(--sab));overscroll-behavior:contain}
+.ord{padding:14px 16px;margin-bottom:12px;border-radius:18px;background:var(--s1);box-shadow:inset 0 0 0 1px var(--line)}
+.ord-h{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--sub)}
+.st{font-style:normal;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:10px}
+.st.ok{background:rgba(48,209,88,.14);color:var(--green)}.st.wait{background:rgba(255,159,10,.14);color:#ff9f0a}.st.off{background:var(--s2);color:var(--sub)}
+.ord-b{margin:8px 0;font-size:14.5px;font-weight:600;line-height:1.45}
+.ord-f{display:flex;justify-content:space-between;align-items:baseline;color:var(--sub);font-size:12px}
+.ord-f b{color:var(--text);font-size:17px;font-variant-numeric:tabular-nums}
+.ord-a{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.ord-a button{height:34px;padding:0 16px;border-radius:17px;background:var(--s2);font-size:13px;font-weight:600}
+.ord-a .pri{background:#f5f5f7;color:#000}
+.pay-it{display:flex;align-items:center;gap:8px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.pay-it span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pay-it em{color:var(--sub);font-style:normal}.pay-it b{font-variant-numeric:tabular-nums}
+.pm{width:100%;display:flex;align-items:center;gap:12px;height:54px;padding:0 14px;margin-bottom:10px;border-radius:16px;background:var(--s1);box-shadow:inset 0 0 0 1px var(--line);text-align:left;font-weight:600;font-size:14.5px;transition:box-shadow .3s var(--ease),background-color .3s var(--ease)}
+.pm i{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:14px;font-weight:700;color:#fff}
+.pm .rd{margin-left:auto;width:20px;height:20px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)}
+.pm.on{box-shadow:inset 0 0 0 1.5px var(--blue);background:rgba(41,151,255,.08)}
+.pm.on .rd{background:radial-gradient(circle,#fff 0 28%,var(--blue) 32%);box-shadow:none}
+.pay-total{display:flex;align-items:baseline;justify-content:space-between;margin:14px 2px 16px}
+.pay-total small{color:var(--sub);font-size:13px}.pay-total b{font-size:28px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.done-v{text-align:center;padding:18px 0 22px}
+.done-v .ck{width:68px;height:68px;margin:0 auto 16px;border-radius:50%;display:grid;place-items:center;background:rgba(48,209,88,.14);color:var(--green);font-size:34px}
+.done-v h3{font-size:21px}.done-v p{color:var(--sub);font-size:13.5px;margin-top:6px}
+.set-card{border-radius:18px;background:var(--s1);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:50px;padding:0 16px;font-size:14px;border-bottom:1px solid var(--line)}
+.set-row:last-child{border-bottom:0}.set-row span{color:var(--sub);flex:none}
+.set-in{flex:1;min-width:0;height:44px;text-align:right;background:none;border:0;outline:none;color:var(--text);font:inherit}
+.wallet-big{padding:18px;border-radius:20px;background:linear-gradient(155deg,rgba(41,151,255,.18),rgba(255,255,255,.03));box-shadow:inset 0 0 0 1px var(--line)}
+.wallet-big small{color:var(--sub);font-size:13px}.wallet-big b{display:block;margin-top:4px;font-size:36px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.log-row{display:flex;align-items:center;justify-content:space-between;padding:12px 2px;border-bottom:1px solid var(--line);font-size:14px}
+.log-row small{display:block;color:var(--sub);font-size:12px}.log-row b{color:var(--green);font-variant-numeric:tabular-nums}
+
+/* 底部 Dock */
+.dock{position:fixed;z-index:60;left:50%;bottom:calc(14px + var(--sab));transform:translateX(-50%);display:flex;padding:5px;width:min(340px,calc(100% - 32px));height:60px;box-sizing:border-box;border-radius:30px;
+  background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(26px);backdrop-filter:saturate(180%) blur(26px);box-shadow:inset 0 0 0 1px var(--glass-line),0 14px 44px rgba(0,0,0,.6);touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .dock .sl{position:absolute;top:5px;left:5px;height:50px;width:calc((100% - 10px)/4);border-radius:25px;background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);transform:translate3d(0,0,0);transition:transform .38s cubic-bezier(.22,1,.36,1),width .38s cubic-bezier(.22,1,.36,1);will-change:transform,width;pointer-events:none}
-.dock button{position:relative;z-index:1;flex:1;min-width:0;height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--sub);transition:color .28s cubic-bezier(.22,1,.36,1);touch-action:pan-y}
+.dock button{position:relative;z-index:1;flex:1;min-width:0;min-height:0;height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--sub);transition:color .28s cubic-bezier(.22,1,.36,1);touch-action:pan-y}
 .dock button .i{font-size:21px;transition:transform .38s cubic-bezier(.22,1,.36,1)}
 .dock button .dock-icon{width:23px;height:23px;stroke-width:1.9}
 .dock button.on .dock-icon{stroke-width:2.05}
 .cart-icon{width:21px;height:21px;stroke-width:1.9}
 .dock button.on{color:var(--text)}.dock button.on .i{transform:translateY(-1px) scale(1.08)}
 .dock button:active{transform:scale(.92)}
-.dock .badge{top:3px;right:calc(50% - 20px)}
 
 .mask{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .6s var(--ease)}
 .mask.on{opacity:1;pointer-events:auto}
-.sheet{position:fixed;z-index:90;left:0;right:0;bottom:0;max-height:80vh;display:flex;flex-direction:column;border-radius:28px 28px 0 0;background:rgba(24,24,28,.78);-webkit-backdrop-filter:saturate(180%) blur(34px);backdrop-filter:saturate(180%) blur(34px);
-  box-shadow:inset 0 0 0 1px var(--glass-line),0 -20px 80px rgba(0,0,0,.6);padding-bottom:env(safe-area-inset-bottom);transform:translate3d(0,105%,0);transition:transform .75s var(--ease)}
+.sheet{position:fixed;z-index:90;left:0;right:0;bottom:0;max-height:80vh;max-height:80dvh;display:flex;flex-direction:column;border-radius:28px 28px 0 0;background:rgba(24,24,28,.78);-webkit-backdrop-filter:saturate(180%) blur(34px);backdrop-filter:saturate(180%) blur(34px);
+  box-shadow:inset 0 0 0 1px var(--glass-line),0 -20px 80px rgba(0,0,0,.6);padding-bottom:var(--sab);transform:translate3d(0,105%,0);transition:transform .75s var(--ease)}
 .sheet.on{transform:none}
 .grab{width:36px;height:5px;border-radius:3px;background:rgba(255,255,255,.25);margin:8px auto 0}
 .sh{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 6px}.sh h3{font-size:21px}
@@ -223,54 +266,57 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
 .row .n{flex:1;min-width:0}.row .n b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.row .n small{color:var(--sub);font-size:13px}
 .qty{display:flex;align-items:center;gap:9px;font-variant-numeric:tabular-nums;font-size:14px}
 .qty button{width:26px;height:26px;border-radius:50%;background:var(--s2);font-weight:600}
-.empty{text-align:center;color:var(--sub);padding:46px 0;font-size:14px}
+.empty{text-align:center;color:var(--sub);padding:46px 0;font-size:14px;line-height:1.7}
 .foot{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 20px 18px}
 .foot small{display:block;color:var(--sub);font-size:12px}.foot b{font-size:24px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
-.toast{position:fixed;z-index:100;left:50%;top:calc(var(--hh) + 26px + env(safe-area-inset-top));transform:translate3d(-50%,-24px,0) scale(.94);opacity:0;pointer-events:none;padding:10px 18px;border-radius:20px;background:var(--glass);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);box-shadow:inset 0 0 0 1px var(--glass-line),0 12px 40px rgba(0,0,0,.5);font-size:13.5px;font-weight:600;white-space:nowrap;transition:transform .65s var(--ease),opacity .4s var(--ease)}
+.toast{position:fixed;z-index:130;left:50%;top:calc(8px + 52px + 14px + var(--sat));transform:translate3d(-50%,-24px,0) scale(.94);opacity:0;pointer-events:none;max-width:calc(100vw - 32px);padding:10px 18px;border-radius:20px;background:var(--glass);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);box-shadow:inset 0 0 0 1px var(--glass-line),0 12px 40px rgba(0,0,0,.5);font-size:13.5px;font-weight:600;white-space:nowrap;transition:transform .65s var(--ease),opacity .4s var(--ease)}
 .toast.on{transform:translate3d(-50%,0,0) scale(1);opacity:1}
 
 @media (min-width:640px){
   :root{--gx:28px;--gap:16px}
   .grid.t4,.grid.p{grid-template-columns:repeat(3,minmax(0,1fr))}
   .feat{grid-template-columns:repeat(3,1fr)}
+  .pnl{bottom:50%;border-radius:28px;opacity:0;transform:translate3d(-50%,54%,0) scale(.96)}
+  .pnl.on{opacity:1;transform:translate3d(-50%,50%,0)}
 }
 @media (min-width:960px){
-  :root{--gx:32px;--gap:20px;--r:24px;--hh:54px}
+  :root{--gx:32px;--gap:20px;--r:24px}
   body{padding-bottom:0}
-  .dock{display:none}
-  .nav{grid-template-columns:1fr auto 1fr;padding:0 8px 0 20px}
+  .dock,.float-cart,.grab{display:none}
+  .nav{height:54px;min-height:54px;max-height:54px;padding:0 8px 0 20px}
   .links{display:flex;gap:2px}
   .links a{padding:7px 16px;border-radius:17px;font-size:14px;font-weight:500;color:var(--sub);transition:color .4s var(--ease),background-color .4s var(--ease)}
   .links a:hover,.links a.on{color:var(--text);background:var(--s2)}
-  .hero{padding-top:calc(var(--hh) + 68px);padding-bottom:56px}
+  .hero{padding-top:128px;padding-bottom:56px}
   .sec{padding-top:112px}.head{margin-bottom:44px}
-  .grid.t4{grid-template-columns:repeat(4,minmax(0,1fr))}
-  .grid.p{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .grid.t4,.grid.p{grid-template-columns:repeat(4,minmax(0,1fr))}
   .task{padding:26px 20px 20px}.task .amt{font-size:32px}
   .cover .big{font-size:52px}
   .info{padding:14px 16px 16px}.info h4{font-size:15.5px}
   .stage{grid-template-columns:1fr 340px 1fr;gap:28px;align-items:center;margin-top:64px}
   .sd{display:block;width:100%;max-width:230px;transition:transform .9s var(--ease)}
-  .sd.l{justify-self:end;transform:translate3d(0,0,0) rotateY(14deg)}
-  .sd.r{justify-self:start;transform:translate3d(0,0,0) rotateY(-14deg)}
+  .sd.l{justify-self:end;transform:rotateY(14deg)}
+  .sd.r{justify-self:start;transform:rotateY(-14deg)}
   .stage:hover .sd.l,.stage:hover .sd.r{transform:rotateY(0)}
-  .sheet{left:auto;right:16px;top:calc(var(--hh) + 30px);bottom:16px;width:400px;max-height:none;border-radius:28px;transform:translate3d(120%,0,0);padding-bottom:0}
-  .grab{display:none}
-  .bal.m{display:none}
+  .sheet{left:auto;right:16px;top:calc(8px + 54px + 24px);bottom:16px;width:400px;max-height:none;border-radius:28px;transform:translate3d(120%,0,0);padding-bottom:0}
+  .toast{top:calc(8px + 54px + 14px)}
+  .login-entry{font-size:13px}
 }
 @media (max-width:959px){
-  .nav{grid-template-columns:auto 1fr auto;padding:0 8px 0 16px}
-  .right .bal.d{display:none}
+  .right .bal.d,.right #cartBtn{display:none}
+  .login-entry{height:32px;padding:0 10px}
 }
-@media (max-width:380px){.main .num{font-size:40px}.task .amt{font-size:25px}}
+@media (max-width:380px){.float-cart{right:16px;width:46px;height:46px}.my-page{padding-left:16px;padding-right:16px}.my-menu-item{padding-left:13px;padding-right:13px}.main .num{font-size:40px}.task .amt{font-size:25px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01s!important}.rv{opacity:1;transform:none}}
 
-.login-wx{width:100%;height:48px;border-radius:14px;background:#07c160;color:#fff;font-weight:600;font-size:15.5px;display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 0 12px;box-shadow:0 8px 24px rgba(7,193,96,.28)}
-.login-wx .i{width:19px;height:19px}
-.login-or{display:flex;align-items:center;gap:10px;color:var(--sub);font-size:12.5px;margin:0 0 12px}
-.login-or::before,.login-or::after{content:"";flex:1;height:1px;background:var(--line)}
-.me-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:-6px;margin-right:6px}
-.sb-state{font-size:11.5px;color:var(--sub);text-align:center;margin-top:8px}
+/* 社交登录 */
+.soc-login{display:flex;flex-direction:column;gap:10px;margin:8px 0 14px}
+.soc-btn{height:48px;border-radius:24px;display:flex;align-items:center;justify-content:center;gap:9px;font-weight:650;font-size:15px;color:#fff;transition:transform .35s var(--ease),opacity .3s}
+.soc-btn:active{transform:scale(.97)}
+.soc-btn svg{width:20px;height:20px;fill:currentColor}
+.soc-btn.wx{background:#07c160;box-shadow:0 10px 26px rgba(7,193,96,.3)}
+.soc-btn.qq{background:#12b7f5;box-shadow:0 10px 26px rgba(18,183,245,.28)}
+.soc-btn[disabled]{opacity:.6}
 </style>
 </head>
 <body>
@@ -284,14 +330,13 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
 <symbol id="sign" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M8 3v4M16 3v4M9 15l2 2 4-4"/></symbol>
 <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
 <symbol id="share" viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13"/></symbol>
-<symbol id="home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-8Z"/></symbol>
 <symbol id="bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6L5 8Z"/><path d="M9 8a3 3 0 0 1 6 0"/></symbol>
 <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
 <symbol id="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
 <symbol id="shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3Z"/><path d="m9 12 2 2 4-4"/></symbol>
 <symbol id="bolt" viewBox="0 0 24 24"><path d="M13 3 5 13h6l-1 8 8-10h-6l1-8Z"/></symbol>
 <symbol id="tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8L3 12Z"/><circle cx="7.5" cy="8.5" r="1.2" fill="currentColor"/></symbol>
-<!-- 专用于主 Dock 的全新图标；不影响页面内其他图标 -->
 <symbol id="dock-home" viewBox="0 0 24 24"><path d="M3.4 10.7 12 3.8l8.6 6.9"/><path d="M5.5 9.6v9.1c0 .9.7 1.6 1.6 1.6h3.1v-5.6h3.6v5.6h3.1c.9 0 1.6-.7 1.6-1.6V9.6"/><path d="M9.2 7.3h5.6" opacity=".55"/></symbol>
 <symbol id="dock-claim" viewBox="0 0 24 24"><path d="M4 10.1h16v9.1c0 .9-.7 1.6-1.6 1.6H5.6c-.9 0-1.6-.7-1.6-1.6v-9.1Z"/><path d="M3.2 7.1h17.6v3H3.2z"/><path d="M12 7.1v13.7M12 7.1C8.1 7.1 6.1 5.9 6.1 4.3c0-1.1.9-1.9 2-1.9 2.1 0 3.9 2.8 3.9 4.7ZM12 7.1c3.9 0 5.9-1.2 5.9-2.8 0-1.1-.9-1.9-2-1.9-2.1 0-3.9 2.8-3.9 4.7Z"/></symbol>
 <symbol id="dock-shop" viewBox="0 0 24 24"><path d="M4.1 9.2 5.5 4h13l1.4 5.2"/><path d="M3.6 9.2h16.8v10.1c0 .9-.7 1.6-1.6 1.6H5.2c-.9 0-1.6-.7-1.6-1.6V9.2Z"/><path d="M3.6 9.2c0 1.6 1.1 2.7 2.5 2.7s2.5-1.1 2.5-2.7c0 1.6 1.1 2.7 2.5 2.7s2.5-1.1 2.5-2.7c0 1.6 1.1 2.7 2.5 2.7s2.5-1.1 2.5-2.7c0 1.6 1.1 2.7 2.5 2.7"/><path d="M9 20.9v-5.2h6v5.2"/></symbol>
@@ -304,7 +349,6 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
   <nav class="links" id="links"><a href="#home" class="on">首页</a><a href="#free">免费领取</a><a href="#shop">商城</a><a href="#my-page" data-open-my>我的</a></nav>
   <div class="right">
     <button class="login-entry press" id="loginEntry">登录</button>
-    <div class="bal d"><small>流量</small><b data-bal>0</b>&nbsp;MB</div>
     <button class="ib press" id="cartBtn" aria-label="购物车"><svg class="i cart-icon"><use href="#cart-modern"/></svg><span class="badge" id="cnt">0</span></button>
   </div>
 </div></header>
@@ -321,9 +365,9 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
     <div class="stage rv" style="--i:4" id="stage">
       <div class="sd gl l"><div class="in2"><div class="ic"><svg class="i"><use href="#gift"/></svg></div><b>每日福利</b><small>4 项免费流量可领</small></div></div>
       <div class="card3d" id="tilt"><div class="gl main">
-        <div class="top"><b><span class="mark" style="width:18px;height:18px"></span>流量钱包</b><span>UTOPIA</span></div>
-        <div class="num"><span data-bal>0</span><small>MB</small></div>
-        <div class="sub">当前可用流量余额</div>
+        <div class="top"><b><span class="mark" style="width:18px;height:18px"></span>乌托邦会员</b><span>UTOPIA</span></div>
+        <div class="num" style="font-size:32px;letter-spacing:.02em">数字权益</div>
+        <div class="sub">流量券 · 音乐 · 影视会员</div>
         <div class="track"><div class="fill" id="fill"></div></div>
         <div class="meta"><span>今日领取进度</span><span id="prog">0 / 4</span></div>
       </div></div>
@@ -351,9 +395,8 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
     <div class="f rv" style="--i:2"><div class="ico"><svg class="i"><use href="#shield"/></svg></div><h3>订单可查</h3><p>购买记录与订单状态集中查看。</p></div>
   </div>
 </div></section>
-
 </main>
-<footer>© 2026 乌托邦 Utopia · 演示站点，商品与支付流程均为模拟</footer>
+<footer id="foot">© 2026 乌托邦 Utopia</footer>
 
 <section class="my-page" id="myPage" aria-label="账户中心" aria-hidden="true">
   <div class="my-page-inner">
@@ -376,12 +419,12 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
       </button>
       <button class="my-menu-item" type="button" data-account-action="benefits">
         <span class="my-menu-icon"><svg class="i"><use href="#gift"/></svg></span>
-        <span class="my-menu-copy"><b>我的权益</b><small>查看流量余额与领取记录</small></span>
+        <span class="my-menu-copy"><b>我的权益</b><small>查看领取记录</small></span>
         <span class="my-chevron">›</span>
       </button>
       <button class="my-menu-item" type="button" data-account-action="settings">
         <span class="my-menu-icon"><svg class="i"><use href="#shield"/></svg></span>
-        <span class="my-menu-copy"><b>账户设置</b><small>管理当前体验账号</small></span>
+        <span class="my-menu-copy"><b>账户设置</b><small>昵称、退出登录</small></span>
         <span class="my-chevron">›</span>
       </button>
     </div>
@@ -404,25 +447,43 @@ body.my-open main,body.my-open footer{visibility:hidden;pointer-events:none}
   <div class="list" id="list"></div>
   <div class="foot"><div><small>合计</small><b id="total">¥0.00</b></div><button class="btn w press" id="pay">去结算</button></div>
 </aside>
+
+<div class="pnl-mask" id="pnlMask"></div>
+<section class="pnl" id="pnl" role="dialog" aria-modal="true" aria-labelledby="pnlTitle">
+  <div class="grab"></div>
+  <div class="sh"><h3 id="pnlTitle"></h3><button class="ib press" id="pnlClose" aria-label="关闭"><svg class="i"><use href="#x"/></svg></button></div>
+  <div class="pnl-body" id="pnlBody"></div>
+</section>
+
 <div class="login-mask" id="loginMask" role="dialog" aria-modal="true" aria-label="登录">
   <div class="login-panel">
     <div class="login-head"><h3>欢迎来到乌托邦</h3><button class="ib press" id="closeLogin" aria-label="关闭"><svg class="i"><use href="#x"/></svg></button></div>
-    <button class="login-wx press" id="wxLogin" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.7 3C4.9 3 1.8 5.6 1.8 8.8c0 1.8 .9 3.4 2.4 4.5l-.7 2.2 2.5-1.3c.8 .2 1.7 .4 2.7 .4 .3 0 .5 0 .8-.1-.2-.5-.3-1-.3-1.6 0-3.1 3-5.6 6.7-5.6h.4C15.6 4.6 12.4 3 8.7 3z" fill="currentColor" stroke="none"/><path d="M22.2 12.9c0-2.8-2.7-5-6-5s-6 2.2-6 5 2.7 5 6 5c.7 0 1.4-.1 2-.3l2 1.1-.6-1.9c1.6-.9 2.6-2.3 2.6-3.9z" fill="currentColor" stroke="none"/></svg>微信一键登录</button><div class="login-or" style="display:none"><span>或使用本机体验账号</span></div>
-    <input class="login-field" id="loginPhone" type="text" maxlength="40" placeholder="手机号 / 用户名" autocomplete="username" style="display:none">
-    <p class="login-note">仅支持微信登录，首次登录自动创建账号，资料同步到云端。</p>
-    <button class="login-submit press" id="loginSubmit" style="display:none">登录 / 创建体验账号</button>
-    <button class="login-out press" id="logoutBtn" style="display:none">退出登录</button>
+    <div class="soc-login"><button class="soc-btn wx press" id="wxLogin" type="button"><svg viewBox="0 0 24 24"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/></svg><span>微信登录</span></button><button class="soc-btn qq press" id="qqLogin" type="button"><svg viewBox="0 0 24 24"><path d="M21.395 15.035a40 40 0 0 0-.803-2.264l-1.079-2.695c.001-.032.014-.562.014-.836C19.526 4.632 17.351 0 12 0S4.474 4.632 4.474 9.241c0 .274.013.804.014.836l-1.08 2.695a39 39 0 0 0-.802 2.264c-1.021 3.283-.69 4.643-.438 4.673.54.065 2.103-2.472 2.103-2.472 0 1.469.756 3.387 2.394 4.771-.612.188-1.363.479-1.845.835-.434.32-.379.646-.301.778.343.578 5.883.369 7.482.189 1.6.18 7.14.389 7.483-.189.078-.132.132-.458-.301-.778-.483-.356-1.233-.646-1.846-.836 1.637-1.384 2.393-3.302 2.393-4.771 0 0 1.563 2.537 2.103 2.472.251-.03.581-1.39-.438-4.673"/></svg><span>QQ 登录</span></button></div>
+<p class="login-note" id="loginNote">支持微信 / QQ 登录，首次登录自动创建账号。</p>
+    <input class="login-field" id="loginPhone" type="tel" inputmode="numeric" maxlength="11" style="display:none">
+    <div class="code-row" style="display:none"><input class="login-field" id="loginCode" type="text" maxlength="6"><button type="button" id="sendCode" class="press">获取验证码</button></div>
+    <label class="agree" style="display:none"><input type="checkbox" id="agree" checked><span>已同意</span></label>
+    <button class="login-submit press" id="loginSubmit" style="display:none">登录 / 注册</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
 (()=>{
+'use strict';
 const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const ease=t=>1-Math.pow(1-t,4);
 const ic=n=>`<svg class="i"><use href="#${n}"/></svg>`;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const money=v=>'¥'+Number(v).toFixed(2);
+const p2=n=>String(n).padStart(2,'0');
+const fmt=ts=>{const d=new Date(ts);return `${p2(d.getMonth()+1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`};
+const maskPhone=p=>/^\d{11}$/.test(p)?p.slice(0,3)+'****'+p.slice(-4):String(p);
+const setHash=h=>{try{history.replaceState(null,'',location.pathname+location.search+h)}catch(_){}};
 
+/* ====================== 商品数据 ====================== */
 const COL={data:'#2997ff',music:'#ff375f',video:'#bf5af2',game:'#30d158'};
 const CATS=['全部','流量券','汽水音乐会员','影视会员','游戏权益'];
 const P=[
@@ -439,15 +500,103 @@ const P=[
  {id:11,c:'游戏权益',n:'游戏点券 300',d:'即时到账 · 赠 10',p:30,o:30,k:'game',l:'300 点券',t:'赠送'},
  {id:12,c:'流量券',n:'夜间流量包 10GB',d:'23:00–07:00 可用',p:9.9,o:15,k:'data',l:'10 GB'}
 ];
-let bal=store.get('u_bal',0),cart=store.get('u_cart',{}),claimed=store.get('u_claimed',{}),user=store.get('u_user',null);
-const today=new Date().toDateString();
-if(claimed._d!==today){claimed={_d:today};store.set('u_claimed',claimed)}
 
+/* ====================== 本地状态 ====================== */
+let bal=store.get('u_bal',0),cart=store.get('u_cart',{}),claimed=store.get('u_claimed',{}),user=store.get('u_user',null),token=store.get('u_token',null);
+Object.keys(cart).forEach(k=>{if(!P.some(p=>String(p.id)===k)||!(cart[k]>0))delete cart[k]});
+function rollDay(){const d=new Date().toDateString();if(claimed._d!==d){claimed={_d:d};store.set('u_claimed',claimed);return true}return false}
+rollDay();
+
+/* ====================== 接口层（对接后端只需改这里） ======================
+ * 1) 把 CONFIG.API_BASE 设为后端地址（如 'https://api.example.com'），即自动切换到真实接口；留空则使用本地模拟。
+ * 2) 响应格式：直接返回数据，或 {code:0,data:...}；出错时 HTTP 非 2xx 或 code≠0，并带 message。
+ * 3) 接口约定：
+ *    POST /auth/sms/send        {phone}                       → {}
+ *    POST /auth/login           {phone,code}                  → {token,user:{id,name,nick},balance}
+ *    POST /auth/logout                                        → {}
+ *    GET  /me                                                 → {user,balance,claimed:{sign:1,share:1,hour:'日期+小时'}}
+ *    PATCH /me                  {nick}                        → user
+ *    POST /claims               {task}                        → {amount,balance}
+ *    GET  /claims                                             → [{n,a,t}]
+ *    GET  /orders                                             → [order]
+ *    POST /orders               {items:[{id,q}],pay}          → {order,payParams}
+ *    POST /orders/:id/pay       {method}                      → {payParams}
+ *    GET  /orders/:id                                         → order
+ *    POST /orders/:id/cancel                                  → order
+ *    order = {id,no,items:[{id,n,p,q}],amount,status:'pending'|'paid'|'cancelled',pay,t}
+ *    payParams.url 存在时会跳转到该支付页，返回后自动查询订单状态；否则轮询订单状态。
+ *    金额以服务端计算为准，前端只上传商品 id 和数量。
+ */
+const CONFIG={
+  API_BASE:'',
+  REQUIRE_LOGIN:{claim:false,checkout:true},
+  PAY_METHODS:[{id:'alipay',n:'支付宝',c:'#1677ff',t:'支'},{id:'wechat',n:'微信支付',c:'#07c160',t:'微'}],
+  CODE_COOLDOWN:60
+};
+class ApiError extends Error{constructor(m,s){super(m);this.status=s}}
+
+async function http(method,path,body){
+  const res=await fetch(CONFIG.API_BASE+path,{method,headers:Object.assign({'Content-Type':'application/json'},token?{Authorization:'Bearer '+token}:{}),body:body?JSON.stringify(body):undefined,credentials:'include'});
+  let data=null;try{data=await res.json()}catch(_){}
+  if(res.status===401){onUnauthorized();throw new ApiError('登录已过期，请重新登录',401)}
+  if(!res.ok||(data&&typeof data==='object'&&data.code&&data.code!==0))throw new ApiError((data&&data.message)||'请求失败，请稍后重试',res.status);
+  return data&&typeof data==='object'&&'data' in data?data.data:data;
+}
+const Real={
+  sendCode:phone=>http('POST','/auth/sms/send',{phone}),
+  login:b=>http('POST','/auth/login',b),
+  logout:()=>http('POST','/auth/logout'),
+  me:()=>http('GET','/me'),
+  updateProfile:b=>http('PATCH','/me',b),
+  claim:t=>http('POST','/claims',{task:t.id}),
+  listClaims:()=>http('GET','/claims'),
+  listOrders:()=>http('GET','/orders'),
+  getOrder:id=>http('GET','/orders/'+encodeURIComponent(id)),
+  createOrder:b=>http('POST','/orders',b),
+  prepay:(id,method)=>http('POST','/orders/'+encodeURIComponent(id)+'/pay',{method}),
+  cancelOrder:id=>http('POST','/orders/'+encodeURIComponent(id)+'/cancel'),
+  async payOrder(order,pp){
+    if(pp&&pp.url){store.set('u_pending',order.id);location.href=pp.url;return new Promise(()=>{})}
+    for(let i=0;i<20;i++){const o=await Real.getOrder(order.id);if(o.status!=='pending')return o;await sleep(1500)}
+    return order;
+  }
+};
+/* 本地模拟：行为与真实接口一致，便于前端完整联调 */
+const mo=()=>store.get('u_orders',[]);
+const setOrder=(id,patch)=>{const l=mo(),i=l.findIndex(o=>o.id===id);if(i<0)throw new ApiError('订单不存在');l[i]=Object.assign({},l[i],patch);store.set('u_orders',l);return l[i]};
+const Mock={
+  async sendCode(){await sleep(450);return{}},
+  async login({phone,code}){await sleep(550);if(!/^\d{4,6}$/.test(code))throw new ApiError('请输入 4–6 位验证码');return{token:'mock.'+Date.now(),user:{id:phone,name:maskPhone(phone),nick:store.get('u_nick_'+phone,'')}}},
+  async logout(){return{}},
+  async me(){return{user,balance:bal}},
+  async updateProfile({nick}){await sleep(250);store.set('u_nick_'+user.id,nick);return Object.assign({},user,{nick})},
+  async claim(t){await sleep(350);const log=store.get('u_log',[]);log.unshift({n:t.n,a:t.a,t:Date.now()});store.set('u_log',log.slice(0,50));return{amount:t.a,balance:bal+t.a}},
+  async listClaims(){return store.get('u_log',[])},
+  async listOrders(){await sleep(200);return mo()},
+  async getOrder(id){return mo().find(o=>o.id===id)},
+  async createOrder({items,pay}){
+    await sleep(400);
+    const its=items.map(({id,q})=>{const p=P.find(x=>x.id==id);if(!p)throw new ApiError('商品已下架');return{id:p.id,n:p.n,p:p.p,q}});
+    const amount=Math.round(its.reduce((s,i)=>s+i.p*i.q,0)*100)/100;
+    const no=String(Date.now()).slice(-8)+String(Math.floor(Math.random()*900+100));
+    const o={id:no,no,items:its,amount,status:'pending',pay,t:Date.now()};
+    store.set('u_orders',[o].concat(mo()).slice(0,100));
+    return{order:o,payParams:{}};
+  },
+  async prepay(){await sleep(200);return{payParams:{}}},
+  async payOrder(order){await sleep(1500);const cur=mo().find(o=>o.id===order.id);if(!cur||cur.status!=='pending')throw new ApiError('订单状态已变化');return setOrder(order.id,{status:'paid',paidAt:Date.now()})},
+  async cancelOrder(id){await sleep(200);return setOrder(id,{status:'cancelled'})}
+};
+const API=CONFIG.API_BASE?Real:Mock;
+function onUnauthorized(){user=null;token=null;store.set('u_user',null);store.set('u_token',null);paintUser()}
+
+/* ====================== 工具 ====================== */
 let tt;const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2200)};
 function tween(el,a,b,d=900){const s=performance.now();(function f(n){const k=Math.min(1,(n-s)/d);el.textContent=Math.round(a+(b-a)*ease(k)).toLocaleString();if(k<1)requestAnimationFrame(f)})(s)}
 let shown=0;const paintBal=an=>{$$('[data-bal]').forEach(e=>an?tween(e,shown,bal):e.textContent=bal.toLocaleString());shown=bal};
+const setBal=v=>{bal=v;store.set('u_bal',bal);paintBal(true)};
 
-/* 领取 */
+/* ====================== 免费领取 ====================== */
 const T=[
  {id:'sign',n:'每日签到',a:50,d:'每天一次',k:'sign'},
  {id:'new',n:'新人礼包',a:1024,d:'仅限一次',k:'gift',once:1},
@@ -456,67 +605,394 @@ const T=[
 ];
 const hk=()=>{const d=new Date();return d.toDateString()+d.getHours()};
 const isDone=t=>t.once?store.get('u_once_'+t.id,false):t.hour?claimed[t.id]===hk():!!claimed[t.id];
-function progress(){const n=T.filter(isDone).length;$('#prog').textContent=n+' / '+T.length;$('#fill').style.transform=`scaleX(${n/T.length})`}
-function renderTasks(){
-  $('#tasks').innerHTML=T.map((t,i)=>{const d=isDone(t);return `<div class="task rv" style="--i:${i}"><div class="ico">${ic(t.k)}</div><h3>${t.n}</h3><div class="amt">+${t.a.toLocaleString()}<small>MB</small></div><p>${t.d}</p><button class="claim ${d?'done':''}" data-t="${t.id}" ${d?'disabled':''}>${d?(t.hour?'下小时再来':'已领取'):'立即领取'}</button></div>`}).join('');
-  observe();progress();
+let sig='';const claimSig=()=>T.map(t=>+isDone(t)).join('');
+function progress(){const n=T.filter(isDone).length;const pr=$('#prog'),fl=$('#fill');if(pr)pr.textContent=n+' / '+T.length;if(fl)fl.style.transform=`scaleX(${n/T.length})`}
+function renderTasks(first){
+  sig=claimSig();
+  $('#tasks').innerHTML=T.map((t,i)=>{const d=isDone(t);return `<div class="task ${first?'rv':''}" style="--i:${i}"><div class="ico">${ic(t.k)}</div><h3>${t.n}</h3><div class="amt">+${t.a.toLocaleString()}<small>MB</small></div><p>${t.d}</p><button class="claim ${d?'done':''}" data-t="${t.id}" ${d?'disabled':''}>${d?(t.hour?'下小时再来':'已领取'):'立即领取'}</button></div>`}).join('');
+  if(first)observe();
+  progress();
 }
-$('#tasks').addEventListener('click',e=>{const b=e.target.closest('.claim');if(!b||b.disabled)return;
-  const t=T.find(x=>x.id===b.dataset.t);
-  if(t.once)store.set('u_once_'+t.id,true);else{claimed[t.id]=t.hour?hk():1;store.set('u_claimed',claimed)}
-  bal+=t.a;store.set('u_bal',bal);paintBal(true);progress();
-  b.classList.add('done');b.disabled=true;b.textContent='已到账 ✓';
-  setTimeout(()=>b.textContent=t.hour?'下小时再来':'已领取',1500);
-  toast(`已领取 ${t.a} MB 流量`)});
+$('#tasks').addEventListener('click',async e=>{
+  const b=e.target.closest('.claim');if(!b||b.disabled||b.dataset.busy)return;
+  const t=T.find(x=>x.id===b.dataset.t);if(!t)return;
+  if(CONFIG.REQUIRE_LOGIN.claim&&!user){requireLogin(()=>b.click());return}
+  b.dataset.busy='1';b.textContent='领取中…';
+  try{
+    const r=await API.claim(t);
+    if(t.once)store.set('u_once_'+t.id,true);else{claimed[t.id]=t.hour?hk():1;store.set('u_claimed',claimed)}
+    setBal(typeof r.balance==='number'?r.balance:bal+t.a);progress();sig=claimSig();
+    b.classList.add('done');b.disabled=true;b.textContent='已到账 ✓';
+    setTimeout(()=>{b.textContent=t.hour?'下小时再来':'已领取'},1500);
+    toast(`已领取 ${t.a} MB 流量`);botAct('finished','',1600);
+  }catch(err){b.textContent='立即领取';toast(err.message||'领取失败，请重试');botAct('alerting','',1200)}
+  finally{delete b.dataset.busy}
+});
+setInterval(()=>{if(document.hidden)return;rollDay();if(claimSig()!==sig)renderTasks(false)},20000);
 
-/* 商城 */
-const seg=$('#seg'),sl=$('.sl',seg);let cat='全部';
+/* ====================== 商城 ====================== */
+const seg=$('#seg'),sl=$('.sl',seg);let cat='全部',shopT=0;
 seg.insertAdjacentHTML('beforeend',CATS.map(c=>`<button class="${c===cat?'on':''}">${c}</button>`).join(''));
 const moveSl=()=>{const b=$('button.on',seg);if(b){sl.style.width=b.offsetWidth+'px';sl.style.transform=`translate3d(${b.offsetLeft}px,0,0)`}};
 const card=(p,i)=>`<div class="item rv" style="--i:${i%4};--c:${COL[p.k]}"><div class="cover">${p.t?`<span class="tg">${p.t}</span>`:''}<span class="big">${ic(p.k)}</span><span class="lab">${p.l}</span></div><div class="info"><h4>${p.n}</h4><small>${p.d}</small><div class="buy"><span class="price"><b>¥${p.p}</b>${p.o>p.p?`<s>¥${p.o}</s>`:''}</span><button class="add press" data-id="${p.id}" aria-label="加入购物车">${ic('plus')}</button></div></div></div>`;
 function renderShop(first){
   const g=$('#shopGrid'),list=P.filter(p=>cat==='全部'||p.c===cat);
-  const paint=()=>{g.innerHTML=list.map(card).join('');
+  clearTimeout(shopT);
+  const paint=()=>{
+    g.innerHTML=list.map(card).join('');
     if(first){observe();return}
-    $$('.item',g).forEach((e,i)=>{e.classList.remove('rv');e.classList.add('out');e.style.transitionDelay=i*45+'ms'});
-    requestAnimationFrame(()=>requestAnimationFrame(()=>$$('.item',g).forEach(e=>e.classList.remove('out'))))};
+    const els=$$('.item',g);
+    els.forEach((e,i)=>{e.classList.remove('rv');e.classList.add('out');e.style.transitionDelay=Math.min(i,8)*40+'ms'});
+    requestAnimationFrame(()=>requestAnimationFrame(()=>els.forEach(e=>e.classList.remove('out'))));
+    shopT=setTimeout(()=>els.forEach(e=>{e.style.transitionDelay=''}),900);
+  };
   if(first||!g.children.length)return paint();
-  $$('.item',g).forEach(e=>{e.style.transitionDelay='0ms';e.classList.add('out')});setTimeout(paint,280);
+  $$('.item',g).forEach(e=>{e.style.transitionDelay='0ms';e.classList.add('out')});
+  shopT=setTimeout(paint,260);
 }
 seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.classList.contains('on'))return;
   $$('button',seg).forEach(x=>x.classList.remove('on'));b.classList.add('on');cat=b.textContent;moveSl();
   b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});renderShop()});
 $('#shopGrid').addEventListener('click',e=>{const b=e.target.closest('.add');if(!b)return;
-  cart[b.dataset.id]=(cart[b.dataset.id]||0)+1;saveCart();toast('已加入购物车');
+  const id=b.dataset.id;cart[id]=Math.min(99,(cart[id]||0)+1);saveCart();toast('已加入购物车');botAct('happy','',1300);
   [$('#cnt'),$('#cnt2')].forEach(x=>{x.classList.remove('pop');void x.offsetWidth;x.classList.add('pop')})});
 
-/* 购物车 */
-const money=v=>'¥'+v.toFixed(2);
+/* ====================== 购物车 ====================== */
+const cartItems=()=>Object.keys(cart).filter(k=>cart[k]>0).map(k=>{const p=P.find(x=>String(x.id)===k);return p?{id:p.id,n:p.n,p:p.p,q:cart[k],k:p.k}:null}).filter(Boolean);
 function saveCart(){store.set('u_cart',cart);renderCart()}
 function renderCart(){
-  const ids=Object.keys(cart).filter(k=>cart[k]>0);let n=0,sum=0;
-  $('#list').innerHTML=ids.length?ids.map(id=>{const p=P.find(x=>x.id==id),q=cart[id];n+=q;sum+=p.p*q;
-    return `<div class="row"><div class="th" style="color:${COL[p.k]}">${ic(p.k)}</div><div class="n"><b>${p.n}</b><small>${money(p.p)}</small></div><div class="qty"><button data-m="${id}">−</button><span>${q}</span><button data-a="${id}">+</button></div></div>`}).join(''):'<div class="empty">购物车是空的<br>去商城挑选心仪的权益吧</div>';
+  const items=cartItems();let n=0,sum=0;
+  $('#list').innerHTML=items.length?items.map(it=>{n+=it.q;sum+=it.p*it.q;
+    return `<div class="row"><div class="th" style="color:${COL[it.k]}">${ic(it.k)}</div><div class="n"><b>${it.n}</b><small>${money(it.p)}</small></div><div class="qty"><button data-m="${it.id}">−</button><span>${it.q}</span><button data-a="${it.id}">+</button></div></div>`}).join(''):'<div class="empty">购物车是空的<br>去商城挑选心仪的权益吧</div>';
   [$('#cnt'),$('#cnt2')].forEach(x=>{x.textContent=n;x.classList.toggle('on',n>0)});$('#total').textContent=money(sum);
 }
-$('#list').addEventListener('click',e=>{const m=e.target.dataset.m,a=e.target.dataset.a;
-  if(m){cart[m]--;if(cart[m]<=0)delete cart[m]}if(a)cart[a]++;if(m||a)saveCart()});
+$('#list').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const m=b.dataset.m,a=b.dataset.a;
+  if(m){cart[m]--;if(cart[m]<=0)delete cart[m]}if(a)cart[a]=Math.min(99,(cart[a]||0)+1);if(m||a)saveCart()});
+const syncLock=()=>{document.body.style.overflow=($('#sheet').classList.contains('on')||pnl.classList.contains('on')||loginMask.classList.contains('on'))?'hidden':''};
 const openCart=o=>{
-  $('#sheet').classList.toggle('on',o);
-  $('#mask').classList.toggle('on',o);
-  document.body.style.overflow=o?'hidden':'';
-  if(o)botAct('listening','',0);
-  else if(currentBotState==='listening')botAct('idle','',0);
+  $('#sheet').classList.toggle('on',o);$('#mask').classList.toggle('on',o);syncLock();
+  if(o)botAct('listening','',0);else if(currentBotState==='listening')botAct('idle','',0);
 };
 $('#cartBtn').onclick=$('#floatCart').onclick=()=>openCart(true);
 $('#mask').onclick=$('#closeCart').onclick=()=>openCart(false);
-addEventListener('keydown',e=>{if(e.key==='Escape')openCart(false)});
-$('#pay').onclick=()=>toast(Object.keys(cart).length?'演示环境：未接入真实支付':'购物车还是空的');
+$('#pay').onclick=()=>{
+  if(!cartItems().length){toast('购物车还是空的');return}
+  requireLogin(()=>{openCart(false);setTimeout(()=>openPay(),200)});
+};
 
-/* 进入动画 */
-let io;function observe(){if(!io)io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{rootMargin:'0px 0px -6% 0px',threshold:.05});$$('.rv:not(.in)').forEach(e=>io.observe(e))}
+/* ====================== 通用面板 ====================== */
+const pnl=$('#pnl'),pnlMask=$('#pnlMask'),pnlBody=$('#pnlBody'),pnlTitle=$('#pnlTitle');
+let pnlLock=false,pnlKind='',payCtx=null,payMethod=store.get('u_pm',CONFIG.PAY_METHODS[0].id);
+if(!CONFIG.PAY_METHODS.some(m=>m.id===payMethod))payMethod=CONFIG.PAY_METHODS[0].id;
+function openPanel(title,html,kind){pnlTitle.textContent=title;pnlBody.innerHTML=html;pnlKind=kind||'';pnlBody.scrollTop=0;pnl.classList.add('on');pnlMask.classList.add('on');syncLock()}
+function closePanel(){if(pnlLock)return;pnl.classList.remove('on');pnlMask.classList.remove('on');pnlKind='';payCtx=null;syncLock()}
+$('#pnlClose').onclick=closePanel;pnlMask.onclick=closePanel;
 
-/* Hero 卡片 3D 视差 */
+/* 订单 */
+function orderHTML(o){
+  const sm={paid:['已支付','ok'],pending:['待支付','wait'],cancelled:['已取消','off']}[o.status]||['未知','off'];
+  const names=o.items.map(i=>esc(i.n)+(i.q>1?' ×'+i.q:'')).join('、');
+  return `<div class="ord" data-id="${esc(o.id)}"><div class="ord-h"><span>订单 ${esc(o.no)}</span><i class="st ${sm[1]}">${sm[0]}</i></div><div class="ord-b">${names}</div><div class="ord-f"><small>${fmt(o.t)}</small><b>${money(o.amount)}</b></div>${o.status==='pending'?'<div class="ord-a"><button data-ord-cancel>取消订单</button><button class="pri" data-ord-pay>继续支付</button></div>':''}</div>`;
+}
+let ordersCache=[];
+async function openOrders(){
+  openPanel('我的订单','<div class="empty">加载中…</div>','orders');
+  try{
+    const list=await API.listOrders();if(pnlKind!=='orders')return;
+    ordersCache=list||[];
+    pnlBody.innerHTML=ordersCache.length?ordersCache.map(orderHTML).join(''):'<div class="empty">暂无订单<br>去商城挑选心仪的权益吧</div>';
+  }catch(e){if(pnlKind==='orders')pnlBody.innerHTML='<div class="empty">加载失败，请稍后重试</div>'}
+}
+
+/* 支付 */
+function openPay(src){
+  const order=src&&src.order;
+  const items=order?order.items:cartItems();
+  if(!items.length){toast('购物车还是空的');return}
+  const amount=order?order.amount:Math.round(items.reduce((s,i)=>s+i.p*i.q,0)*100)/100;
+  payCtx={order:order||null,amount};
+  const demo=!CONFIG.API_BASE;
+  openPanel('确认订单',`
+    <div class="pay-items">${items.map(i=>`<div class="pay-it"><span>${esc(i.n)}</span><em>×${i.q}</em><b>${money(i.p*i.q)}</b></div>`).join('')}</div>
+    <div class="my-section-label" style="margin:18px 2px 10px">支付方式</div>
+    ${CONFIG.PAY_METHODS.map(m=>`<button class="pm ${m.id===payMethod?'on':''}" data-pm="${m.id}"><i style="background:${m.c}">${m.t}</i><span>${m.n}</span><span class="rd"></span></button>`).join('')}
+    <div class="pay-total"><small>应付金额</small><b>${money(amount)}</b></div>
+    <button class="login-submit press" data-pay-go>确认支付 ${money(amount)}</button>
+    <p class="login-note" style="text-align:center;margin-bottom:0">${demo?'演示环境：不会产生真实扣款。':'支付由第三方安全完成，订单状态以服务端为准。'}</p>`,'pay');
+}
+async function submitPay(){
+  const go=$('[data-pay-go]',pnlBody);if(!go||go.disabled||!payCtx)return;
+  const label=go.textContent;
+  pnlLock=true;go.disabled=true;go.textContent='支付处理中…';botAct('working','',0);
+  try{
+    let order=payCtx.order,pp;
+    if(order){pp=(await API.prepay(order.id,payMethod)).payParams}
+    else{
+      const r=await API.createOrder({items:cartItems().map(i=>({id:i.id,q:i.q})),pay:payMethod});
+      order=r.order;pp=r.payParams;payCtx.order=order;cart={};saveCart();
+    }
+    const done=await API.payOrder(order,pp,payMethod);
+    pnlLock=false;payResult(done||order,(done||order).status==='paid');
+  }catch(e){
+    pnlLock=false;go.disabled=false;go.textContent=label;toast(e.message||'支付失败，请重试');botAct('alerting','',1200);
+  }
+}
+function payResult(o,ok){
+  pnlKind='result';pnlTitle.textContent=ok?'支付成功':'未完成支付';
+  pnlBody.innerHTML=`<div class="done-v"><div class="ck" style="${ok?'':'background:rgba(255,159,10,.14);color:#ff9f0a'}">${ic(ok?'check':'clock')}</div><h3>${ok?'支付成功':'订单待支付'}</h3><p>订单 ${esc(o.no)} · ${money(o.amount)}</p><p>${ok?'权益发放状态可在「我的订单」中查看':'订单已保存，可在「我的订单」继续支付'}</p></div><button class="login-submit press" data-go-orders>查看订单</button><button class="login-out press" data-close-pnl>${ok?'继续逛逛':'关闭'}</button>`;
+  botAct(ok?'finished':'alerting',ok?'支付成功！':'',1800);
+}
+
+/* 权益 */
+async function openBenefits(){
+  const done=T.filter(isDone).length;
+  openPanel('我的权益',`<div class="my-section-label">领取记录（今日 ${done} / ${T.length}）</div><div id="logBox"><div class="empty">加载中…</div></div>`,'benefits');
+  try{
+    const log=await API.listClaims();if(pnlKind!=='benefits')return;
+    $('#logBox').innerHTML=log&&log.length?log.map(l=>`<div class="log-row"><div>${esc(l.n)}<small>${fmt(l.t)}</small></div><b>+${Number(l.a).toLocaleString()} MB</b></div>`).join(''):'<div class="empty">暂无领取记录<br>去「免费领取」拿流量吧</div>';
+  }catch(e){if(pnlKind==='benefits')$('#logBox').innerHTML='<div class="empty">加载失败，请稍后重试</div>'}
+}
+
+/* 设置 */
+function openSettings(){
+  openPanel('账户设置',`
+    <div class="set-card"><div class="set-row"><span>账号</span><b>${esc(user.socialUid||user.id)}</b></div>
+    <div class="set-row"><span>昵称</span><input class="set-in" id="nickIn" maxlength="12" placeholder="设置昵称" value="${esc(user.nick||'')}"></div></div>
+    <button class="login-submit press" data-save-nick style="margin-top:16px">保存昵称</button>
+    ${CONFIG.API_BASE?'':'<button class="login-out press" data-reset-demo>重置体验数据</button>'}
+    <button class="login-out press" data-logout>退出登录</button>`,'settings');
+}
+async function doLogout(){
+  try{await API.logout()}catch(_){}
+  user=null;token=null;store.set('u_user',null);store.set('u_token',null);paintUser();
+  pnlLock=false;closePanel();botAct('drowsy','期待你下次回来',2000);
+}
+
+pnlBody.addEventListener('click',async e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.pm){payMethod=t.dataset.pm;store.set('u_pm',payMethod);$$('.pm',pnlBody).forEach(b=>b.classList.toggle('on',b.dataset.pm===payMethod));return}
+  if('payGo' in t.dataset)return submitPay();
+  if('closePnl' in t.dataset)return closePanel();
+  if('goOrders' in t.dataset)return openOrders();
+  if('ordPay' in t.dataset){const o=ordersCache.find(x=>x.id===t.closest('.ord').dataset.id);if(o)openPay({order:o});return}
+  if('ordCancel' in t.dataset){
+    const id=t.closest('.ord').dataset.id;if(!confirm('确定取消该订单吗？'))return;
+    t.disabled=true;
+    try{await API.cancelOrder(id);toast('订单已取消');openOrders()}catch(err){t.disabled=false;toast(err.message||'取消失败')}
+    return;
+  }
+  if('saveNick' in t.dataset){
+    const nick=$('#nickIn').value.trim();t.disabled=true;
+    try{const u=await API.updateProfile({nick});user=Object.assign({},user,u,{nick});store.set('u_user',user);paintUser();toast('已保存')}catch(err){toast(err.message||'保存失败')}
+    t.disabled=false;return;
+  }
+  if('logout' in t.dataset)return doLogout();
+  if('resetDemo' in t.dataset){
+    if(!confirm('将清除本机的体验数据（购物车、订单等），确定吗？'))return;
+    try{Object.keys(localStorage).filter(k=>k.indexOf('u_')===0).forEach(k=>localStorage.removeItem(k))}catch(_){}
+    location.reload();
+  }
+});
+
+/* ====================== 登录 ====================== */
+const loginMask=$('#loginMask');
+let afterLogin=null,cdT=0;
+const displayName=()=>user?(user.nick||user.name||maskPhone(user.id)):'未登录';
+function paintUser(){
+  const logged=!!user;
+  $('#loginEntry').textContent=logged?'账户':'登录';
+  $('#meName').textContent=displayName();
+  $('#meDesc').textContent=logged?(CONFIG.API_BASE?'已登录':'本机体验账号 · 信息保存在此设备'):'登录后查看账户与权益';
+  $('#myStatus').textContent=logged?'已登录':'访客';
+}
+function requireLogin(cb){if(user)return cb();afterLogin=cb;openLogin()}
+function openLogin(){
+  $('#loginNote').textContent='支持微信 / QQ 登录，首次登录自动创建账号，资料同步到云端。';
+  botAct('closed','',0);loginMask.classList.add('on');syncLock();setTimeout(()=>$('#loginPhone').focus(),150);
+}
+function closeLogin(){loginMask.classList.remove('on');syncLock();if(currentBotState==='closed')botAct('idle','',0)}
+function startCooldown(n=CONFIG.CODE_COOLDOWN){
+  const b=$('#sendCode');clearInterval(cdT);
+  const tick=()=>{if(n<=0){clearInterval(cdT);b.disabled=false;b.textContent='获取验证码';return}b.disabled=true;b.textContent=n+'s 后重发';n--};
+  tick();cdT=setInterval(tick,1000);
+}
+$('#loginPhone').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'')});
+$('#loginCode').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'')});
+$('#loginPhone').addEventListener('focus',()=>{(window.utBotEngines||[]).forEach(en=>{try{en.setState('listening')}catch(_){}})});
+$('#sendCode').addEventListener('click',async()=>{
+  const phone=$('#loginPhone').value.trim();
+  if(!/^1[3-9]\d{9}$/.test(phone)){toast('请输入正确的手机号');$('#loginPhone').focus();return}
+  const b=$('#sendCode');b.disabled=true;b.textContent='发送中…';
+  try{await API.sendCode(phone);startCooldown();toast(CONFIG.API_BASE?'验证码已发送':'体验模式：任意 4–6 位数字即可');$('#loginCode').focus()}
+  catch(e){b.disabled=false;b.textContent='获取验证码';toast(e.message||'发送失败，请稍后重试')}
+});
+async function submitLogin(){
+  const phone=$('#loginPhone').value.trim(),code=$('#loginCode').value.trim(),btn=$('#loginSubmit');
+  if(!/^1[3-9]\d{9}$/.test(phone)){toast('请输入正确的手机号');$('#loginPhone').focus();return}
+  if(!/^\d{4,6}$/.test(code)){toast('请输入验证码');$('#loginCode').focus();return}
+  if(!$('#agree').checked){toast('请先同意用户协议和隐私政策');return}
+  btn.disabled=true;btn.textContent='登录中…';
+  try{
+    const r=await API.login({phone,code});
+    token=r.token||null;user=r.user;store.set('u_token',token);store.set('u_user',user);
+    if(typeof r.balance==='number')setBal(r.balance);
+    paintUser();closeLogin();$('#loginCode').value='';botAct('happy','欢迎回来！',2200);
+    const cb=afterLogin;afterLogin=null;if(cb)setTimeout(cb,380);
+  }catch(e){toast(e.message||'登录失败，请重试');botAct('alerting','',1200)}
+  finally{btn.disabled=false;btn.textContent='登录 / 注册'}
+}
+$('#loginSubmit').addEventListener('click',submitLogin);
+$('#loginCode').addEventListener('keydown',e=>{if(e.key==='Enter')submitLogin()});
+$('#closeLogin').addEventListener('click',()=>{afterLogin=null;closeLogin()});
+loginMask.addEventListener('click',e=>{if(e.target===loginMask){afterLogin=null;closeLogin()}});
+$('#loginEntry').addEventListener('click',()=>{if(user)openMyPage();else openLogin()});
+/* ============ 社交登录（Aze 1077：微信 / QQ） ============ */
+const AZE={appid:'1077',appkey:'59df768465c656c1afe08091b3840261',proxy:'https://aze-login-proxy.pages.dev/'};
+function socStart(type){
+  const back=location.origin+location.pathname;
+  const url=AZE.proxy+'?act=login&appid='+AZE.appid+'&appkey='+AZE.appkey+'&type='+type+'&redirect_uri='+encodeURIComponent(back);
+  const b=type==='wx'?$('#wxLogin'):$('#qqLogin');
+  if(b)b.disabled=true;
+  toast('正在跳转'+(type==='wx'?'微信':'QQ')+'登录…');
+  fetch(url,{mode:'cors'}).then(r=>r.json()).then(d=>{
+    if(d&&d.code===0&&d.url){location.href=d.url;return}
+    if(b)b.disabled=false;
+    toast('登录跳转失败：'+((d&&d.msg)||'未知错误'));
+  }).catch(()=>{if(b)b.disabled=false;toast('网络异常，请重试')});
+}
+function socApply(d){
+  if(!(d&&d.code===0&&d.social_uid)){toast('登录失败：'+((d&&d.msg)||'未知错误'));return}
+  const sid=String(d.social_uid),type=(d.type==='qq'?'qq':'wx');
+  const nick=String(d.nickname||((type==='qq'?'QQ':'微信')+'用户'+sid.slice(-4))).slice(0,20);
+  let avatar=String(d.faceimg||'').replace(/^http:/,'https:');
+  if(!/^https:\/\//.test(avatar))avatar='';
+  const uid='u_'+type+'_'+sid;
+  user={id:uid,name:nick,nick:nick,avatar:avatar,type:type,socialUid:sid,loginAt:Date.now()};
+  token='aze.'+type+'.'+sid;
+  store.set('u_user',user);store.set('u_token',token);
+  paintUser();closeLogin();botAct('happy','欢迎回来！',2200);
+  const cb=afterLogin;afterLogin=null;if(cb)setTimeout(cb,380);
+  sbSave({social_uid:sid,provider:type,nickname:nick,avatar:avatar,uid:uid,updated_at:new Date().toISOString()});
+}
+function socHandleReturn(){
+  const q=new URLSearchParams(location.search);
+  const code=q.get('code'),type=q.get('type'),ret=q.get('aze_login'),u=q.get('u');
+  if(!code&&!ret)return;
+  history.replaceState(null,'',location.pathname+location.hash);
+  if(code&&type){
+    toast('登录校验中…');
+    const url=AZE.proxy+'?act=callback&appid='+AZE.appid+'&appkey='+AZE.appkey+'&type='+encodeURIComponent(type)+'&code='+encodeURIComponent(code);
+    fetch(url,{mode:'cors'}).then(r=>r.json()).then(socApply).catch(()=>toast('登录校验失败，请重试'));
+  }else if(ret==='1'&&u){
+    try{
+      let b=u.replace(/ /g,'+').replace(/-/g,'+').replace(/_/g,'/');
+      while(b.length%4)b+='=';
+      const bin=atob(b);let pct='';
+      for(let i=0;i<bin.length;i++)pct+='%'+('00'+bin.charCodeAt(i).toString(16)).slice(-2);
+      socApply(JSON.parse(decodeURIComponent(pct)));
+    }catch(e){toast('登录数据解析失败')}
+  }
+}
+
+/* ============ 云端账号（Supabase：多线路竞速 + 记忆 + 超时重试） ============ */
+const SB={
+  key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0',
+  table:'utopia_users',
+  hosts:['https://sb-proxy.3552453862.workers.dev','https://jsrxbpysgaywdhnntqnl.supabase.co'],
+  timeout:6000
+};
+SB.order=function(){
+  const good=store.get('u_sb_host','');
+  return good?[good].concat(SB.hosts.filter(h=>h!==good)):SB.hosts.slice();
+};
+function sbBaseHeaders(){return{'apikey':SB.key,'Authorization':'Bearer '+SB.key};}
+async function sbCall(path,init,attempts){
+  let last=null;
+  const tries=attempts||2;
+  for(let a=0;a<tries;a++){
+    const hosts=SB.order();
+    for(let i=0;i<hosts.length;i++){
+      const h=hosts[i];
+      const ctl=new AbortController();
+      const timer=setTimeout(()=>ctl.abort(),SB.timeout);
+      try{
+        const res=await fetch(h+path,Object.assign({cache:'no-store',signal:ctl.signal},init||{},{
+          headers:Object.assign(sbBaseHeaders(),(init&&init.headers)||{})
+        }));
+        clearTimeout(timer);
+        if(!res.ok)throw new Error('HTTP '+res.status);
+        const data=await res.json();
+        if(store.get('u_sb_host','')!==h)store.set('u_sb_host',h);
+        return data;
+      }catch(e){clearTimeout(timer);last=e}
+    }
+  }
+  throw last||new Error('cloud unreachable');
+}
+function sbSave(row){
+  return sbCall('/rest/v1/'+SB.table,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=representation'},
+    body:JSON.stringify([row])
+  }).then(function(){toast('已同步到云端')}).catch(function(){toast('云端同步失败，已本地保存')});
+}
+function sbLoad(sid){
+  return sbCall('/rest/v1/'+SB.table+'?social_uid=eq.'+encodeURIComponent(sid)+'&select=*')
+    .then(function(r){return (r&&r[0])||null}).catch(function(){return null});
+}
+$('#wxLogin').addEventListener('click',function(){socStart('wx')});
+$('#qqLogin').addEventListener('click',function(){socStart('qq')});
+socHandleReturn();
+if(user&&user.socialUid){
+  sbLoad(user.socialUid).then(function(r){
+    if(!r)return;
+    let changed=false;
+    if(r.nickname&&r.nickname!==user.nick){user.nick=r.nickname;user.name=r.nickname;changed=true}
+    if(r.avatar&&r.avatar!==user.avatar){user.avatar=r.avatar;changed=true}
+    if(changed){store.set('u_user',user);paintUser()}
+  });
+}
+
+
+const myPage=$('#myPage');
+myPage.addEventListener('click',e=>{
+  const it=e.target.closest('[data-account-action]');if(!it)return;
+  const a=it.dataset.accountAction;
+  requireLogin(()=>({orders:openOrders,benefits:openBenefits,settings:openSettings})[a]());
+});
+
+/* 服务端会话恢复 / 支付回跳 */
+async function bootstrap(){
+  if(!CONFIG.API_BASE)return;
+  if(token){
+    try{
+      const r=await API.me();
+      if(r.user){user=r.user;store.set('u_user',user)}
+      if(typeof r.balance==='number'){bal=r.balance;store.set('u_bal',bal);paintBal(false)}
+      if(r.claimed){claimed=Object.assign({_d:new Date().toDateString()},r.claimed);store.set('u_claimed',claimed);renderTasks(false)}
+      paintUser();
+    }catch(_){}
+  }
+  const pend=store.get('u_pending',null);
+  if(pend&&token){
+    store.set('u_pending',null);
+    try{const o=await API.getOrder(pend);if(o&&o.status==='paid'){toast('支付成功，订单已完成');botAct('finished','',1500)}}catch(_){}
+  }
+}
+
+/* ====================== 进入动画 ====================== */
+let io;
+function observe(){
+  if(!io)io=new IntersectionObserver(es=>es.forEach(e=>{
+    if(!e.isIntersecting)return;
+    const el=e.target;el.classList.add('in');io.unobserve(el);
+    // 动画结束后释放，避免残留的延迟/位移影响悬停等后续交互
+    setTimeout(()=>{el.classList.remove('rv','in');el.style.transitionDelay=''},1500);
+  }),{rootMargin:'0px 0px -6% 0px',threshold:.05});
+  $$('.rv:not(.in)').forEach(e=>io.observe(e));
+}
+
+/* Hero 卡片 3D 视差（仅鼠标设备） */
 if(matchMedia('(hover:hover) and (pointer:fine)').matches){
   const st=$('#stage'),tl=$('#tilt');let raf=0,tx=0,ty=0;
   st.addEventListener('pointermove',e=>{const r=st.getBoundingClientRect();tx=((e.clientX-r.left)/r.width-.5)*2;ty=((e.clientY-r.top)/r.height-.5)*2;
@@ -524,148 +1000,91 @@ if(matchMedia('(hover:hover) and (pointer:fine)').matches){
   st.addEventListener('pointerleave',()=>{tl.style.transform=''});
 }
 
-/* 导航 */
+/* ====================== 导航 / Dock ====================== */
 const dock=$('#dock'),dsl=$('.sl',dock),db=$$('button[data-go]',dock),ta=$$('#links a');
-const myPage=$('#myPage');
 const navTargets=['#home','#free','#shop'];
 const bot=$('#utBot'),headerBotAnchor=$('#headerBotAnchor'),myBotAnchor=$('#myBotAnchor');
-let pageTransitionBusy=false;
-let dockSuppressClick=false;
-let dockStops=[];
+let pageTransitionBusy=false,dockSuppressClick=false,dockStops=[],lastDockIndex=-1;
 
-let lastDockIndex = -1;
-function measureDock(){dockStops=db.map(b=>({x:b.offsetLeft-dock.clientLeft,width:b.offsetWidth,center:b.getBoundingClientRect().left+b.getBoundingClientRect().width/2}));}
-function setDockSlider(i,instant=false){
-  const stop=dockStops[i];if(!stop)return;
-  dsl.style.transition=instant?'none':'transform .38s cubic-bezier(.22,1,.36,1), width .38s cubic-bezier(.22,1,.36,1)';
-  dsl.style.width=stop.width+'px';
-  dsl.style.transform=`translate3d(${stop.x-5}px,0,0)`;
-  if(instant) dsl.offsetHeight;
+function measureDock(){dockStops=db.map(b=>{const r=b.getBoundingClientRect();return{x:b.offsetLeft-dock.clientLeft,width:b.offsetWidth,center:r.left+r.width/2}})}
+function setDockSlider(i,instant){
+  const s=dockStops[i];if(!s)return;
+  dsl.style.transition=instant?'none':'';
+  dsl.style.width=s.width+'px';
+  dsl.style.transform=`translate3d(${s.x-5}px,0,0)`;
+  if(instant)dsl.offsetHeight;
 }
 const moveDock=(i,instant=false)=>{
   if(!db[i])return;
-  if (lastDockIndex === i && !instant) return;
-  lastDockIndex = i;
-  setDockSlider(i,instant);
+  if(lastDockIndex===i&&!instant)return;
+  lastDockIndex=i;setDockSlider(i,instant);
   db.forEach((x,k)=>x.classList.toggle('on',k===i));
 };
 
 let botAnimation=null,botMoveToken=0;
 const MOTION_EASE='cubic-bezier(.22,1,.36,1)';
-function nextFrame(){return new Promise(resolve=>requestAnimationFrame(resolve));}
-
-async function moveSharedBot(toMy, preFrom, preTo){
+const nextFrame=()=>new Promise(r=>requestAnimationFrame(r));
+async function moveSharedBot(toMy,preFrom,preTo){
   if(!bot)return;
-  const target=toMy?myBotAnchor:headerBotAnchor;
-  if(!target)return;
+  const target=toMy?myBotAnchor:headerBotAnchor;if(!target)return;
   const token=++botMoveToken;
-  if(botAnimation){botAnimation.cancel();botAnimation=null;}
-  
-  const from = preFrom || bot.getBoundingClientRect();
-  if(!from.width||!from.height){
-    target.appendChild(bot);
-    bot.classList.toggle('my-bot',toMy);
-    bot.removeAttribute('style');
-    return;
-  }
-  
-  const to = preTo || target.getBoundingClientRect();
-  if(!to.width||!to.height){
-    target.appendChild(bot);
-    bot.classList.toggle('my-bot',toMy);
-    bot.removeAttribute('style');
-    return;
-  }
-  
+  if(botAnimation){botAnimation.cancel();botAnimation=null}
+  const settle=()=>{target.appendChild(bot);bot.classList.toggle('my-bot',toMy);bot.removeAttribute('style')};
+  const from=preFrom||bot.getBoundingClientRect();
+  if(!from.width||!from.height)return settle();
+  const to=preTo||target.getBoundingClientRect();
+  if(!to.width||!to.height)return settle();
   const dx=to.left-from.left,dy=to.top-from.top,sx=to.width/from.width,sy=to.height/from.height;
-  
   Object.assign(bot.style,{position:'fixed',left:from.left+'px',top:from.top+'px',width:from.width+'px',height:from.height+'px',margin:'0',zIndex:'120',transformOrigin:'top left',transition:'none',pointerEvents:'none',willChange:'transform'});
   document.body.appendChild(bot);
-  
-  const animation=bot.animate([
-    {transform:'translate3d(0,0,0) scale(1,1)'},
-    {transform:`translate3d(${dx}px,${dy}px,0) scale(${sx},${sy})`}
-  ],{duration:520,easing:MOTION_EASE,fill:'both'});
-  botAnimation=animation;
-  
-  try{await animation.finished;}catch(_){return;}
+  const anim=bot.animate([{transform:'translate3d(0,0,0) scale(1,1)'},{transform:`translate3d(${dx}px,${dy}px,0) scale(${sx},${sy})`}],{duration:520,easing:MOTION_EASE,fill:'both'});
+  botAnimation=anim;
+  try{await anim.finished}catch(_){return}
   if(token!==botMoveToken)return;
-  
-  target.appendChild(bot);
-  animation.cancel();botAnimation=null;
-  bot.removeAttribute('style');
-  bot.classList.toggle('my-bot',toMy);
+  settle();anim.cancel();botAnimation=null;
 }
-
 async function closeMyPage(){
   if(pageTransitionBusy||!myPage.classList.contains('on'))return;
   pageTransitionBusy=true;
-  const from = bot.getBoundingClientRect();
-  const to = headerBotAnchor.getBoundingClientRect();
-  
-  myPage.classList.remove('on');
-  myPage.setAttribute('aria-hidden','true');
-  document.body.classList.remove('my-open');
-  
-  await nextFrame();
-  await moveSharedBot(false, from, to);
-  pageTransitionBusy=false;
+  try{
+    const from=bot.getBoundingClientRect(),to=headerBotAnchor.getBoundingClientRect();
+    myPage.classList.remove('on');myPage.setAttribute('aria-hidden','true');document.body.classList.remove('my-open');
+    await nextFrame();await moveSharedBot(false,from,to);
+  }finally{pageTransitionBusy=false}
 }
-
 async function openMyPage(){
   if(pageTransitionBusy||myPage.classList.contains('on'))return;
   pageTransitionBusy=true;
-  myPage.classList.add('on');
-  myPage.setAttribute('aria-hidden','false');
-  document.body.classList.add('my-open');
-  moveDock(3);
-  await nextFrame();
-  await moveSharedBot(true);
-  history.replaceState(null,'',location.pathname+location.search+'#my-page');
-  pageTransitionBusy=false;
+  try{
+    myPage.classList.add('on');myPage.setAttribute('aria-hidden','false');document.body.classList.add('my-open');
+    moveDock(3);await nextFrame();await moveSharedBot(true);setHash('#my-page');
+  }finally{pageTransitionBusy=false}
 }
 
-let isScrollingProgrammatically = false;
-let scrollTimer;
-
+let progScroll=false,progTimer=0;
+const markProg=(ms=160)=>{progScroll=true;clearTimeout(progTimer);progTimer=setTimeout(()=>{progScroll=false},ms)};
 function goSection(selector,index){
   moveDock(index);
   const mood={'#home':null,'#free':'listening','#shop':'working'}[selector];
   if(mood)botAct(mood,'',1500);
-  
   const finish=()=>{
     const target=$(selector);
     if(target){
-      isScrollingProgrammatically = true;
-      clearTimeout(scrollTimer);
-      scrollTimer = setTimeout(() => { isScrollingProgrammatically = false; }, 800);
-
-      if(selector === '#home'){
-        window.scrollTo({top: 0, behavior: 'smooth'});
-      } else {
-        const headerHeight = $('#nav').offsetHeight || 60;
-        const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
-        window.scrollTo({top: top, behavior: 'smooth'});
-      }
+      markProg(450);
+      if(selector==='#home')window.scrollTo({top:0,behavior:'smooth'});
+      else{const h=$('.head',target)||target;window.scrollTo({top:Math.max(0,h.getBoundingClientRect().top+scrollY-92),behavior:'smooth'})}
     }
-    history.replaceState(null,'',location.pathname+location.search+selector);
+    setHash(selector);
   };
-  if(myPage.classList.contains('on')){
-    closeMyPage().then(finish);
-  }else{
-    finish();
-  }
+  if(myPage.classList.contains('on'))closeMyPage().then(finish);else finish();
 }
-
 function selectDock(i){if(pageTransitionBusy)return;if(i===3){openMyPage();return}goSection(db[i].dataset.go,i)}
 db.forEach((b,i)=>b.addEventListener('click',()=>{if(dockSuppressClick){dockSuppressClick=false;return}selectDock(i)}));
 
 let dockPointer=null;
 dock.addEventListener('pointerdown',e=>{
-  if(pageTransitionBusy)return;
-  if(e.button!==undefined&&e.button!==0)return;
-  const rect=dock.getBoundingClientRect();
-  dockPointer={id:e.pointerId,startX:e.clientX,startY:e.clientY,lastX:e.clientX,dragging:false,rect};
+  if(pageTransitionBusy)return;if(e.button!==undefined&&e.button!==0)return;
+  dockPointer={id:e.pointerId,startX:e.clientX,startY:e.clientY,lastX:e.clientX,dragging:false,rect:dock.getBoundingClientRect()};
 });
 dock.addEventListener('pointermove',e=>{
   if(!dockPointer||dockPointer.id!==e.pointerId)return;
@@ -674,62 +1093,43 @@ dock.addEventListener('pointermove',e=>{
   if(!dockPointer.dragging&&Math.abs(dx)>7&&Math.abs(dx)>Math.abs(dy)*1.2){dockPointer.dragging=true;try{dock.setPointerCapture(e.pointerId)}catch(_){}}
   if(!dockPointer.dragging)return;
   e.preventDefault();
-  const usable=dockPointer.rect.width-10;
-  const cell=usable/4;
-  const raw=(e.clientX-dockPointer.rect.left-5)/cell;
-  const index=Math.max(0,Math.min(3,Math.floor(raw)));
-  dsl.style.transition='none';
-  dsl.style.width=cell+'px';
+  const usable=dockPointer.rect.width-10,cell=usable/4;
+  const index=Math.max(0,Math.min(3,Math.floor((e.clientX-dockPointer.rect.left-5)/cell)));
+  dsl.style.transition='none';dsl.style.width=cell+'px';
   dsl.style.transform=`translate3d(${Math.max(0,Math.min(usable-cell,(e.clientX-dockPointer.rect.left-5)-cell/2))}px,0,0)`;
   db.forEach((b,k)=>b.classList.toggle('on',k===index));
 },{passive:false});
 function finishDockPointer(e){
   if(!dockPointer||dockPointer.id!==e.pointerId)return;
-  const state=dockPointer;dockPointer=null;
-  if(!state.dragging)return;
-  
-  let index = 0;
-  let minDist = Infinity;
-  dockStops.forEach((stop, i) => {
-    const dist = Math.abs(state.lastX - stop.center);
-    if (dist < minDist) {
-      minDist = dist;
-      index = i;
-    }
-  });
-
-  lastDockIndex = -1; 
-  dockSuppressClick=true;
-  moveDock(index); 
-  selectDock(index);
-  setTimeout(()=>dockSuppressClick=false,350);
+  const state=dockPointer;dockPointer=null;if(!state.dragging)return;
+  let index=0,min=Infinity;
+  dockStops.forEach((s,i)=>{const d=Math.abs(state.lastX-s.center);if(d<min){min=d;index=i}});
+  lastDockIndex=-1;dockSuppressClick=true;moveDock(index);selectDock(index);
+  setTimeout(()=>{dockSuppressClick=false},350);
 }
 dock.addEventListener('pointerup',finishDockPointer);
 dock.addEventListener('pointercancel',finishDockPointer);
-ta.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();if(a.hasAttribute('data-open-my')){openMyPage();return}const href=a.getAttribute('href');const i=navTargets.indexOf(href);goSection(href,Math.max(0,i))}));
-const logoLink=$('.logo');if(logoLink)logoLink.addEventListener('click',e=>{
-    if(e.target.closest('#utBot')) return;
-    e.preventDefault();
-    goSection('#home',0);
-});
+ta.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();if(a.hasAttribute('data-open-my')){openMyPage();return}const href=a.getAttribute('href');goSection(href,Math.max(0,navTargets.indexOf(href)))}));
+const logoLink=$('.logo');
+if(logoLink)logoLink.addEventListener('click',e=>{if(e.target.closest('#utBot'))return;e.preventDefault();goSection('#home',0)});
+$$('.cta a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const href=a.getAttribute('href');goSection(href,Math.max(0,navTargets.indexOf(href)))}));
+
 let tk=false;
 addEventListener('scroll',()=>{
-  if(tk||document.body.classList.contains('my-open')||isScrollingProgrammatically)return;
-  tk=true;
+  if(document.body.classList.contains('my-open'))return;
+  if(progScroll){markProg();return}
+  if(tk)return;tk=true;
   requestAnimationFrame(()=>{
-    const mid=scrollY+innerHeight*.38;
-    let current=0;
+    const mid=scrollY+innerHeight*.38;let current=0;
     navTargets.forEach((sel,i)=>{const el=$(sel);if(el&&el.offsetTop<=mid)current=i});
-    ta.forEach((a,k)=>a.classList.toggle('on',k===current));moveDock(current);tk=false
-  })
+    ta.forEach((a,k)=>a.classList.toggle('on',k===current));moveDock(current);tk=false;
+  });
 },{passive:true});
-addEventListener('resize',()=>{moveSl();measureDock();const active=db.findIndex(b=>b.classList.contains('on'));moveDock(Math.max(0,active),true)});
+function remeasure(){moveSl();measureDock();const a=db.findIndex(b=>b.classList.contains('on'));moveDock(Math.max(0,a),true)}
+let rz=0;addEventListener('resize',()=>{cancelAnimationFrame(rz);rz=requestAnimationFrame(remeasure)});
+addEventListener('pageshow',()=>{rollDay();renderTasks(false);remeasure()});
 
-/* 登录与 UT Bot 交互 */
-const loginMask=$('#loginMask');
-let botTaps=0,botTapTimer=0;
-
-/* —— 完整动作 / 表情映射表 —— */
+/* ====================== UT Bot 表情 / 手势 ====================== */
 const BOT_MOTION={
   idle:{expr:'neutral',st:'idle',blink:false},
   happy:{expr:'happy',st:'finished',blink:true,throughBlink:true},
@@ -746,207 +1146,75 @@ const BOT_MOTION={
   drowsy:{expr:'sleepy',st:'drowsy',blink:false},
   blocked:{expr:'inspecting',st:'blocked',blink:false}
 };
-let currentBotState='idle';
-
+let currentBotState='idle',botTaps=0,botTapTimer=0;
 function botAct(state='idle',message='',duration=1700){
   const m=BOT_MOTION[state]||BOT_MOTION.idle;
   currentBotState=state;
   (window.utBotEngines||[]).forEach(engine=>{
-    try{
-      if(m.blink)engine.blink();
-      engine.setExpression(m.expr,{throughBlink:!!m.throughBlink});
-      engine.setState(m.st);
-    }catch(err){console.warn('UT Bot 状态切换失败',state,err)}
+    try{if(m.blink)engine.blink();engine.setExpression(m.expr,{throughBlink:!!m.throughBlink});engine.setState(m.st)}
+    catch(err){console.warn('UT Bot 状态切换失败',state,err)}
   });
   if(message)toast(message);
+  clearTimeout(window.utBotResetTimer);
   if(duration>0){
-    clearTimeout(window.utBotResetTimer);
     window.utBotResetTimer=setTimeout(()=>{
       currentBotState='idle';
-      (window.utBotEngines||[]).forEach(engine=>{try{engine.setExpression('neutral');engine.setState('idle')}catch(_){}});
+      (window.utBotEngines||[]).forEach(en=>{try{en.setExpression('neutral');en.setState('idle')}catch(_){}});
     },duration);
   }
 }
 window.utBotTest=(s,m)=>botAct(s||'idle',m||s||'',2400);
 window.utBotStates=Object.keys(BOT_MOTION);
 
-function paintUser(){const logged=!!user;$('#loginEntry').textContent=logged?'账户':'微信登录';$('#meName').textContent=logged?(user.name||user.id):'未登录';$('#meDesc').textContent=logged?'本机体验账号 · 信息保存在此设备':'登录后查看账户与权益';$('#myStatus').textContent=logged?'已登录':'访客';$('#logoutBtn').style.display=logged?'block':'none';$('#loginSubmit').textContent=logged?'切换体验账号':'登录 / 创建体验账号'}
-function openLogin(){botAct('closed','',0);loginMask.classList.add('on');setTimeout(()=>$('#loginPhone').focus(),120)}
-$('#loginEntry').addEventListener('click',openLogin);
-myPage.addEventListener('click',e=>{const item=e.target.closest('[data-account-action]');if(!item)return;if(!user){openLogin();return}const action=item.dataset.accountAction;toast(action==='orders'?'暂无订单记录':action==='benefits'?'权益记录暂未开放':'当前为本地体验账号')});
-$('#closeLogin').addEventListener('click',()=>{loginMask.classList.remove('on');botAct('happy','',1200)});
-loginMask.addEventListener('click',e=>{if(e.target===loginMask){loginMask.classList.remove('on');botAct('idle','',0)}});
-$('#loginPhone').addEventListener('focus',()=>{(window.utBotEngines||[]).forEach(engine=>{try{engine.setState('listening')}catch(_){}})});
-$('#loginSubmit').addEventListener('click',()=>{const id=$('#loginPhone').value.trim();if(!id){toast('请输入手机号或用户名');$('#loginPhone').focus();return}user={id,name:id.length>14?id.slice(0,4)+'****'+id.slice(-3):id};store.set('u_user',user);paintUser();loginMask.classList.remove('on');botAct('happy','欢迎回来！',2200)});
-$('#logoutBtn').addEventListener('click',()=>{user=null;store.set('u_user',null);paintUser();loginMask.classList.remove('on');botAct('drowsy','期待你下次回来',2000)});
-paintUser();
-
-/* ============ 云端账号（Supabase utopia_users） ============ */
-const SB={
-  key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzcnhicHlzZ2F5d2Robm50cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk4ODQsImV4cCI6MjA4MjkxNTg4NH0.-5n_vYPBwD98Hrtw68VkQwQJsiJp4nWW5JhJ0AZfDx0',
-  table:'utopia_users',
-  hosts:['https://sb-proxy.3552453862.workers.dev','https://jsrxbpysgaywdhnntqnl.supabase.co'],
-  url:''
-};
-function sbPick(fn){
-  const hosts=SB.url?[SB.url,...SB.hosts]:SB.hosts.slice();
-  return (async()=>{
-    let lastErr=null;
-    for(const h of hosts){
-      try{const r=await fn(h);SB.url=h;return r}catch(e){lastErr=e}
-    }
-    throw lastErr||new Error('无可用线路');
-  })();
-}
-function sbHeaders(){return {'apikey':SB.key,'Authorization':'Bearer '+SB.key,'Content-Type':'application/json'}}
-async function sbUpsert(row){
-  return sbPick(async h=>{
-    const r=await fetch(h+'/rest/v1/'+SB.table,{method:'POST',cache:'no-store',
-      headers:Object.assign(sbHeaders(),{'Prefer':'resolution=merge-duplicates,return=representation'}),
-      body:JSON.stringify([row])});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const list=await r.json();
-    return (list&&list[0])||row;
-  });
-}
-async function sbFind(social_uid){
-  return sbPick(async h=>{
-    const r=await fetch(h+'/rest/v1/'+SB.table+'?social_uid=eq.'+encodeURIComponent(social_uid)+'&select=*',{cache:'no-store',headers:sbHeaders()});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const list=await r.json();
-    return (list&&list[0])||null;
-  });
-}
-
-/* ============ Aze 微信登录（appid 1077） ============ */
-const AZE={appid:'1077',appkey:'59df768465c656c1afe08091b3840261',proxy:'https://aze-login-proxy.pages.dev/'};
-function wxStart(){
-  const back=location.origin+location.pathname;
-  const url=AZE.proxy+'?act=login&appid='+AZE.appid+'&appkey='+AZE.appkey+'&type=wx&redirect_uri='+encodeURIComponent(back);
-  toast('正在跳转微信登录…');botAct('listening','',0);
-  fetch(url,{mode:'cors'}).then(r=>r.json()).then(d=>{
-    if(d&&d.code===0&&d.url){location.href=d.url}
-    else{toast('登录跳转失败：'+((d&&d.msg)||'未知错误'));botAct('blocked','',1200)}
-  }).catch(()=>{toast('网络异常，请重试');botAct('blocked','',1200)});
-}
-function wxRender(){
-  if(!user) return;
-  const nameEl=$('#meName');
-  if(nameEl){
-    if(user.avatar){
-      const img=document.createElement('img');img.className='me-avatar';img.alt='';img.src=user.avatar;
-      nameEl.textContent='';nameEl.appendChild(img);nameEl.appendChild(document.createTextNode(user.name));
-    }else nameEl.textContent=user.name;
-  }
-  const desc=$('#meDesc'); if(desc) desc.textContent=(user.type==='wx'?'微信登录':'本机体验账号')+' · '+(user.uid||'');
-  const st=$('#myStatus'); if(st) st.textContent='已登录';
-}
-async function wxApply(d){
-  if(!(d&&d.code===0&&d.social_uid)){toast('微信登录失败：'+((d&&d.msg)||'未知错误'));return}
-  const sid=String(d.social_uid);
-  const nick=String(d.nickname||('微信用户'+sid.slice(-4))).slice(0,20);
-  let avatar=String(d.faceimg||'').replace(/^http:/,'https:');
-  if(!/^https:\/\//.test(avatar)) avatar='';
-  const row={social_uid:sid,provider:'wx',nickname:nick,avatar:avatar,uid:'wx_'+sid,updated_at:new Date().toISOString()};
-  user={id:row.uid,uid:row.uid,name:nick,avatar:avatar,type:'wx',socialUid:sid,loginAt:Date.now()};
-  store.set('u_user',user);
-  paintUser();wxRender();
-  loginMask.classList.remove('on');
-  try{
-    const saved=await sbUpsert(row);
-    if(saved&&saved.nickname){user.name=saved.nickname;store.set('u_user',user);paintUser();wxRender()}
-    botAct('happy','微信登录成功，欢迎回来！',2400);
-    toast('已同步到云端账号');
-  }catch(e){
-    botAct('happy','微信登录成功（本地缓存）',2400);
-    toast('云端同步失败，已本地保存');
-  }
-}
-function wxHandleReturn(){
-  const q=new URLSearchParams(location.search);
-  const code=q.get('code'),type=q.get('type'),ret=q.get('aze_login'),u=q.get('u');
-  if(!code&&!ret) return;
-  history.replaceState(null,'',location.pathname+location.hash);
-  if(code&&type){
-    toast('微信登录中…');
-    const url=AZE.proxy+'?act=callback&appid='+AZE.appid+'&appkey='+AZE.appkey+'&type='+encodeURIComponent(type)+'&code='+encodeURIComponent(code);
-    fetch(url,{mode:'cors'}).then(r=>r.json()).then(wxApply).catch(()=>toast('登录校验失败，请重试'));
-  }else if(ret==='1'&&u){
-    try{
-      let b=u.replace(/ /g,'+').replace(/-/g,'+').replace(/_/g,'/');
-      while(b.length%4) b+='=';
-      const bin=atob(b);let pct='';
-      for(let i=0;i<bin.length;i++) pct+='%'+('00'+bin.charCodeAt(i).toString(16)).slice(-2);
-      wxApply(JSON.parse(decodeURIComponent(pct)));
-    }catch(e){toast('登录数据解析失败')}
-  }
-}
-$('#wxLogin').addEventListener('click',wxStart);
-wxHandleReturn();
-if(user&&user.socialUid){
-  sbFind(user.socialUid).then(r=>{if(r&&r.nickname){user.name=r.nickname;user.avatar=r.avatar||user.avatar;store.set('u_user',user);paintUser();wxRender()}}).catch(()=>{});
-}
-
-/* —— 空闲休眠 + 自然眨眼 —— */
 let idleTimer=0,naturalBlinkTimer=0;
 function kickAmbient(){
   clearTimeout(idleTimer);
   if(currentBotState==='drowsy')botAct('idle','',0);
-  idleTimer=setTimeout(()=>{
-    if(document.hidden)return;
-    if(currentBotState!=='idle')return;
-    botAct('drowsy','',0);
-  },28000);
+  idleTimer=setTimeout(()=>{if(!document.hidden&&currentBotState==='idle')botAct('drowsy','',0)},28000);
 }
 function naturalBlink(){
   clearTimeout(naturalBlinkTimer);
-  const delay=4200+Math.random()*5800;
   naturalBlinkTimer=setTimeout(()=>{
-    if(!document.hidden&&currentBotState==='idle'){
-      (window.utBotEngines||[]).forEach(e=>{try{e.blink()}catch(_){}});
-    }
+    if(!document.hidden&&currentBotState==='idle')(window.utBotEngines||[]).forEach(e=>{try{e.blink()}catch(_){}});
     naturalBlink();
-  },delay);
+  },4200+Math.random()*5800);
 }
 ['pointerdown','keydown','wheel','scroll','touchstart'].forEach(ev=>addEventListener(ev,kickAmbient,{passive:true}));
-kickAmbient();
-naturalBlink();
-
-/* —— 引擎就绪时播放一次 waking —— */
+kickAmbient();naturalBlink();
 addEventListener('utbot:ready',()=>{setTimeout(()=>botAct('waking','嗨，我是ut bot',1700),260)});
 
-/* —— bot 点击手势链 —— */
 const TAP_CHAIN=[
-  {s:'happy',     m:'你好呀，有什么需要帮忙？'},
-  {s:'listening', m:'我在听～'},
-  {s:'thinking',  m:'让我想想…'},
+  {s:'happy',m:'你好呀，有什么需要帮忙？'},
+  {s:'listening',m:'我在听～'},
+  {s:'thinking',m:'让我想想…'},
   {s:'suspicious',m:'嗯？你是不是在戳我'},
-  {s:'angry',     m:'哎呀，轻一点啦！'}
+  {s:'angry',m:'哎呀，轻一点啦！'}
 ];
-if(bot){
-  bot.addEventListener('click',e=>{
-    e.preventDefault();
-    e.stopPropagation();
-    botTaps=Math.min(botTaps+1,TAP_CHAIN.length);
-    clearTimeout(botTapTimer);
-    botTapTimer=setTimeout(()=>botTaps=0,1200);
-    const step=TAP_CHAIN[botTaps-1];
-    (window.utBotEngines||[]).forEach(engine=>{try{engine.blink()}catch(_){}});
-    botAct(step.s,step.m);
-  })
-}
-
-document.addEventListener('visibilitychange',()=>{
-  if(!document.hidden){botAct('waking','你回来啦',1300);kickAmbient()}
+if(bot)bot.addEventListener('click',e=>{
+  e.preventDefault();e.stopPropagation();
+  botTaps=Math.min(botTaps+1,TAP_CHAIN.length);
+  clearTimeout(botTapTimer);botTapTimer=setTimeout(()=>{botTaps=0},1200);
+  const step=TAP_CHAIN[botTaps-1];
+  (window.utBotEngines||[]).forEach(en=>{try{en.blink()}catch(_){}});
+  botAct(step.s,step.m);
 });
-$('#shopGrid').addEventListener('click',e=>{if(e.target.closest('.add'))botAct('happy','已放入购物车',1300)});
-$('#tasks').addEventListener('click',e=>{if(e.target.closest('.claim'))botAct('finished','领取成功！',1600)});
-$('#pay').addEventListener('click',()=>botAct('thinking','结算前再确认一下哦',1500));
-addEventListener('keydown',e=>{if(e.key==='Escape'){openCart(false);loginMask.classList.remove('on');if(document.body.classList.contains('my-open')){closeMyPage().then(()=>moveDock(0))}}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){rollDay();botAct('waking','你回来啦',1300);kickAmbient()}});
 
-renderTasks();renderShop(true);renderCart();paintBal(false);
-requestAnimationFrame(()=>{moveSl();measureDock();if(location.hash==='#my-page')openMyPage();else moveDock(0,true);observe();progress()});
-document.fonts&&document.fonts.ready.then(()=>{moveSl();measureDock();const active=db.findIndex(b=>b.classList.contains('on'));moveDock(Math.max(0,active),true)});
+/* Esc 依次关闭：面板 → 登录 → 购物车 → 我的页面 */
+addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  if(pnl.classList.contains('on')){closePanel();return}
+  if(loginMask.classList.contains('on')){afterLogin=null;closeLogin();return}
+  if($('#sheet').classList.contains('on')){openCart(false);return}
+  if(document.body.classList.contains('my-open'))closeMyPage().then(()=>moveDock(0));
+});
+
+/* ====================== 初始化 ====================== */
+renderTasks(true);renderShop(true);renderCart();paintBal(false);paintUser();
+requestAnimationFrame(()=>{remeasure();if(location.hash==='#my-page')openMyPage();else moveDock(0,true);observe();progress()});
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(remeasure);
+setTimeout(remeasure,300);
+bootstrap();
 })();
 </script>
 
