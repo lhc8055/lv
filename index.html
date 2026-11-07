@@ -435,7 +435,7 @@ body.my-open #myBotAnchor{opacity:1}
   </div>
 </div></section>
 </main>
-<footer id="foot">© 2026 乌托邦 Utopia · v15</footer>
+<footer id="foot">© 2026 乌托邦 Utopia · v16</footer>
 
 <section class="my-page" id="myPage" aria-label="账户中心" aria-hidden="true">
   <div class="my-page-inner">
@@ -737,43 +737,57 @@ function orderHTML(o){
   return `<div class="ord" data-id="${esc(o.id)}"><div class="ord-h"><span>订单 ${esc(o.no)}</span><i class="st ${sm[1]}">${sm[0]}</i></div><div class="ord-b">${names}</div>${code}<div class="ord-f"><small>${fmt(o.t)}</small><b>${money(o.amount)}</b></div>${o.status==='pending'?'<div class="ord-a"><button data-ord-cancel>取消订单</button><button class="pri" data-ord-pay>继续支付</button></div>':''}</div>`;
 }
 let ordersCache=[];
-/* ===== 订单：每次都以云端为准（不落本地） ===== */
+/* ===== 订单：只读云端（不落本地、不走竞速，双通道直连） ===== */
 function orderFromRow(r){
-  const st=r.status==='delivered'?'delivered':(r.status==='paid'?'paid':(r.status==='closed'?'cancelled':'pending'));
+  const raw=String(r.status||'').toLowerCase();
+  let st='pending';
+  if(raw==='delivered')st='delivered';
+  else if(raw==='paid')st='paid';
+  else if(raw==='closed'||raw==='cancelled'||raw==='cancel')st='cancelled';
   return {id:r.out_trade_no,no:r.out_trade_no,amount:Number(r.amount)||0,status:st,
     pay:r.pay_type||'alipay',t:+new Date(r.created_at||Date.now()),
     paidAt:r.paid_at?+new Date(r.paid_at):null,
     code:r.deliver_code||'',deliveredAt:r.delivered_at?+new Date(r.delivered_at):null,
     items:(r.items||[]).map(i=>({id:i.id||0,n:i.n||'商品',p:Number(i.p)||0,q:Number(i.q)||1}))};
 }
+const ORDER_HOSTS=['https://sbrelay.pages.dev','https://jsrxbpysgaywdhnntqnl.supabase.co'];
 async function cloudOrders(){
   if(!user)return [];
   const uid=user.uacct||user.uid||'';
   if(!uid)return [];
-  const rows=await sbCall('/rest/v1/utopia_orders?uid=eq.'+encodeURIComponent(uid)+'&select=*&order=created_at.desc&limit=50');
-  return (rows||[]).map(orderFromRow);
+  const path='/rest/v1/utopia_orders?uid=eq.'+encodeURIComponent(uid)
+    +'&select=out_trade_no,amount,status,pay_type,title,items,created_at,paid_at,deliver_code,delivered_at'
+    +'&order=created_at.desc&limit=50';
+  let last=null;
+  for(const host of ORDER_HOSTS){
+    const ctl=new AbortController();
+    const timer=setTimeout(()=>ctl.abort(),9000);
+    try{
+      const r=await fetch(host+path,{cache:'no-store',signal:ctl.signal,
+        headers:{'apikey':SB.key,'Authorization':'Bearer '+SB.key}});
+      clearTimeout(timer);
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      const rows=await r.json();
+      return (rows||[]).map(orderFromRow);
+    }catch(e){clearTimeout(timer);last=e}
+  }
+  throw last||new Error('cloud unreachable');
 }
 async function prefetchOrders(){
   if(!user)return;
   try{ordersCache=await cloudOrders()}catch(_){}
 }
 async function openOrders(){
-  const had=ordersCache.length;
   const bar='<div class="ord-bar"><button type="button" data-ord-refresh>刷新支付状态</button></div>';
-  openPanel('我的订单',bar+(had?ordersCache.map(orderHTML).join(''):'<div class="empty">加载中…</div>'),'orders');
+  openPanel('我的订单',bar+(ordersCache.length?ordersCache.map(orderHTML).join(''):'<div class="empty">加载中…</div>'),'orders');
   try{
-    const list=user?await cloudOrders():await API.listOrders();
+    const list=await cloudOrders();
     if(pnlKind!=='orders')return;
-    ordersCache=list||[];
-    pnlBody.innerHTML=bar+(ordersCache.length?ordersCache.map(orderHTML).join(''):'<div class="empty">暂无订单<br>去商城挑选心仪的权益吧</div>');
+    ordersCache=list;
+    pnlBody.innerHTML=bar+(list.length?list.map(orderHTML).join(''):'<div class="empty">暂无订单<br>去商城挑选心仪的权益吧</div>');
   }catch(e){
-    let local=[];
-    try{local=await API.listOrders()}catch(_){}
-    ordersCache=local||[];
     if(pnlKind==='orders'){
-      pnlBody.innerHTML=bar+(ordersCache.length
-        ? ordersCache.map(orderHTML).join('')
-        : '<div class="empty">云端连接失败，稍后自动重试<br>下拉或点右上角刷新</div>');
+      pnlBody.innerHTML=bar+'<div class="empty">网络异常，点上方「刷新支付状态」重试</div>';
     }
   }
 }
