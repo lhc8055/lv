@@ -491,7 +491,7 @@ body.my-open #myBotAnchor{opacity:1}
   </div>
 </div></section>
 </main>
-<footer id="foot">© 2026 乌托邦 Utopia · v21</footer>
+<footer id="foot">© 2026 乌托邦 Utopia · v22</footer>
 
 <section class="my-page" id="myPage" aria-label="账户中心" aria-hidden="true">
   <div class="my-page-inner">
@@ -1045,7 +1045,8 @@ async function cloudOrders(){
     +'&select=out_trade_no,amount,status,pay_type,title,items,created_at,paid_at,deliver_code,delivered_at'
     +'&order=created_at.desc&limit=50';
   const r=await raceFetch([{tag:'relay',url:SB.relay+path,delay:0},{tag:'direct',url:SB.base+path,delay:600}],{},9000);
-  return (r.data||[]).map(orderFromRow);
+  const _now=Date.now();
+  return (r.data||[]).map(orderFromRow).filter(o=>!(o.status==='pending'&&(_now-o.t)>5*60*1000));
 }
 async function prefetchOrders(){
   if(!user)return;
@@ -1813,6 +1814,7 @@ socHandleReturn();
 cloudFlush();
 addEventListener('online',cloudFlush);
 setInterval(cloudFlush,60000);
+fetch('https://sbrelay.pages.dev/pay/clean').catch(()=>{});
 setTimeout(()=>{prefetchOrders();checkPendingPay();startPayPoll()},1500);
 if(user&&user.socialUid){
   cloudLoad(user.socialUid).then(r=>{
