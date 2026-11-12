@@ -1388,16 +1388,44 @@ loginMask.addEventListener('click',e=>{if(e.target===loginMask){afterLogin=null;
 $('#loginEntry').addEventListener('click',()=>{if(user)openMyPage();else openLogin()});
 /* ============ 社交登录（Aze 1077：微信 / QQ） ============ */
 const AZE={appid:'1077',appkey:'59df768465c656c1afe08091b3840261',proxy:'https://aze-login-proxy.pages.dev/'};
+/* 登录线路容错：部分网络（尤其移动端）直连 *.pages.dev 会失败，逐条切换备用通道 */
+async function socFetch(qs){
+  const direct=AZE.proxy+qs;
+  const roads=[
+    ['direct',direct],
+    ['euorg','https://cors.eu.org/'+direct],
+    ['allorigins','https://api.allorigins.win/raw?url='+encodeURIComponent(direct)],
+    ['codetabs','https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(direct)]
+  ];
+  const errs=[];
+  for(let i=0;i<roads.length;i++){
+    const tag=roads[i][0],url=roads[i][1];
+    const ctl=typeof AbortController!=='undefined'?new AbortController():null;
+    const timer=ctl?setTimeout(()=>ctl.abort(),7000):null;
+    try{
+      const r=await fetch(url,ctl?{mode:'cors',signal:ctl.signal}:{mode:'cors'});
+      if(timer)clearTimeout(timer);
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      const txt=await r.text();
+      let d;try{d=JSON.parse(txt)}catch(e){throw new Error('bad json')}
+      return d;
+    }catch(e){
+      if(timer)clearTimeout(timer);
+      errs.push(tag+' '+((e&&e.message)||'fail'));
+    }
+  }
+  throw new Error(errs.join(' / ')||'network');
+}
 function socStart(type){
   const back=location.origin+location.pathname;
-  const url=AZE.proxy+'?act=login&appid='+AZE.appid+'&appkey='+AZE.appkey+'&type='+type+'&redirect_uri='+encodeURIComponent(back);
+  const qs='?act=login&appid='+AZE.appid+'&appkey='+AZE.appkey+'&type='+type+'&redirect_uri='+encodeURIComponent(back);
   const b=type==='wx'?$('#wxLogin'):$('#qqLogin'),label=$('span',b).textContent;
   $$('.soc-btn').forEach(x=>x.disabled=true);b.classList.add('busy');$('span',b).textContent='正在跳转…';botAct('working','',0);
   const fail=m=>{resetSocBtns();$('span',b).textContent=label;toast(m);botAct('alerting','',1400)};
-  fetch(url,{mode:'cors'}).then(r=>r.json()).then(d=>{
+  socFetch(qs).then(d=>{
     if(d&&d.code===0&&d.url){location.href=d.url;return}
     fail('登录跳转失败：'+((d&&d.msg)||'未知错误'));
-  }).catch(()=>fail('网络异常，请重试'));
+  }).catch(e=>fail('网络异常，请重试（'+((e&&e.message)||'')+'）'));
 }
 function socApply(d){
   if(!(d&&d.code===0&&d.social_uid)){toast('登录失败：'+((d&&d.msg)||'未知错误'));return}
@@ -1423,8 +1451,7 @@ function socHandleReturn(){
   history.replaceState(null,'',location.pathname+location.hash);
   if(code&&type){
     toast('登录校验中…');
-    const url=AZE.proxy+'?act=callback&appid='+AZE.appid+'&appkey='+AZE.appkey+'&type='+encodeURIComponent(type)+'&code='+encodeURIComponent(code);
-    fetch(url,{mode:'cors'}).then(r=>r.json()).then(socApply).catch(()=>toast('登录校验失败，请重试'));
+    socFetch('?act=callback&appid='+AZE.appid+'&appkey='+AZE.appkey+'&type='+encodeURIComponent(type)+'&code='+encodeURIComponent(code)).then(socApply).catch(e=>toast('登录校验失败，请重试（'+((e&&e.message)||'')+'）'));
   }else if(ret==='1'&&u){
     try{
       let b=u.replace(/ /g,'+').replace(/-/g,'+').replace(/_/g,'/');
