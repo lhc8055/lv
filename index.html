@@ -23,7 +23,7 @@
   --shadow-nav:0 8px 28px rgba(0,0,0,.45); --shadow-dock:0 10px 30px rgba(0,0,0,.55); --card-sh:none;
   --brand-a:#fff; --brand-b:#a9c8ff; --pill-t:#c7c7cc; --tg-bg:rgba(255,255,255,.14); --label:#a1a1a6;
   --menu-bg:linear-gradient(155deg,rgba(255,255,255,.075),rgba(255,255,255,.025)); --float-bg:rgba(40,42,48,.96);
-  --grab:rgba(255,255,255,.25); --rd:rgba(255,255,255,.25); --dock-sl:rgba(255,255,255,.12); --dock-sl2:rgba(255,255,255,.2);
+  --grab:rgba(255,255,255,.25); --rd:rgba(255,255,255,.25); --dock-sl:rgba(255,255,255,.12); --dock-sl2:rgba(255,255,255,.2); --dlens-drop:rgba(0,0,0,.5); --nav-lg-sh:rgba(0,0,0,.32);
   --h1g:linear-gradient(100deg,#ffffff 8%,#bcd8ff 52%,#d2c0ff 100%); --sheen:rgba(255,255,255,.98); --h2b:#9cc8ff;
   --g1:rgba(41,151,255,.24); --g2:rgba(150,90,255,.18); color-scheme:dark;
   --ease:cubic-bezier(.22,1,.36,1);
@@ -145,6 +145,7 @@ img[data-fade].ld{opacity:1}
 .item{overflow:hidden;transition:transform .5s var(--ease),background-color .35s var(--ease),opacity .4s var(--ease)}
 .item.rv{transition:opacity .8s var(--ease),transform .8s var(--ease);transition-delay:calc(var(--i,0)*70ms)}
 .item.out{opacity:0;transform:translate3d(0,12px,0) scale(.98)}
+.item.gone{display:none}
 .cover{position:relative;aspect-ratio:1.42;display:grid;place-items:center;overflow:hidden;background:radial-gradient(75% 80% at 50% 0%,color-mix(in srgb,var(--c) 38%,transparent),transparent 72%)}
 .cover .big{font-size:44px;color:color-mix(in srgb,var(--c) 55%,#fff);filter:drop-shadow(0 6px 22px color-mix(in srgb,var(--c) 70%,transparent));transition:transform .8s var(--ease)}
 .cover .lab{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:12px;font-weight:600;letter-spacing:.04em;color:color-mix(in srgb,var(--c) 40%,#fff);opacity:.9}
@@ -327,11 +328,16 @@ body.my-open #myBotAnchor{opacity:1}
 .ord-code b{font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em;font-size:13.5px}
 .ord-code button{margin-left:auto;padding:4px 10px;border-radius:9px;background:rgba(48,209,88,.18);color:#30d158;font-size:12px;font-weight:600}
 
-/* 底部 Dock（液态玻璃）：shell 负责定位与阴影，.dock 负责玻璃。
- * 玻璃质感 = 边缘高光（多层 inset 阴影）+ SVG 位移贴图折射（JS 按尺寸生成，Chromium 内核生效，其余浏览器自动回退为普通毛玻璃）。
- * 滑块位置与拉伸全部走 transform（JS 用弹簧解析解生成关键帧，由合成器线程播放），按下放大走独立的 scale 属性 */
+/* 底部 Dock：
+ * 底层 .dock-glass = 原来的液态玻璃（边缘高光 + dockLG 位移贴图折射），完全保持不变；
+ * 选中的那一格是 .dlens「透镜」，动画与折射取自液态玻璃组件的 LiquidBottomTabs：
+ *   静止 = 嵌在底栏里的淡色胶囊；按住 / 切换 / 拖动 = 浮起成更大更高的清澈液态玻璃，边缘强折射 + 色散，
+ *   里面的图标被“染色并放大”（.dink 墨水层只在透镜范围内显示，.dtabs 底层在透镜范围内被挖空）；
+ *   位置、浮起、拉伸全部由临界 / 欠阻尼弹簧逐帧驱动。
+ * 注意：透镜必须是 .dock-glass 的兄弟而不是子元素，否则嵌套 backdrop-filter 看不到页面内容。 */
 .dock-shell{position:fixed;z-index:60;left:0;right:0;margin:0 auto;bottom:calc(14px + var(--sab));width:min(344px,calc(100% - 32px));height:60px;border-radius:30px;box-shadow:0 10px 30px rgba(0,0,0,.55)}
-.dock{position:relative;display:flex;padding:5px;width:100%;height:100%;border-radius:30px;
+.dock{--lift:0;position:relative;width:100%;height:100%;border-radius:30px;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.dock-glass{position:absolute;inset:0;border-radius:inherit;pointer-events:none;
   box-shadow:
     inset 2px -2px 1px -1px var(--lg-h1),
     inset -2px 2px 1px -1px var(--lg-h1),
@@ -339,17 +345,33 @@ body.my-open #myBotAnchor{opacity:1}
     inset -6px 6px 1px -6px var(--lg-h2),
     inset 0 0 0 1px var(--glass-line),
     inset 0 0 2px var(--lg-edge);
-  background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(170%);backdrop-filter:blur(20px) saturate(170%);touch-action:pan-y;user-select:none;-webkit-user-select:none}
-.dock.lg{background:var(--lg-bg)}
-.dock .sl{position:absolute;top:5px;left:0;height:50px;backface-visibility:hidden;width:calc((100% - 10px)/4);border-radius:25px;background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);transform:translate3d(5px,0,0);
-  transition:scale .45s var(--spring),background-color .3s var(--ease);will-change:transform;pointer-events:none}
-.dock.drag .sl,.dock.press .sl{scale:1.07 1.1;background:rgba(255,255,255,.2)}
-.dock button{position:relative;z-index:1;flex:1;min-width:0;min-height:0;height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--sub);transition:color .25s var(--ease);touch-action:pan-y}
-.dock button .i{font-size:21px;transition:transform .4s var(--spring)}
-.dock button .dock-icon{width:24px;height:24px;stroke-width:1.85}
+  background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(170%);backdrop-filter:blur(20px) saturate(170%)}
+.dock-glass.lg{background:var(--lg-bg)}
+.dtabs{position:absolute;inset:5px;display:flex}
+.dock button,.dkb{position:relative;flex:1;min-width:0;min-height:0;height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--text);touch-action:pan-y}
+.dock button .i,.dkb .i{font-size:21px}
+.dock .dock-icon{width:24px;height:24px;stroke-width:1.85}
 .cart-icon{width:21px;height:21px;stroke-width:1.9}
-.dock button.on{color:var(--text)}.dock button.on .i{transform:translateY(-1px) scale(1.08)}
-.dock button:active .i{transform:scale(.86);transition-duration:.12s}
+/* 选中态实心填充：--dock-fill 决定图标中该实心的部分是否着色。
+ * 未选中时未定义 → 回退 none，保持纯描边；选中时填成图标自身颜色。
+ * 透镜里的 .dkb 副本本身就是选中态，始终实心。 */
+.dtabs button{will-change:opacity}
+.dkb{color:var(--text);pointer-events:none;--dock-fill:currentColor;--dock-fo:1;--dock-so:0}
+.dock button:focus-visible{outline:2px solid var(--blue);outline-offset:-3px;border-radius:999px}
+.dlayer{position:absolute;left:0;top:0;pointer-events:none;will-change:transform;transform:translate3d(0,0,0)}
+.drest,.dclip,.dlens{position:absolute;inset:0;border-radius:999px}
+.drest{background:var(--dock-sl);box-shadow:inset 1px 1px 1px var(--lg-h1),inset -1px -1px 1px var(--lg-h2),inset 0 0 0 1px var(--line);will-change:opacity}
+.dclip{overflow:hidden}
+.dinkin{position:absolute;left:0;top:0;display:flex;transform-origin:0 0;will-change:transform}
+.dlens{opacity:0;will-change:opacity;-webkit-backdrop-filter:saturate(1.5) brightness(1.1);backdrop-filter:saturate(1.5) brightness(1.1);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.8),inset 0 -1px 1px rgba(255,255,255,.4),0 6px 18px -6px var(--dlens-drop)}
+.dlens.nobf{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(160deg,rgba(255,255,255,.24),rgba(255,255,255,.07))}
+.dlens::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;
+  background:linear-gradient(135deg,rgba(255,255,255,.9),rgba(255,255,255,.15) 35%,rgba(255,255,255,0) 50%,rgba(255,255,255,.15) 65%,rgba(255,255,255,.9));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+body.dk-busy h1{animation-play-state:paused!important}
+.jumping .rv{transition:none!important}
 
 .mask{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .5s var(--ease)}
 .mask.on{opacity:1;pointer-events:auto}
@@ -417,7 +439,7 @@ html[data-theme=light]{color-scheme:light;
   --card-sh:0 1px 2px rgba(30,40,80,.05),0 8px 24px rgba(30,40,80,.07);
   --brand-a:#16181d; --brand-b:#2a6df4; --pill-t:#4b5563; --tg-bg:rgba(22,28,48,.07); --label:#6b7280;
   --menu-bg:rgba(255,255,255,.74); --float-bg:rgba(255,255,255,.96);
-  --grab:rgba(22,28,48,.2); --rd:rgba(22,28,48,.22); --dock-sl:rgba(22,28,48,.08); --dock-sl2:rgba(22,28,48,.14);
+  --grab:rgba(22,28,48,.2); --rd:rgba(22,28,48,.22); --dock-sl:rgba(22,28,48,.08); --dock-sl2:rgba(22,28,48,.14); --dlens-drop:rgba(30,45,90,.24); --nav-lg-sh:rgba(0,0,0,.10);
   --h1g:linear-gradient(100deg,#111827 6%,#1e4fd8 55%,#7a3fe0 100%); --sheen:rgba(255,255,255,.9); --h2b:#2a6df4;
   --g1:rgba(60,140,255,.26); --g2:rgba(180,110,255,.2)}
 html{background:var(--bg)}
@@ -434,7 +456,8 @@ h1{background:linear-gradient(105deg,rgba(255,255,255,0) 42%,var(--sheen) 50%,rg
 .brand i{color:var(--label)}
 .pill{color:var(--pill-t)}
 .nav-shell{box-shadow:var(--shadow-nav)}
-.dock-shell{box-shadow:var(--shadow-dock)}
+.dock-shell{box-shadow:none}
+.dock-shell::before{content:"";position:absolute;inset:0;border-radius:30px;box-shadow:var(--shadow-dock);transform:translateZ(0);pointer-events:none}
 .sq::after{background:var(--ring,var(--ringc))}
 @supports (corner-shape:squircle){.sq:not(.nq)::after{border-color:var(--ring,var(--ringc))}}
 .poster{--ring:var(--line)}
@@ -448,8 +471,8 @@ html[data-theme=light] .save{color:#e0501c}
 html[data-theme=light] .st.wait{color:#b86e00}
 html[data-theme=light] .ord-code,html[data-theme=light] .ord-code button{color:#178a38}
 html[data-theme=light] .utbot:not(.svc-bot):not(.login-bot){filter:drop-shadow(0 3px 8px rgba(35,110,220,.38))}
-.my-page{display:block;opacity:0;visibility:hidden;pointer-events:none;background:var(--bgfx),var(--bg);transition:opacity .38s var(--ease),visibility 0s .38s}
-.my-page.on{opacity:1;visibility:visible;pointer-events:auto;animation:none;transition:opacity .38s var(--ease),visibility 0s}
+.my-page{display:block;opacity:0;visibility:hidden;pointer-events:none;background:var(--bgfx),var(--bg);transition:opacity .16s var(--ease),visibility 0s .16s}
+.my-page.on{opacity:1;visibility:visible;pointer-events:auto;animation:none;transition:opacity .16s var(--ease),visibility 0s}
 .my-section-label{color:var(--label)}
 .my-menu{background:var(--menu-bg)}
 .my-menu-item{border-bottom-color:var(--line)}
@@ -466,15 +489,21 @@ html[data-theme=light] .utbot:not(.svc-bot):not(.login-bot){filter:drop-shadow(0
 .login-legal{color:var(--sub);opacity:.8}
 .grab{background:var(--grab)}
 .pm .rd{box-shadow:inset 0 0 0 2px var(--rd)}
-.dock .sl{background:var(--dock-sl);box-shadow:inset 1px 1px 1px var(--lg-h1),inset -1px -1px 1px var(--lg-h2),inset 0 0 0 1px var(--line)}
-.dock.drag .sl,.dock.press .sl{background:var(--dock-sl2)}
 .dock-shell{transform:translateZ(0)}
 .nav{-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%)}
-.dock{-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%)}
-.dock button{transition:color .2s var(--ease)}
+.dock-glass{-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%)}
+/* 顶栏液态玻璃（取自液态玻璃组件 Transparent Liquid Button 的 .glass）：
+ * 半透明底色 + SVG 位移贴图边缘折射（圆弧剖面，edge 12 / amount 24）+ blur(2px) saturate(1.5)
+ * + 0.5px 45° 高光描边 + 0 4px 24px 柔和投影。JS 确认浏览器支持 backdrop-filter:url() 后才加 .lg，
+ * 否则保留上面的普通毛玻璃。 */
+.nav.lg{background:var(--lg-bg);box-shadow:inset 0 0 0 .5px var(--glass-line)}
+.nav.lg::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:.5px;pointer-events:none;
+  background:linear-gradient(135deg,rgba(255,255,255,.5),rgba(255,255,255,0) 40%,rgba(255,255,255,0) 60%,rgba(255,255,255,.5));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.nav-shell.lg{box-shadow:0 4px 24px var(--nav-lg-sh)}
 /* 主题切换按钮：与 Dock 同款液态玻璃圆钮 + 同款描边图标（1.85 线宽、圆头圆角），太阳 / 月亮旋转互换 */
 .theme-btn{width:38px;height:38px;border-radius:50%;background:var(--glass);
-  -webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%);
   box-shadow:inset 1.5px -1.5px 1px -1px var(--lg-h1),inset -1.5px 1.5px 1px -1px var(--lg-h1),inset 0 0 0 1px var(--glass-line),inset 0 0 2px var(--lg-edge);color:var(--text);overflow:hidden}
 .theme-btn svg.ti{grid-area:1/1;width:22px;height:22px;stroke-width:1.85;transform-origin:50% 50%;
   transition:transform .65s var(--spring),opacity .35s var(--ease),filter .35s var(--ease)}
@@ -505,10 +534,14 @@ html[data-theme=light] .theme-btn .ti-moon{opacity:1;transform:none;filter:none}
 <symbol id="shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3Z"/><path d="m9 12 2 2 4-4"/></symbol>
 <symbol id="bolt" viewBox="0 0 24 24"><path d="M13 3 5 13h6l-1 8 8-10h-6l1-8Z"/></symbol>
 <symbol id="tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8L3 12Z"/><circle cx="7.5" cy="8.5" r="1.2" fill="currentColor"/></symbol>
-<symbol id="dock-home" viewBox="0 0 24 24"><path d="M3.8 10.9 12 4l8.2 6.9v8.3a1.3 1.3 0 0 1-1.3 1.3h-4.2v-5.4H9.3v5.4H5.1a1.3 1.3 0 0 1-1.3-1.3z"/></symbol>
-<symbol id="dock-claim" viewBox="0 0 24 24"><rect x="3.5" y="8" width="17" height="4" rx="1.2"/><path d="M5 12v7.2a1.3 1.3 0 0 0 1.3 1.3h11.4a1.3 1.3 0 0 0 1.3-1.3V12M12 8v12.5"/><path d="M12 8C10.6 8 7.6 7.8 7.6 5.8 7.6 4.7 8.4 4 9.5 4 11 4 12 5.6 12 8ZM12 8c1.4 0 4.4-.2 4.4-2.2 0-1.1-.8-1.8-1.9-1.8C13 4 12 5.6 12 8Z"/></symbol>
-<symbol id="dock-shop" viewBox="0 0 24 24"><path d="M4.8 8.5h14.4l-.95 10.8a1.3 1.3 0 0 1-1.3 1.2H7.05a1.3 1.3 0 0 1-1.3-1.2z"/><path d="M8.8 8.5V7.2a3.2 3.2 0 0 1 6.4 0v1.3"/></symbol>
-<symbol id="dock-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.6 20.5c.6-3.7 3.6-5.6 7.4-5.6s6.8 1.9 7.4 5.6"/></symbol>
+<!-- Dock 图标：fill="var(--dock-fill,none)" 的路径在选中时会被填成实心（见 .dock button.on / .dkb 规则），
+     其余路径保持描边。首页整个房子实心（门洞镂空）；礼物盒盖+盒身实心、蝴蝶结描边；购物袋袋身实心、提手描边；人像圆头实心、肩膀描边。 -->
+<symbol id="dock-home" viewBox="0 0 24 24"><path d="M3.8 10.9 12 4l8.2 6.9v8.3a1.3 1.3 0 0 1-1.3 1.3h-4.2v-5.4H9.3v5.4H5.1a1.3 1.3 0 0 1-1.3-1.3z" fill="var(--dock-fill,none)"/></symbol>
+<symbol id="dock-claim" viewBox="0 0 24 24">
+<g style="opacity:var(--dock-so,1)"><rect x="3.5" y="8" width="17" height="4" rx="1.2"/><path d="M5 12v7.2a1.3 1.3 0 0 0 1.3 1.3h11.4a1.3 1.3 0 0 0 1.3-1.3V12M12 8v12.5"/><path d="M12 8C10.6 8 7.6 7.8 7.6 5.8 7.6 4.7 8.4 4 9.5 4 11 4 12 5.6 12 8ZM12 8c1.4 0 4.4-.2 4.4-2.2 0-1.1-.8-1.8-1.9-1.8C13 4 12 5.6 12 8Z"/></g>
+<g style="opacity:var(--dock-fo,0)" fill="currentColor" stroke="none"><rect x="3" y="8.2" width="8.3" height="3.8" rx="1.3"/><rect x="12.7" y="8.2" width="8.3" height="3.8" rx="1.3"/><path d="M4.4 13.2h6.9v7.6H6.2a1.8 1.8 0 0 1-1.8-1.8z"/><path d="M12.7 13.2h6.9V19a1.8 1.8 0 0 1-1.8 1.8h-5.1z"/><path d="M11.3 7.6C9.4 7.9 6.4 7.5 6.4 5.6 6.4 4.5 7.2 3.8 8.3 3.8 10.1 3.8 11.2 5.3 11.3 7.6Z"/><path d="M12.7 7.6C14.6 7.9 17.6 7.5 17.6 5.6 17.6 4.5 16.8 3.8 15.7 3.8 13.9 3.8 12.8 5.3 12.7 7.6Z"/></g></symbol>
+<symbol id="dock-shop" viewBox="0 0 24 24"><path d="M4.8 8.5h14.4l-.95 10.8a1.3 1.3 0 0 1-1.3 1.2H7.05a1.3 1.3 0 0 1-1.3-1.2z" fill="var(--dock-fill,none)"/><path d="M8.8 8.5V7.2a3.2 3.2 0 0 1 6.4 0v1.3"/></symbol>
+<symbol id="dock-user" viewBox="0 0 24 24"><g style="opacity:var(--dock-so,1)"><circle cx="12" cy="8" r="4"/><path d="M4.6 20.5c.6-3.7 3.6-5.6 7.4-5.6s6.8 1.9 7.4 5.6"/></g><g style="opacity:var(--dock-fo,0)" fill="currentColor" stroke="none"><circle cx="12" cy="7.9" r="4.6"/><path d="M4.3 20.3C4.3 17 7.4 14.6 12 14.6S19.7 17 19.7 20.3c0 .9-.7 1.5-1.5 1.5H5.8c-.8 0-1.5-.6-1.5-1.5Z"/></g></symbol>
 <symbol id="qqlogo" viewBox="0 0 24 24"><path d="M21.395 15.035a40 40 0 0 0-.803-2.264l-1.079-2.695c.001-.032.014-.562.014-.836C19.526 4.632 17.351 0 12 0S4.474 4.632 4.474 9.241c0 .274.013.804.014.836l-1.08 2.695a39 39 0 0 0-.802 2.264c-1.021 3.283-.69 4.643-.438 4.673.54.065 2.103-2.472 2.103-2.472 0 1.469.756 3.387 2.394 4.771-.612.188-1.363.479-1.845.835-.434.32-.379.646-.301.778.343.578 5.883.369 7.482.189 1.6.18 7.14.389 7.483-.189.078-.132.132-.458-.301-.778-.483-.356-1.233-.646-1.846-.836 1.637-1.384 2.393-3.302 2.393-4.771 0 0 1.563 2.537 2.103 2.472.251-.03.581-1.39-.438-4.673"/></symbol>
 <symbol id="headset" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="13.5" width="4.2" height="6.5" rx="2.1"/><rect x="16.8" y="13.5" width="4.2" height="6.5" rx="2.1"/><path d="M19 20c0 1.5-1.9 2.2-4.2 2.2H13"/></symbol>
 <symbol id="cart-modern" viewBox="0 0 24 24"><path d="M3 4.2h2.1l2.2 11.1c.2.9 1 1.5 1.9 1.5h8.9c.9 0 1.7-.6 1.9-1.5L21.5 8H6.1"/><path d="M8 11.1h11.7M9.1 14.2h9.8" opacity=".65"/><circle cx="9.8" cy="20" r="1.35" fill="currentColor" stroke="none"/><circle cx="18" cy="20" r="1.35" fill="currentColor" stroke="none"/></symbol>
@@ -556,7 +589,7 @@ html[data-theme=light] .theme-btn .ti-moon{opacity:1;transform:none;filter:none}
   </div>
 </div></section>
 </main>
-<footer id="foot">© 2026 乌托邦 Utopia · v26</footer>
+<footer id="foot">© 2026 乌托邦 Utopia · v28</footer>
 
 <section class="my-page" id="myPage" aria-label="账户中心" aria-hidden="true">
   <div class="my-page-inner">
@@ -599,11 +632,14 @@ html[data-theme=light] .theme-btn .ti-moon{opacity:1;transform:none;filter:none}
   </div>
 </section>
 
-<div class="dock-shell" id="dockShell"><nav class="dock" id="dock" aria-label="主导航"><span class="sl"></span>
-  <button class="on" data-go="#home"><svg class="i dock-icon"><use href="#dock-home"/></svg>首页</button>
-  <button data-go="#free"><svg class="i dock-icon"><use href="#dock-claim"/></svg>领取</button>
-  <button data-go="#shop"><svg class="i dock-icon"><use href="#dock-shop"/></svg>商城</button>
-  <button data-go="#me"><svg class="i dock-icon"><use href="#dock-user"/></svg>我的</button>
+<div class="dock-shell" id="dockShell"><nav class="dock" id="dock" aria-label="主导航"><span class="dock-glass" id="dockGlass"></span>
+  <div class="dtabs" id="dtabs">
+    <button class="on" data-go="#home"><svg class="i dock-icon"><use href="#dock-home"/></svg>首页</button>
+    <button data-go="#free"><svg class="i dock-icon"><use href="#dock-claim"/></svg>领取</button>
+    <button data-go="#shop"><svg class="i dock-icon"><use href="#dock-shop"/></svg>商城</button>
+    <button data-go="#me"><svg class="i dock-icon"><use href="#dock-user"/></svg>我的</button>
+  </div>
+  <div class="dlayer" id="dlayer" aria-hidden="true"><span class="drest" id="drest"></span><span class="dclip"><span class="dinkin" id="dinkin"></span></span><span class="dlens" id="dlens"></span></div>
 </nav></div>
 
 <button class="float-cart press" id="floatCart" aria-label="打开购物车"><svg class="i cart-icon"><use href="#cart-modern"/></svg><span class="badge" id="cnt2">0</span></button>
@@ -689,9 +725,10 @@ function sqPath(w,h,rs,s,ox,oy){
 }
 function sqDraw(el){
   const w=el.offsetWidth,h=el.offsetHeight;if(!w||!h)return;
+  const wh=w+'|'+h;if(el._sqwh===wh&&el.dataset.sq)return;
   const cs=getComputedStyle(el),rt=parseFloat(cs.getPropertyValue('--sr'))||0,sb=cs.getPropertyValue('--sb').trim(),rb=sb===''?rt:(parseFloat(sb)||0);
   const sv=parseFloat(cs.getPropertyValue('--ss')),sm=sv>=0?sv:SQK;
-  const key=w+'|'+h+'|'+rt+'|'+rb+'|'+sm;if(el._sqk===key)return;el._sqk=key;
+  const key=w+'|'+h+'|'+rt+'|'+rb+'|'+sm;if(el._sqk===key)return;el._sqk=key;el._sqwh=wh;
   const out=sqPath(w,h,[rt,rt,rb,rb],sm,0,0);
   const inn=sqPath(w-2,h-2,[Math.max(0,rt-1),Math.max(0,rt-1),Math.max(0,rb-1),Math.max(0,rb-1)],sm,1,1);
   el.style.setProperty('--sq',`path('${out}')`);
@@ -849,14 +886,15 @@ function say(m){if(!m)return;const sl=pickSlot(true);if(sl)sl.show(m,{type:true,
 /* ====================== 商品数据 ====================== */
 const IMG={
   free:{src:'https://i.imgs.ovh/2026/11/09/f8a196ce7993dc103c31607542558cdc.webp',lq:'data:image/webp;base64,UklGRtgAAABXRUJQVlA4IMwAAADwBQCdASoUABQAPt1kqU+opSOiKAqpEBuJbACdMoR1ALB0AwrMA8rtpXbOi9KoJ1Wfdpd3cj1mwAD+kIU2dVm7XcQaUMdIXLY7A9ep9slOtNW46WpjE9WvAbQ3siowZ5Muk3DsEn3TFBm01BkPMjwvK+kmdmOKxVkJm3xc//ikhj2yShAvcsLHrfDEkcLor8LPWy/XoIAxHCurAziBmfbfrnB9/zFExk2JaWIPPmTPALbZSBXhcZp5uKvjeaCMnfxdWtAfbQxukKs6AAA='},
-  music:{src:'https://i.imgs.ovh/2026/11/11/e988ecc9e9952b4542cbac7de9253fad.webp',lq:'data:image/webp;base64,UklGRhgBAABXRUJQVlA4IAwBAACQBQCdASoUABQAPt1ipU8opaMiKA1REBuJbAC1IUFSb5ACB/C8OJkK2vzNdAx8gN5XNIxTwAD+8QPWr52pnqVK/LzmwFol132mnQWXHfrYIJQ6TmfbO5lBbLZPqjuhYDGfs+Lw2TNYpFof+lMg/1Ogw3HymaVUo3V57Z3qPJi1dZBu0RqGSqD4rLc7oYz0Us8Hvpqbst9YGIRu3kTz6gdeAtticgWVQLGxI/GsE9sQBhS56c2rEzAVpBnKgW7NYvCliH7agXN2outrBAgTLEqj37odKz3imAPlNEi0oHBLzDzos5owETm/HtMYiniWfl53/U8+Q6fnvW3p1B2O+9Thy4ZCIEexM4ewjAAA'}
+  music:{src:'https://i.imgs.ovh/2026/11/11/e988ecc9e9952b4542cbac7de9253fad.webp',lq:'data:image/webp;base64,UklGRhgBAABXRUJQVlA4IAwBAACQBQCdASoUABQAPt1ipU8opaMiKA1REBuJbAC1IUFSb5ACB/C8OJkK2vzNdAx8gN5XNIxTwAD+8QPWr52pnqVK/LzmwFol132mnQWXHfrYIJQ6TmfbO5lBbLZPqjuhYDGfs+Lw2TNYpFof+lMg/1Ogw3HymaVUo3V57Z3qPJi1dZBu0RqGSqD4rLc7oYz0Us8Hvpqbst9YGIRu3kTz6gdeAtticgWVQLGxI/GsE9sQBhS56c2rEzAVpBnKgW7NYvCliH7agXN2outrBAgTLEqj37odKz3imAPlNEi0oHBLzDzos5owETm/HtMYiniWfl53/U8+Q6fnvW3p1B2O+9Thy4ZCIEexM4ewjAAA='},
+  data:{src:'https://i.imgs.ovh/2026/11/12/58c542211a1275f550ac5eae348cc46a.webp',lq:'data:image/webp;base64,UklGRtgAAABXRUJQVlA4IMwAAADwBQCdASoUABQAPt1kqU+opSOiKAqpEBuJbACdMoR1ALB0AwrMA8rtpXbOi9KoJ1Wfdpd3cj1mwAD+kIU2dVm7XcQaUMdIXLY7A9ep9slOtNW46WpjE9WvAbQ3siowZ5Muk3DsEn3TFBm01BkPMjwvK+kmdmOKxVkJm3xc//ikhj2yShAvcsLHrfDEkcLor8LPWy/XoIAxHCurAziBmfbfrnB9/zFExk2JaWIPPmTPALbZSBXhcZp5uKvjeaCMnfxdWtAfbQxukKs6AAA='}
 };
 const COL={data:'#2997ff',music:'#30d158',video:'#bf5af2',game:'#ff375f'};
 const CATS=['全部','流量券','汽水音乐会员','影视会员','游戏权益'];
 const P=[
- {id:1,c:'流量券',n:'通用流量券 1GB',d:'全国通用 · 当月有效',p:5.9,o:8,k:'data',l:'1 GB',t:'热销'},
- {id:2,c:'流量券',n:'通用流量券 5GB',d:'全国通用 · 当月有效',p:19.9,o:28,k:'data',l:'5 GB'},
- {id:3,c:'流量券',n:'通用流量券 20GB',d:'全国通用 · 30 天有效',p:49,o:68,k:'data',l:'20 GB',t:'超值'},
+ {id:1,c:'流量券',n:'通用流量券 1GB',d:'全国通用 · 当月有效',p:5.9,o:8,k:'data',l:'1 GB',t:'热销',img:'data'},
+ {id:2,c:'流量券',n:'通用流量券 5GB',d:'全国通用 · 当月有效',p:19.9,o:28,k:'data',l:'5 GB',img:'data'},
+ {id:3,c:'流量券',n:'通用流量券 20GB',d:'全国通用 · 30 天有效',p:49,o:68,k:'data',l:'20 GB',t:'超值',img:'data'},
  {id:4,c:'汽水音乐会员',n:'汽水音乐会员 月卡',d:'音乐畅听 · 会员权益',p:12,o:15,k:'music',l:'1 个月',img:'music'},
  {id:5,c:'汽水音乐会员',n:'汽水音乐会员 季卡',d:'音乐畅听 · 会员权益',p:32,o:45,k:'music',l:'3 个月',img:'music'},
  {id:6,c:'汽水音乐会员',n:'汽水音乐会员 年卡',d:'音乐畅听 · 会员权益',p:108,o:180,k:'music',l:'12 个月',img:'music'},
@@ -865,7 +903,7 @@ const P=[
  {id:9,c:'影视会员',n:'影视会员 年卡',d:'热门平台 · 会员权益',p:168,o:298,k:'video',l:'12 个月',t:'限时'},
  {id:10,c:'游戏权益',n:'游戏点券 60',d:'即时到账 · 测试商品',p:0.01,o:6,k:'game',l:'60 点券',t:'测试'},
  {id:11,c:'游戏权益',n:'游戏点券 300',d:'即时到账 · 赠 10',p:30,o:30,k:'game',l:'300 点券',t:'赠送'},
- {id:12,c:'流量券',n:'夜间流量包 10GB',d:'23:00–07:00 可用',p:9.9,o:15,k:'data',l:'10 GB'}
+ {id:12,c:'流量券',n:'夜间流量包 10GB',d:'23:00–07:00 可用',p:9.9,o:15,k:'data',l:'10 GB',img:'data'}
 ];
 
 /* ====================== 本地状态 ====================== */
@@ -957,29 +995,34 @@ const trim=n=>String(+Number(n).toFixed(2));
 const card=(p,i)=>{
   const im=p.img?IMG[p.img]:null,save=p.o>p.p?`<div class="meta"><span class="save">省 ¥${trim(p.o-p.p)}</span></div>`:'';
   const cover=im
-    ?`<div class="cover has-img" style="--lq:url(${im.lq})"><img src="${im.src}" width="1254" height="1254" alt="${esc(p.n)}" loading="lazy" decoding="async" fetchpriority="low" referrerpolicy="no-referrer" data-fade><span class="tg">${p.l}</span>${p.t?`<span class="tg hot">${p.t}</span>`:''}</div>`
+    ?`<div class="cover has-img" style="--lq:url(${im.lq})"><img src="${im.src}" width="1254" height="1254" alt="${esc(p.n)}" decoding="async" referrerpolicy="no-referrer" data-fade><span class="tg">${p.l}</span>${p.t?`<span class="tg hot">${p.t}</span>`:''}</div>`
     :`<div class="cover">${p.t?`<span class="tg">${p.t}</span>`:''}<span class="big">${ic(p.k)}</span><span class="lab">${p.l}</span></div>`;
-  return `<div class="item sq rv" style="--i:${i%4};--c:${COL[p.k]}">${cover}<div class="info"><h4>${p.n}</h4><small>${p.d}</small>${save}<div class="buy"><span class="price"><b><i>¥</i>${p.p}</b>${p.o>p.p?`<s>¥${p.o}</s>`:''}</span><button class="add press" data-id="${p.id}" aria-label="加入购物车">${ic('plus')}</button></div></div></div>`;
+  return `<div class="item sq rv" data-cat="${p.c}" style="--i:${i%4};--c:${COL[p.k]}">${cover}<div class="info"><h4>${p.n}</h4><small>${p.d}</small>${save}<div class="buy"><span class="price"><b><i>¥</i>${p.p}</b>${p.o>p.p?`<s>¥${p.o}</s>`:''}</span><button class="add press" data-id="${p.id}" aria-label="加入购物车">${ic('plus')}</button></div></div></div>`;
 };
 
 function renderShop(first){
-  const g=$('#shopGrid'),list=P.filter(p=>cat==='全部'||p.c===cat);
-  clearTimeout(shopT);
-  const paint=()=>{
-    g.innerHTML=list.map(card).join('');
-    if(first){observe();return}
-    const els=$$('.item',g);
-    els.forEach((e,i)=>{e.classList.remove('rv');e.classList.add('out');e.style.transitionDelay=Math.min(i,8)*40+'ms'});
-    requestAnimationFrame(()=>requestAnimationFrame(()=>els.forEach(e=>e.classList.remove('out'))));
-    shopT=setTimeout(()=>els.forEach(e=>{e.style.transitionDelay=''}),900);
+  const g=$('#shopGrid');
+  if(first||!g.children.length){
+    g.innerHTML=P.map(card).join('');
+    $$('.item',g).forEach(e=>e.classList.toggle('gone',!(cat==='全部'||e.dataset.cat===cat)));
+    observe();return;
+  }
+  const apply=()=>{$$('.item',g).forEach(e=>e.classList.toggle('gone',!(cat==='全部'||e.dataset.cat===cat)))};
+  if(g._a){try{g._a.cancel()}catch(_){}g._a=null}
+  if(RM.matches||typeof g.animate!=='function'){apply();return}
+  const a=g.animate([{opacity:1,transform:'translate3d(0,0,0)'},{opacity:0,transform:'translate3d(0,8px,0)'}],{duration:130,easing:'ease-in',fill:'forwards'});
+  g._a=a;
+  a.onfinish=()=>{
+    if(g._a!==a)return;
+    apply();
+    const b=g.animate([{opacity:0,transform:'translate3d(0,10px,0)'},{opacity:1,transform:'translate3d(0,0,0)'}],{duration:260,easing:'cubic-bezier(.22,1,.36,1)'});
+    g._a=b;a.cancel();
+    b.onfinish=()=>{if(g._a===b)g._a=null};
   };
-  if(first||!g.children.length)return paint();
-  $$('.item',g).forEach(e=>{e.style.transitionDelay='0ms';e.classList.add('out')});
-  shopT=setTimeout(paint,240);
 }
 seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.classList.contains('on'))return;
   $$('button',seg).forEach(x=>x.classList.remove('on'));b.classList.add('on');cat=b.textContent;moveSl();
-  b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});renderShop()});
+  seg.scrollTo({left:b.offsetLeft-(seg.clientWidth-b.offsetWidth)/2,behavior:'smooth'});renderShop()});
 $('#shopGrid').addEventListener('click',e=>{const b=e.target.closest('.add');if(!b)return;
   const id=b.dataset.id;cart[id]=Math.min(99,(cart[id]||0)+1);saveCart();toast('已加入购物车');botAct('happy','',1300);
   [$('#cnt'),$('#cnt2')].forEach(x=>{x.classList.remove('pop');void x.offsetWidth;x.classList.add('pop')})});
@@ -1609,12 +1652,12 @@ function observe(){
 {const h1=$('h1'),hero=$('.hero');if(h1&&hero&&'IntersectionObserver' in window)new IntersectionObserver(es=>{h1.style.animationPlayState=es[0].isIntersecting?'running':'paused'}).observe(hero)}
 
 /* ====================== 导航 / Dock ====================== */
-const dock=$('#dock'),dsl=$('.sl',dock),db=$$('button[data-go]',dock),ta=$$('#links a');
+const dock=$('#dock'),dglass=$('#dockGlass'),dtabs=$('#dtabs'),dlayer=$('#dlayer'),drest=$('#drest'),dinkin=$('#dinkin'),dlens=$('#dlens'),db=$$('button[data-go]',dock),ta=$$('#links a');
 const navTargets=['#home','#free','#shop'];
 const bot=$('#utBot'),headerBotAnchor=$('#headerBotAnchor'),myBotAnchor=$('#myBotAnchor');
 let myWant='closed',myTok=0,dockBase=0,dockSuppressClick=false,dockStops=[],lastDockIndex=-1,tops=[0,0,0];
 
-function measureDock(){dockStops=db.map(b=>{const r=b.getBoundingClientRect();return{x:b.offsetLeft-dock.clientLeft,width:b.offsetWidth,center:r.left+r.width/2}})}
+function measureDock(){dockStops=db.map(b=>{const r=b.getBoundingClientRect();return{width:b.offsetWidth,center:r.left+r.width/2}});dkLayout()}
 function measureTops(){
   tops=navTargets.map(s=>{const el=$(s);return el?Math.round(el.getBoundingClientRect().top+scrollY):0});
   if(innerWidth>=960)tops[1]=tops[2];else tops[1]+=60;
@@ -1665,88 +1708,253 @@ function lgBuild(){
   LG.disp.setAttribute('scale',String(D*2));
   if(LG.ok===null){
     const f='url(#dockLG) blur(2px) saturate(1.6) brightness(1.06)';
-    dock.style.backdropFilter=f;dock.style.webkitBackdropFilter=f;
-    const cs=getComputedStyle(dock),v=cs.backdropFilter||cs.webkitBackdropFilter||'';
-    if(/url/.test(v)){LG.ok=true;dock.classList.add('lg')}
-    else{LG.ok=false;dock.style.backdropFilter='';dock.style.webkitBackdropFilter=''}
+    dglass.style.backdropFilter=f;dglass.style.webkitBackdropFilter=f;
+    const cs=getComputedStyle(dglass),v=cs.backdropFilter||cs.webkitBackdropFilter||'';
+    if(/url/.test(v)){LG.ok=true;dglass.classList.add('lg')}
+    else{LG.ok=false;dglass.style.backdropFilter='';dglass.style.webkitBackdropFilter=''}
   }
 }
 
-/* ===== Dock 滑块：合成器弹簧动画 =====
- * 点击 / 页面滚动切换：用弹簧「解析解」预先采样出关键帧（位置 + 随速度拉伸/压扁），交给 Web Animations 在合成器线程播放，
- *   不占主线程，即使同时在做 smooth-scroll、毛玻璃重绘也不掉帧；
- * 动画被打断（连点、边滚边切）：按当前播放进度解析出此刻的位置和速度，作为新弹簧的初始条件，运动连续不跳变；
- * 手指拖动：主线程跟手（指数平滑），松手时把当前速度带入弹簧，自然甩出并回弹。
- * 全程只改 transform，不触发布局。 */
+/* ===== 通用：胶囊形折射滤镜（取自液态玻璃组件） =====
+ * 位移贴图：边缘 edge px 内按圆弧剖面向内取样，R/G 通道存 x/y 偏移；rgb=true 时红/绿/蓝三通道位移量略不同，边缘出现色散。 */
+const LGNS='http://www.w3.org/2000/svg';
+function lgMap(w,h,r,edge){
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const g=c.getContext('2d');if(!g)return '';
+  const img=g.createImageData(w,h),d=img.data;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const px=x+.5-w/2,py=y+.5-h/2;
+    const qx=Math.abs(px)-(w/2-r),qy=Math.abs(py)-(h/2-r);
+    const mx=Math.max(qx,0),my=Math.max(qy,0),len=Math.sqrt(mx*mx+my*my);
+    const dist=r-len-Math.min(Math.max(qx,qy),0);
+    let nx,ny;
+    if(len>0){nx=mx/len;ny=my/len}else if(qx>qy){nx=1;ny=0}else{nx=0;ny=1}
+    nx*=px<0?-1:1;ny*=py<0?-1:1;
+    let m=0;
+    if(dist>0&&dist<edge){const t=1-dist/edge;m=1-Math.sqrt(1-t*t)}
+    const k=(y*w+x)*4;
+    d[k]=128-nx*m*127;d[k+1]=128-ny*m*127;d[k+2]=128;d[k+3]=255;
+  }
+  g.putImageData(img,0,0);
+  return c.toDataURL();
+}
+function lgFilter(id,w,h,r,edge,amount,rgb){
+  let svg=document.getElementById('lgDefs');
+  if(!svg){
+    svg=document.createElementNS(LGNS,'svg');svg.id='lgDefs';
+    svg.setAttribute('width','0');svg.setAttribute('height','0');svg.setAttribute('aria-hidden','true');
+    svg.style.cssText='position:fixed;left:0;top:0;width:0;height:0;pointer-events:none';
+    document.body.appendChild(svg);
+  }
+  w=Math.round(w);h=Math.round(h);
+  const s=amount*2,url=lgMap(w,h,Math.min(r,w/2,h/2),edge);
+  const head='<filter id="'+id+'" x="0" y="0" width="'+w+'" height="'+h+'" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feImage href="'+url+'" x="0" y="0" width="'+w+'" height="'+h+'" preserveAspectRatio="none" result="map"/>';
+  let body;
+  if(rgb){
+    const ch=(n,sc,m)=>'<feDisplacementMap in="SourceGraphic" in2="map" scale="'+sc.toFixed(2)+'" xChannelSelector="R" yChannelSelector="G" result="d'+n+'"/><feColorMatrix in="d'+n+'" type="matrix" values="'+m+'" result="'+n+'"/>';
+    body=ch('r',s,'1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0')+ch('g',s*1.08,'0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0')+ch('b',s*1.16,'0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0')+
+      '<feComposite in="r" in2="g" operator="arithmetic" k2="1" k3="1" result="rg"/><feComposite in="rg" in2="b" operator="arithmetic" k2="1" k3="1"/>';
+  }else body='<feDisplacementMap in="SourceGraphic" in2="map" scale="'+s+'" xChannelSelector="R" yChannelSelector="G"/>';
+  svg.insertAdjacentHTML('beforeend',head+body+'</filter>');
+}
+const lgDrop=id=>{const o=document.getElementById(id);if(o)o.remove()};
+
+/* ===== 顶栏液态玻璃（Transparent Liquid Button 质感）===== */
+const NAVLG={ok:null,key:'',id:'',n:0};
+const navEl=$('#nav');
+function navLgBuild(){
+  if(NAVLG.ok===false||!navEl)return;
+  const w=navEl.offsetWidth,h=navEl.offsetHeight;if(!w||!h)return;
+  const key=w+'x'+h;if(key===NAVLG.key&&NAVLG.ok)return;
+  NAVLG.key=key;
+  const id='navLG'+(++NAVLG.n),old=NAVLG.id;
+  lgFilter(id,w,h,h/2,12,24,false);NAVLG.id=id;
+  const f='url(#'+id+') blur(2px) saturate(1.5)';
+  navEl.style.backdropFilter=f;navEl.style.webkitBackdropFilter=f;
+  if(NAVLG.ok===null){
+    const cs=getComputedStyle(navEl),v=cs.backdropFilter||cs.webkitBackdropFilter||'';
+    if(/url/.test(v)){NAVLG.ok=true;navEl.classList.add('lg');navEl.parentNode.classList.add('lg')}
+    else{NAVLG.ok=false;navEl.style.backdropFilter='';navEl.style.webkitBackdropFilter='';lgDrop(id);return}
+  }
+  if(old)lgDrop(old);
+}
+
+/* ===== Dock 透镜：弹簧动画（参数取自 Kyant AndroidLiquidGlass 的 LiquidBottomTabs）=====
+ * f 指示器位置（以格为单位 0..3），press 浮起程度 0..1，sx/sy 浮起时的放大，vel 拖动速度造成的拉伸。
+ * 位置与浮起为临界阻尼 √1000，放大为欠阻尼 √250（x 0.6 / y 0.7），拉伸为 √300 / 0.5。
+ * 点击切换：透镜保持浮起并滑到目标，离目标不到 0.02 格才落下；按住（长按）：立即浮起并一直保持到松手；
+ * 拖动：透镜跟手，松手落到最近的一格。底栏本体（.dock-glass）不参与任何形变。 */
 const RM=matchMedia('(prefers-reduced-motion:reduce)');
-const SP={om:15,z:.6};
-const DK={x:5,v:0,T:5,target:5,anim:null,sp:null,drag:false,raf:0,last:0};
-const dkSet=(x,sx=1,sy=1)=>{dsl.style.transform=`translate3d(${x.toFixed(2)}px,0,0) scale(${sx.toFixed(4)},${sy.toFixed(4)})`};
-function spAt(s,t){
-  const e=Math.exp(-s.a*t),c=Math.cos(s.w*t),n=Math.sin(s.w*t);
-  return{x:s.T+e*(s.A*c+s.B*n),v:e*(s.v0*c-((s.A*s.om*s.om+s.a*s.v0)/s.w)*n)};
+const DPAD=5,TAB_SCALE=78/56,VDIV=10;
+const W_F=Math.sqrt(1000),W_S=Math.sqrt(250),W_V=Math.sqrt(300);
+const dclamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function dcrit(x,v,t,dt,w){const o=x-t,e=Math.exp(-w*dt);return[t+(o*e+(v+w*o)*dt*e),-w*o*e+(v+w*o)*(e-w*dt*e)]}
+function dund(x,v,t,dt,w,z){
+  const o=x-t,wd=w*Math.sqrt(1-z*z),e=Math.exp(-z*w*dt),c=Math.cos(wd*dt),sn=Math.sin(wd*dt),d=o*e*c+(v+z*w*o)/wd*e*sn;
+  return[t+d,-z*w*d+e*(-o*wd*sn+(v+z*w*o)*c)];
 }
-function dkSample(){
-  if(DK.anim&&DK.sp){
-    const t=Math.max(0,(+DK.anim.currentTime||0)/1000);
-    return spAt(DK.sp,t);
+const DS={f:0,fv:0,tf:0,press:0,pv:0,tPress:0,sx:1,sxv:0,sy:1,syv:0,tScale:1,vel:0,velv:0,tVel:0,dragging:false,holding:false,lastF:0,lastT:0};
+let dW=0,dH=0,dCell=0,dLW=0,dLH=0,dLR=0,dTW=0,dTH=0,dLensN=0,dLensId='',dLensOK=null,dWarmT=0,dRaf=0,dLast=0,dLayKey='';
+
+function dkLayout(){
+  const w=dock.offsetWidth,h=dock.offsetHeight;if(!w||!h)return;
+  dW=w;dH=h;dCell=(w-DPAD*2)/4;dTW=w-DPAD*2;dTH=h-DPAD*2;
+  dLW=Math.round(dCell*TAB_SCALE);dLH=Math.round(dTH*TAB_SCALE);dLR=Math.min(dLW,dLH)/2;
+  dlayer.style.width=dLW+'px';dlayer.style.height=dLH+'px';
+  dinkin.style.width=dTW+'px';dinkin.style.height=dTH+'px';
+  const key=dLW+'x'+dLH;
+  if(key!==dLayKey){
+    dLayKey=key;
+    const old=dLensId;dLensId='dockLens'+(++dLensN);
+    lgFilter(dLensId,dLW,dLH,dLR,10*TAB_SCALE,14*TAB_SCALE,true);
+    dkLensFilter();
+    if(old)lgDrop(old);
   }
-  return{x:DK.x,v:DK.v};
+  dkDraw();
 }
-function dkStop(){
-  if(!DK.anim)return;
-  const c=dkSample();DK.x=c.x;DK.v=c.v;
-  dkSet(c.x);
-  try{DK.anim.cancel()}catch(_){}
-  DK.anim=null;DK.sp=null;
-}
-function dkGo(T,instant=false){
-  DK.target=T;
-  if(DK.drag)return;
-  if(instant||RM.matches||!dsl.isConnected||!dsl.offsetWidth){
-    if(DK.anim){try{DK.anim.cancel()}catch(_){}DK.anim=null;DK.sp=null}
-    DK.x=T;DK.v=0;DK.T=T;dkSet(T);return;
+/* 折射滤镜常驻在透镜上（不再按下时才挂载，避免首次按下的建层 / 着色器编译卡顿）；静止时透镜 opacity=0，不产生绘制开销。 */
+function dkLensFilter(){
+  const f='url(#'+dLensId+') saturate(1.5) brightness(1.1)';
+  dlens.style.backdropFilter=f;dlens.style.webkitBackdropFilter=f;
+  if(dLensOK===null){
+    const cs=getComputedStyle(dlens),v=cs.backdropFilter||cs.webkitBackdropFilter||'';
+    dLensOK=/url/.test(v);
+    if(dLensOK){dWarmT=performance.now()+260;setTimeout(dkDraw,300)}
   }
-  if(DK.anim&&DK.sp&&DK.T===T)return;
-  dkStop();
-  const x0=DK.x,v0=DK.v;DK.v=0;
-  if(Math.abs(x0-T)<.05&&Math.abs(v0)<3){DK.x=T;DK.T=T;dkSet(T);return}
-  const om=SP.om,a=SP.z*om,w=om*Math.sqrt(1-SP.z*SP.z),A=x0-T,B=(v0+a*A)/w;
-  const s={T,A,B,v0,a,w,om},step=.012,fr=[];
-  for(let i=0;;i++){
-    const t=i*step,p=spAt(s,t),st=Math.min(Math.abs(p.v)*.00018,.16);
-    fr.push({transform:`translate3d(${p.x.toFixed(2)}px,0,0) scale(${(1+st).toFixed(4)},${(1-st*.55).toFixed(4)})`});
-    if(t>1.2||(i>3&&Math.abs(p.x-T)<.04&&Math.abs(p.v)<3))break;
+  if(!dLensOK){dlens.style.backdropFilter='';dlens.style.webkitBackdropFilter='';dlens.classList.add('nobf')}
+}
+/* 每帧只写 transform / opacity（全部走合成器），不再改 CSS 变量、不再更新 clip-path：
+ * .dlayer 平移+拉伸，.dclip（overflow:hidden 圆角）即透镜轮廓；.dinkin 在其内反向变换，使染色放大的图标落在 Dock 真实位置；
+ * 底层图标按透镜覆盖程度淡出，代替原来每帧重算的 evenodd 镂空路径。 */
+/* 视觉计算：给定一个弹簧状态，返回透镜 / 墨水层 / 透明度的最终样式值（纯函数，不碰 DOM）。 */
+function dkCompute(S){
+  const a=S.vel/VDIV,i=dclamp(.75*a,-.2,.2),o=dclamp(.25*a,-.2,.2);
+  const scX=S.sx/TAB_SCALE/(1-i),scY=S.sy/TAB_SCALE*(1-o);
+  const press=dclamp(S.press,0,1);
+  const cx=DPAD+dCell*(S.f+.5),ty=dH/2-dLH/2,m=1+.1*press;
+  const edge=dLW*scX/2,bo=[];
+  for(let k=0;k<4;k++){const off=Math.abs(S.f-k)*dCell;bo.push((1-dclamp((edge-(off-14))/28,0,1)).toFixed(2))}
+  return{
+    lt:'translate3d('+(cx-dLW/2).toFixed(2)+'px,'+ty.toFixed(2)+'px,0) scale('+scX.toFixed(4)+','+scY.toFixed(4)+')',
+    it:'translate3d('+(dLW/2)+'px,'+(dLH/2)+'px,0) scale('+(m/scX).toFixed(4)+','+(m/scY).toFixed(4)+') translate3d('+(-(cx-DPAD)).toFixed(2)+'px,'+(-dTH/2)+'px,0)',
+    ro:(1-press).toFixed(3),
+    lo:press>.001?press.toFixed(3):(performance.now()<dWarmT?'.02':'0'),
+    bo:bo
+  };
+}
+function dkDraw(){
+  if(!dLW)return;
+  const v=dkCompute(DS);
+  dlayer.style.transform=v.lt;dinkin.style.transform=v.it;
+  drest.style.opacity=v.ro;dlens.style.opacity=v.lo;
+  for(let k=0;k<db.length;k++)if(db[k]._o!==v.bo[k]){db[k]._o=v.bo[k];db[k].style.opacity=v.bo[k]}
+}
+/* ===== 点击 / 松手后的切换动画：不再逐帧用 JS 写样式 =====
+ * 先在内存里把整段弹簧（位置 / 浮起 / 放大 / 拉伸）按 60fps 预先算完，
+ * 再一次性交给 Web Animations（transform + opacity）在合成器线程播放。
+ * 播放期间主线程再忙（滚动跳转、机器人动画、定时器），透镜动画也不会掉帧。
+ * 播放中被打断时，按当前进度还原弹簧状态，再无缝接上新的动画。
+ * 只有按住 / 拖动（跟手）时才使用逐帧 JS。 */
+const DK_KEYS=['f','fv','tf','press','pv','tPress','sx','sxv','sy','syv','tScale','vel','velv','tVel'];
+const dkSnap=()=>{const o={};for(let i=0;i<DK_KEYS.length;i++)o[DK_KEYS[i]]=DS[DK_KEYS[i]];return o};
+const dkRestore=o=>{for(let i=0;i<DK_KEYS.length;i++)DS[DK_KEYS[i]]=o[DK_KEYS[i]]};
+let dPlan=null;
+function dkSettle(){
+  DS.f=DS.tf;DS.fv=0;DS.tPress=0;DS.press=0;DS.pv=0;DS.tScale=1;DS.sx=DS.sy=1;DS.sxv=DS.syv=0;DS.vel=DS.velv=DS.tVel=0;
+}
+function dkCancelPlan(restore){
+  const p=dPlan;if(!p)return;
+  dPlan=null;
+  let idx=p.n;
+  if(restore){
+    const t=p.anims[0].currentTime;
+    idx=dclamp(Math.round((t==null?p.n*1000/60:+t)/(1000/60)),0,p.n);
   }
-  fr.push({transform:`translate3d(${T}px,0,0) scale(1,1)`});
-  const dur=(fr.length-1)*step*1000;
-  let an;
-  try{an=dsl.animate(fr,{duration:dur,easing:'linear',fill:'forwards'})}catch(_){DK.x=T;DK.T=T;dkSet(T);return}
-  DK.anim=an;DK.sp=s;DK.T=T;
-  an.onfinish=()=>{if(DK.anim!==an)return;DK.x=T;DK.v=0;dkSet(T);try{an.cancel()}catch(_){}DK.anim=null;DK.sp=null};
+  p.anims.forEach(a=>{try{a.cancel()}catch(_){}});
+  if(restore)dkRestore(p.states[idx]);
+  document.body.classList.remove('dk-busy');
+  dkDraw();
 }
-function dkTick(now){
-  const dt=DK.last?Math.min(32,now-DK.last):16.67;DK.last=now;
-  const f=dt/16.67,prev=DK.x;
-  DK.x+=(DK.target-DK.x)*(1-Math.pow(1-.3,f));
-  DK.v=(DK.x-prev)/Math.max(.001,dt)*1000;
-  const st=Math.min(Math.abs(DK.v)*.00018,.16);
-  dkSet(DK.x,1+st,1-st*.55);
-  if(DK.drag)DK.raf=requestAnimationFrame(dkTick);else DK.raf=0;
+function dkPlay(){
+  if(dRaf){cancelAnimationFrame(dRaf);dRaf=0}
+  dkCancelPlan(true);
+  if(RM.matches||!dW||!dLW||typeof dlayer.animate!=='function'){dkSettle();dkDraw();document.body.classList.remove('dk-busy');return}
+  dkDraw();
+  if(dkIdle()){dkSettle();dkDraw();document.body.classList.remove('dk-busy');return}
+  const states=[dkSnap()],vis=[dkCompute(DS)];
+  for(let n=0;n<150;n++){
+    dkStep(1/60);
+    if(dkIdle()||n===149)dkSettle();
+    states.push(dkSnap());vis.push(dkCompute(DS));
+    if(DS.f===DS.tf&&DS.press===0&&DS.sx===1&&DS.vel===0)break;
+  }
+  const N=states.length-1,dur=N*1000/60,anims=[];
+  const mk=(el,prop,get)=>{
+    try{anims.push(el.animate(vis.map(v=>{const o={};o[prop]=get(v);return o}),{duration:dur,easing:'linear',fill:'forwards'}))}catch(_){}
+  };
+  mk(dlayer,'transform',v=>v.lt);mk(dinkin,'transform',v=>v.it);
+  mk(drest,'opacity',v=>v.ro);mk(dlens,'opacity',v=>v.lo);
+  for(let k=0;k<db.length;k++)mk(db[k],'opacity',v=>v.bo[k]);
+  if(!anims.length){dkDraw();return}
+  document.body.classList.add('dk-busy');
+  const plan={states:states,n:N,anims:anims};dPlan=plan;
+  anims[0].onfinish=()=>{
+    if(dPlan!==plan)return;
+    dPlan=null;
+    dkDraw();
+    anims.forEach(a=>{try{a.cancel()}catch(_){}});
+    document.body.classList.remove('dk-busy');
+  };
 }
-function dkDrag(x){
-  const max=Math.max(5,dock.clientWidth-(dsl.offsetWidth||0)-5);
-  DK.target=Math.max(5,Math.min(max,x));
-  if(!DK.drag){dkStop();DK.drag=true;DK.last=0;DK.T=-1}
-  if(!DK.raf)DK.raf=requestAnimationFrame(dkTick);
+function dkStep(dt){
+  if(DS.tPress===1&&!DS.dragging&&!DS.holding&&Math.abs(DS.tf-DS.f)<.02){DS.tPress=0;DS.tScale=1}
+  let r=dcrit(DS.f,DS.fv,DS.tf,dt,W_F);DS.f=r[0];DS.fv=r[1];
+  if(DS.dragging){
+    const now=performance.now();
+    if(DS.lastT&&now>DS.lastT)DS.tVel+=((DS.f-DS.lastF)/((now-DS.lastT)/1000)-DS.tVel)*.5;
+    DS.lastF=DS.f;DS.lastT=now;
+  }else{DS.tVel=0;DS.lastT=0}
+  r=dcrit(DS.press,DS.pv,DS.tPress,dt,W_F);DS.press=r[0];DS.pv=r[1];
+  r=dund(DS.sx,DS.sxv,DS.tScale,dt,W_S,.6);DS.sx=r[0];DS.sxv=r[1];
+  r=dund(DS.sy,DS.syv,DS.tScale,dt,W_S,.7);DS.sy=r[0];DS.syv=r[1];
+  r=dund(DS.vel,DS.velv,DS.tVel,dt,W_V,.5);DS.vel=r[0];DS.velv=r[1];
 }
-function dkRelease(){
-  DK.drag=false;cancelAnimationFrame(DK.raf);DK.raf=0;DK.last=0;
+function dkIdle(){
+  return !DS.dragging&&!DS.holding&&DS.tPress===0&&
+    Math.abs(DS.tf-DS.f)<.003&&Math.abs(DS.fv)<.003&&
+    Math.abs(DS.press)<.003&&Math.abs(DS.pv)<.003&&
+    Math.abs(DS.sx-1)<.003&&Math.abs(DS.sxv)<.003&&
+    Math.abs(DS.sy-1)<.003&&Math.abs(DS.syv)<.003&&
+    Math.abs(DS.vel)<.003&&Math.abs(DS.velv)<.003;
 }
+function dkFrame(now){
+  if(!DS.dragging&&!DS.holding){dRaf=0;dkPlay();return}
+  const dt=Math.max(0,Math.min((now-dLast)/1000,.05));dLast=now;
+  if(RM.matches){
+    DS.f=DS.tf;DS.fv=0;DS.vel=DS.velv=0;DS.sx=DS.sy=1;
+    DS.press=(DS.dragging||DS.holding)?1:0;DS.tPress=DS.press;
+  }else dkStep(dt);
+  dkDraw();
+  if(dkIdle()){DS.f=DS.tf;DS.press=0;DS.sx=DS.sy=1;DS.vel=0;dkDraw();dRaf=0;document.body.classList.remove('dk-busy')}
+  else dRaf=requestAnimationFrame(dkFrame);
+}
+function dkKick(){
+  if(DS.dragging||DS.holding){
+    dkCancelPlan(true);
+    if(!dRaf){document.body.classList.add('dk-busy');dLast=performance.now();dRaf=requestAnimationFrame(dkFrame)}
+  }else dkPlay();
+}
+function dkLift(){if(DS.tPress===0){DS.tPress=1;DS.tScale=TAB_SCALE}}
 function setDockSlider(i,instant){
-  const s=dockStops[i];if(!s)return;
-  if(dsl._w!==s.width){dsl._w=s.width;dsl.style.width=s.width+'px'}
-  dkGo(s.x,instant);
+  const inst=!!(instant||RM.matches||!dW),had=!!dPlan;dkCancelPlan(!inst);
+  if(instant||RM.matches||!dW){
+    DS.f=DS.tf=i;DS.fv=0;DS.vel=DS.velv=DS.tVel=0;DS.sx=DS.sy=1;DS.sxv=DS.syv=0;
+    if(!DS.holding&&!DS.dragging){DS.tPress=0;DS.tScale=1;DS.press=0;DS.pv=0}
+    dkDraw();if(DS.holding||DS.dragging)dkKick();return;
+  }
+  if(DS.tf===i){if(had)dkKick();return}
+  DS.tf=i;DS.tVel=0;DS.vel=DS.velv=0;
+  dkLift();dkKick();
 }
 const moveDock=(i,instant=false,commit=true)=>{
   if(!db[i])return;
@@ -1758,6 +1966,7 @@ const moveDock=(i,instant=false,commit=true)=>{
 
 let botAnimation=null,botMoveToken=0;
 const MOTION_EASE='cubic-bezier(.22,1,.36,1)';
+if(window.ResizeObserver){new ResizeObserver(()=>{dkLayout()}).observe(dock)}
 const BOT_CLS={header:'',my:'my-bot',svc:'svc-bot',login:'login-bot'};
 let botDest='header',botOrigin='header';
 function botTargetEl(d){return d==='my'?myBotAnchor:d==='svc'?$('#svcBotAnchor'):d==='login'?$('#loginBotAnchor'):headerBotAnchor}
@@ -1857,57 +2066,82 @@ async function openMyPage(){
   setHash('#my-page');avEnter();
 }
 
+const JUMP='instant'; /* 改成 'smooth' 可恢复平滑滚动 */
+let hashT=0,jumpT=0;
 let progScroll=false,progTimer=0;
 const markProg=(ms=160)=>{progScroll=true;clearTimeout(progTimer);progTimer=setTimeout(()=>{progScroll=false},ms)};
 function goSection(selector,index){
   moveDock(index);
   const mood={'#home':null,'#free':'listening','#shop':'working'}[selector];
-  if(mood)botAct(mood,'',1500);
+  if(mood)setTimeout(()=>botAct(mood,'',1500),500);
   const finish=()=>{
     const target=$(selector);
     if(target){
       markProg(450);
-      if(selector==='#home')window.scrollTo({top:0,behavior:'smooth'});
-      else{const h=$('.head',target)||target;window.scrollTo({top:Math.max(0,h.getBoundingClientRect().top+scrollY-92),behavior:'smooth'})}
+      if(selector==='#home')window.scrollTo({top:0,behavior:JUMP});
+      else{const h=$('.head',target)||target;window.scrollTo({top:Math.max(0,h.getBoundingClientRect().top+scrollY-92),behavior:JUMP})}
     }
-    setHash(selector);
+    clearTimeout(hashT);hashT=setTimeout(()=>setHash(selector),900);
+    const rt=document.documentElement;rt.classList.add('jumping');clearTimeout(jumpT);jumpT=setTimeout(()=>rt.classList.remove('jumping'),700);
   };
   if(myWant==='open')closeMyPage();finish();
 }
 function selectDock(i){if(i===3){openMyPage();return}goSection(db[i].dataset.go,i)}
-db.forEach((b,i)=>b.addEventListener('click',()=>{if(dockSuppressClick){dockSuppressClick=false;return}selectDock(i)}));
+// 键盘 / 读屏触发的 click（detail===0）；触摸与鼠标统一走下面的 pointer 逻辑
+db.forEach((b,i)=>b.addEventListener('click',e=>{if(e.detail!==0)return;selectDock(i)}));
+dock.addEventListener('contextmenu',e=>e.preventDefault());
 
 let dockPointer=null;
+dinkin.innerHTML=db.map(b=>'<span class="dkb">'+b.innerHTML+'</span>').join('');
+const dkCellAt=x=>{const r=dock.getBoundingClientRect();return dclamp(Math.floor((x-r.left-DPAD)/(dCell||1)),0,3)};
 dock.addEventListener('pointerdown',e=>{
   if(e.button!==undefined&&e.button!==0)return;
-  dockPointer={id:e.pointerId,startX:e.clientX,startY:e.clientY,lastX:e.clientX,dragging:false,rect:dock.getBoundingClientRect(),idx:-1};
-  DK.last=performance.now();
+  if(!dCell)return;
+  dkCancelPlan(true);
+  const idx=dkCellAt(e.clientX);
+  dockPointer={id:e.pointerId,startX:e.clientX,startY:e.clientY,lastX:e.clientX,dragging:false,downF:idx,idx};
+  try{dock.setPointerCapture(e.pointerId)}catch(_){}
   dock.classList.add('press');
-  const pb=e.target.closest('button[data-go]'),pi=db.indexOf(pb);
-  if(pi>=0&&!pb.classList.contains('on'))moveDock(pi,false,false);
+  // 长按：透镜立刻浮起成液态玻璃，并滑到手指所在的那一格下面
+  DS.holding=true;
+  if(idx!==lastDockIndex||!db[idx].classList.contains('on'))moveDock(idx,false,false);
+  dkLift();dkKick();
 });
 dock.addEventListener('pointermove',e=>{
   const p=dockPointer;if(!p||p.id!==e.pointerId)return;
   p.lastX=e.clientX;
   const dx=e.clientX-p.startX,dy=e.clientY-p.startY;
-  if(!p.dragging&&Math.abs(dx)>6&&Math.abs(dx)>Math.abs(dy)*1.2){p.dragging=true;dock.classList.add('drag');try{dock.setPointerCapture(e.pointerId)}catch(_){}}
+  if(!p.dragging&&Math.abs(dx)>6&&Math.abs(dx)>Math.abs(dy)*1.2){
+    p.dragging=true;DS.dragging=true;dock.classList.add('drag');
+    DS.tVel=0;DS.vel=DS.velv=0;DS.lastT=0;dkLift();
+  }
   if(!p.dragging)return;
   e.preventDefault();
-  const usable=p.rect.width-10,cell=usable/4;
-  const index=Math.max(0,Math.min(3,Math.floor((e.clientX-p.rect.left-5)/cell)));
-  dkDrag(Math.max(5,Math.min(5+usable-cell,e.clientX-p.rect.left-cell/2)));
-  if(index!==p.idx){p.idx=index;db.forEach((b,k)=>b.classList.toggle('on',k===index))}
+  DS.tf=dclamp(p.downF+dx/dCell,0,3);
+  const u=Math.round(DS.tf);
+  if(u!==p.idx){p.idx=u;db.forEach((b,k)=>b.classList.toggle('on',k===u))}
+  dkKick();
 },{passive:false});
 function finishDockPointer(e){
-  if(!dockPointer||dockPointer.id!==e.pointerId)return;
-  const state=dockPointer;dockPointer=null;dock.classList.remove('drag','press');dkRelease();if(!state.dragging){if(e.type==='pointercancel')moveDock(dockBase);else setTimeout(()=>{if(dockBase!==lastDockIndex)moveDock(dockBase)},80);return}
-  let index=0,min=Infinity;
-  dockStops.forEach((s,i)=>{const d=Math.abs(state.lastX-s.center);if(d<min){min=d;index=i}});
-  lastDockIndex=-1;dockSuppressClick=true;moveDock(index);selectDock(index);
-  setTimeout(()=>{dockSuppressClick=false},350);
+  const p=dockPointer;if(!p||p.id!==e.pointerId)return;
+  dockPointer=null;dock.classList.remove('drag','press');
+  try{dock.releasePointerCapture(e.pointerId)}catch(_){}
+  DS.holding=false;
+  if(p.dragging){
+    // 松手：透镜落到最近的一格，并回落成底栏里的淡色胶囊
+    DS.dragging=false;
+    const index=dclamp(Math.round(DS.tf),0,3);
+    DS.tf=index;DS.tPress=0;DS.tScale=1;
+    lastDockIndex=-1;dockSuppressClick=true;moveDock(index);selectDock(index);
+    setTimeout(()=>{dockSuppressClick=false},350);
+    dkKick();return;
+  }
+  if(e.type!=='pointerup'){moveDock(dockBase);dkKick();return}
+  selectDock(p.idx);dkKick();
 }
 dock.addEventListener('pointerup',finishDockPointer);
 dock.addEventListener('pointercancel',finishDockPointer);
+dock.addEventListener('lostpointercapture',finishDockPointer);
 ta.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();if(a.hasAttribute('data-open-my')){openMyPage();return}const href=a.getAttribute('href');goSection(href,Math.max(0,navTargets.indexOf(href)))}));
 const logoLink=$('.logo');
 if(logoLink)logoLink.addEventListener('click',e=>{if(e.target.closest('#utBot'))return;e.preventDefault();goSection('#home',0)});
@@ -1931,7 +2165,7 @@ function fitBrand(){
   const w0=i.getBoundingClientRect().width,n=i.textContent.length;
   if(wb>0&&w0>0&&n>1){const ls=(wb-w0)/(n-1);i.style.letterSpacing=ls.toFixed(2)+'px';i.style.marginRight=(-ls).toFixed(2)+'px'}
 }
-function remeasure(){fitBrand();moveSl();measureDock();lgBuild();measureTops();const a=db.findIndex(b=>b.classList.contains('on'));moveDock(Math.max(0,a),true);sqScan();$$('.sq[data-sq]').forEach(sqDraw)}
+function remeasure(){fitBrand();moveSl();measureDock();lgBuild();navLgBuild();measureTops();const a=db.findIndex(b=>b.classList.contains('on'));moveDock(Math.max(0,a),true);sqScan();$$('.sq[data-sq]').forEach(sqDraw)}
 let rz=0;addEventListener('resize',()=>{cancelAnimationFrame(rz);rz=requestAnimationFrame(remeasure)});
 addEventListener('pageshow',e=>{
   rollDay();renderTasks(false);remeasure();unlockPayUI();
@@ -2050,7 +2284,7 @@ document.addEventListener('load',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&t
 document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&t.hasAttribute('data-fade')&&!t.dataset.retry){t.dataset.retry='1';const u=t.src;setTimeout(()=>{t.src=u+(u.includes('?')?'&':'?')+'r='+Date.now()},1200)}},true);
 const fadeSync=root=>(root||document).querySelectorAll('img[data-fade]').forEach(im=>{if(im.complete&&im.naturalWidth)im.classList.add('ld')});
 const idle=f=>'requestIdleCallback' in window?requestIdleCallback(f,{timeout:2500}):setTimeout(f,900);
-const warm=()=>{const i=new Image();i.decoding='async';i.referrerPolicy='no-referrer';i.src=IMG.music.src};
+const warm=()=>{[IMG.music,IMG.data].forEach(m=>{const i=new Image();i.decoding='async';i.referrerPolicy='no-referrer';i.src=m.src;if(i.decode)i.decode().catch(()=>{})});setTimeout(()=>$$('#shopGrid img').forEach(im=>{if(im.decode)im.decode().catch(()=>{})}),600)};
 if(document.readyState==='complete')idle(warm);else addEventListener('load',()=>idle(warm),{once:true});
 renderShop(true);fadeSync();renderCart();paintBal(false);paintUser();sqScan();
 requestAnimationFrame(()=>{remeasure();if(location.hash==='#my-page')openMyPage();else moveDock(0,true);observe()});
@@ -2105,7 +2339,7 @@ if(user&&user.socialUid){
       const host=containers[i];
       const engine=createGrokBot(host,{
         size:128,state:'idle',seed:'utopia-ut-bot-'+i,
-        follow:i===0,maxFps:LOW?30:60,zoomMul:1.08,data:recipes,
+        follow:i===0,maxFps:30,zoomMul:1.08,data:recipes,
         theme:{ink:[255,255,255],spot:[0,0,0],cutout:false}
       });
       await engine.ready;
